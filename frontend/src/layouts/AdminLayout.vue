@@ -22,9 +22,9 @@
       <n-layout-header bordered class="admin-header">
         <n-space justify="space-between" align="center">
           <n-text strong style="font-size: 18px;">后台管理</n-text>
-          <n-space>
-            <n-tag :type="roleTagType" size="small">{{ roleLabel }}</n-tag>
-            <n-text>{{ user?.full_name || user?.email }}</n-text>
+          <n-space class="admin-header-actions">
+            <n-tag v-if="!isNarrow" :type="roleTagType" size="small">{{ roleLabel }}</n-tag>
+            <n-text v-if="!isNarrow">{{ user?.full_name || user?.email }}</n-text>
             <NotificationBell />
             <n-button secondary size="small" @click="showChangePassword = true">修改密码</n-button>
             <n-button secondary @click="handleLogout">退出登录</n-button>
@@ -32,7 +32,7 @@
         </n-space>
       </n-layout-header>
 
-      <n-layout-content class="admin-content" content-style="padding: 24px;">
+      <n-layout-content class="admin-content" :content-style="contentStyle">
         <router-view />
       </n-layout-content>
     </n-layout>
@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, ref } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NIcon } from 'naive-ui'
 import {
@@ -68,7 +68,31 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const collapsed = ref(false)
+const isNarrow = ref(false)
 const activeKey = ref(route.name?.toString() || 'PhotoReview')
+const contentStyle = computed(() => (isNarrow.value ? 'padding: 12px;' : 'padding: 24px;'))
+
+let mediaQuery: MediaQueryList | null = null
+
+function syncNarrow(matches: boolean) {
+  isNarrow.value = matches
+  // 窄屏默认收起侧栏，避免 240px 侧栏吃掉移动端宽度
+  collapsed.value = matches
+}
+
+function onMediaChange(event: MediaQueryListEvent) {
+  syncNarrow(event.matches)
+}
+
+onMounted(() => {
+  mediaQuery = window.matchMedia('(max-width: 900px)')
+  syncNarrow(mediaQuery.matches)
+  mediaQuery.addEventListener('change', onMediaChange)
+})
+
+onBeforeUnmount(() => {
+  mediaQuery?.removeEventListener('change', onMediaChange)
+})
 const user = computed(() => authStore.user)
 const showChangePassword = ref(false)
 
@@ -152,8 +176,25 @@ function handleLogout() {
   align-items: center;
 }
 
+.admin-header :deep(.n-space) {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
 .admin-content {
   height: calc(100vh - 64px);
   overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .admin-header {
+    padding: 0 12px;
+    height: auto;
+    min-height: 56px;
+  }
+
+  .admin-content {
+    height: calc(100vh - 56px);
+  }
 }
 </style>

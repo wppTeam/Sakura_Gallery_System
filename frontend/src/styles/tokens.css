@@ -1,0 +1,143 @@
+/* ============================================================
+   视觉百花 · 设计令牌（唯一色板 / 字号 / 间距 / 圆角来源）
+   方向文档：design/DIRECTION.md
+   命名与 fe-pages 约定保持一致；此文件不含具体页面样式。
+   ============================================================ */
+
+:root {
+  /* ---------- 色板：底 / 面 / 墨 ---------- */
+  --ground: #fff6f9;
+  --ground-deep: #ffeff5;
+  --surface: #ffffff;
+  --surface-soft: #fffbfd;
+  --surface-warm: #fff9fb;
+
+  --ink: #4a2b35;            /* 正文主墨 11.7:1 */
+  --ink-soft: #563842;       /* 次级标题 */
+  --muted: #63474f;          /* 辅助正文 7.8:1 */
+  --faint: #7f6069;          /* 弱提示 / 装饰，仅大字 */
+  --line: #f3dde5;           /* 分隔线 */
+  --line-strong: #eccdd8;    /* 需要更清晰边界时 */
+
+  /* ---------- 品牌樱粉 ---------- */
+  --sakura: #e8628c;         /* 标题粉，仅大字 3.2:1 */
+  --sakura-deep: #c93a63;    /* 按钮 / 链接 4.9:1 */
+  --sakura-deep-hover: #b32c53;
+  --sakura-pale: #ffe9f0;    /* 浅底 / 选中态 */
+  --sakura-mist: #fff2f7;
+  --sakura-wash: rgba(232, 98, 140, 0.08);
+  --on-accent: #ffffff;
+
+  /* ---------- 四季色场（淡底 + 强调） ---------- */
+  --spring: #e36089;
+  --spring-pale: #ffd7e4;
+  --spring-accent: #e36089;
+  --summer: #3b9c80;
+  --summer-pale: #d4f0e4;
+  --summer-accent: #3b9c80;
+  --autumn: #b5703c;
+  --autumn-pale: #ffdfd6;
+  --autumn-accent: #b5703c;
+  --winter: #5692c8;
+  --winter-pale: #d6e8f7;
+  --winter-accent: #5692c8;
+  --spring-tint: #fff0f5;
+  --summer-tint: #f0faf6;
+  --autumn-tint: #fff4ef;
+  --winter-tint: #f1f8fd;
+
+  /* ---------- 字体 ---------- */
+  --display: 'ZCOOL QingKe HuangYou', 'Noto Sans SC', 'PingFang SC',
+    'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, sans-serif;
+  --font: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei',
+    'Noto Sans CJK SC', 'Source Han Sans SC', system-ui, -apple-system,
+    'Segoe UI', sans-serif;
+
+  /* ---------- 字号阶梯（12 / 16 / 22 / 44 / 84 / 92） ---------- */
+  --fs-12: 12px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-22: 22px;
+  --fs-28: 28px;
+  --fs-44: 44px;
+  --fs-64: 64px;
+  --fs-84: 84px;
+  --fs-92: 92px;
+
+  --fs-display: clamp(56px, 7.2vw, 92px);   /* 首屏主标题 */
+  --fs-mega: clamp(64px, 11vw, 132px);      /* 四季巨字 */
+  --fs-h1: clamp(36px, 4.4vw, 64px);
+  --fs-h2: clamp(28px, 3.2vw, 44px);
+  --fs-h3: 22px;
+  --fs-lead: clamp(17px, 1.45vw, 21px);
+  --fs-body: 16px;
+  --fs-sm: 14px;
+  --fs-xs: 12px;
+
+  --lh-tight: 1.1;
+  --lh-title: 1.22;
+  --lh-snug: 1.5;
+  --lh-body: 1.75;
+  --lh-lead: 1.85;
+
+  --tracking-wide: 0.02em;
+  --tracking-eyebrow: 0.16em;
+
+  /* ---------- 间距 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 ---------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+  --sp-24: 96px;
+  --gap: 20px;                /* 瀑布流列间距 */
+  --gap-sm: 12px;
+  --gap-lg: 32px;
+
+  /* ---------- 布局 ---------- */
+  --maxw: 1320px;
+  --margin: 24px;
+  --nav-h: 64px;
+  --section-gap: clamp(64px, 8.5vw, 112px);
+  --measure: 24em;            /* CJK 行宽用 em */
+  --measure-lead: 21em;
+
+  /* ---------- 圆角 ---------- */
+  --r-card: 20px;
+  --r-photo: 16px;
+  --r-pill: 999px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 28px;
+
+  /* ---------- 阴影 ---------- */
+  --shadow-soft: 0 6px 24px rgba(201, 58, 99, 0.1);
+  --shadow-lift: 0 12px 32px rgba(201, 58, 99, 0.16);
+  --shadow-card: 0 2px 10px rgba(201, 58, 99, 0.05),
+    0 12px 32px rgba(201, 58, 99, 0.08);
+  --shadow-header: 0 1px 0 rgba(74, 43, 53, 0.04),
+    0 8px 24px rgba(201, 58, 99, 0.06);
+  --shadow-inset: inset 0 0 0 1px var(--line);
+
+  /* ---------- 动效 ---------- */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast: 160ms;
+  --dur: 240ms;
+  --dur-slow: 420ms;
+  --dur-reveal: 420ms;
+
+  /* ---------- 层级 ---------- */
+  --z-petals: 2;
+  --z-sticky: 30;
+  --z-nav: 40;
+  --z-drawer: 80;
+  --z-toast: 100;
+
+  /* ---------- 焦点 ---------- */
+  --focus-ring: 0 0 0 3px rgba(201, 58, 99, 0.35);
+}

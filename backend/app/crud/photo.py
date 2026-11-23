@@ -17,6 +17,15 @@ from app.schemas.photo import PhotoUpdate
 if TYPE_CHECKING:
     from app.services.search_interpreter import SearchInterpretation
 
+# 旧数据/旧链接里 season 可能是英文枚举，taxonomy 节点名是中文；两种都接受
+_SEASON_ALIASES = {
+    "spring": "春季",
+    "summer": "夏季",
+    "autumn": "秋季",
+    "fall": "秋季",
+    "winter": "冬季",
+}
+
 
 def _photo_with_relations():
     return (
@@ -97,6 +106,12 @@ async def get_photos(
         count_query = count_query.where(Photo.status == status)
 
     if season:
+        season_names = {season}
+        alias = _SEASON_ALIASES.get(season.strip().lower())
+        if alias:
+            season_names.add(alias)
+        elif season in _SEASON_ALIASES.values():
+            season_names.update(k for k, v in _SEASON_ALIASES.items() if v == season)
         season_subquery = (
             select(PhotoClassification.photo_id)
             .join(TaxonomyFacet, TaxonomyFacet.id == PhotoClassification.facet_id)
@@ -106,7 +121,7 @@ async def get_photos(
                 TaxonomyFacet.is_active.is_(True),
                 TaxonomyNode.is_active.is_(True),
                 TaxonomyNode.is_selectable.is_(True),
-                TaxonomyNode.name == season,
+                TaxonomyNode.name.in_(season_names),
             )
         )
         query = query.where(Photo.id.in_(season_subquery))

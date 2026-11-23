@@ -383,3 +383,43 @@ def get_vector_search_service() -> VectorSearchService:
     if _service is None:
         _service = VectorSearchService()
     return _service
+
+
+# ---- 可选依赖可用性探测（torch / sentence_transformers / pymilvus）----
+_AVAILABILITY_CACHE: Optional[tuple[bool, str]] = None
+
+
+def _vector_availability() -> tuple[bool, str]:
+    global _AVAILABILITY_CACHE
+    if _AVAILABILITY_CACHE is None:
+        reasons: list[str] = []
+        try:
+            from app.services.embedding_service import embedding_unavailable_reason
+            from app.services.milvus_client import milvus_unavailable_reason
+
+            for reason in (
+                embedding_unavailable_reason(),
+                milvus_unavailable_reason(),
+            ):
+                if reason:
+                    reasons.append(reason)
+        except Exception as exc:  # noqa: BLE001 - 探测失败按不可用处理
+            reasons.append(f"dependency probe failed: {exc}")
+        _AVAILABILITY_CACHE = (not reasons, "; ".join(reasons))
+    return _AVAILABILITY_CACHE
+
+
+def is_vector_available() -> bool:
+    """向量增强是否可用（依赖齐全；不代表 Milvus 已建库）。"""
+    return _vector_availability()[0]
+
+
+def vector_unavailable_reason() -> str:
+    """不可用原因（用于 API 降级说明）；可用时返回空串。"""
+    return _vector_availability()[1]
+
+
+def reset_vector_availability_cache() -> None:
+    """测试用：清空依赖探测缓存。"""
+    global _AVAILABILITY_CACHE
+    _AVAILABILITY_CACHE = None

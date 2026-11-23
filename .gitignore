@@ -112,3 +112,7 @@ docs/SAKURA_ROADMAP.md
 
 # agent screenshots / scratch
 .tmp-shots/
+.tmp-fe/
+
+# 本地种子脚本生成的演示账号口令（勿提交）
+backend/.seed-demo-credentials.json

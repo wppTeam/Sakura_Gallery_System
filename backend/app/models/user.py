@@ -21,6 +21,7 @@ class User(Base):
         role: 角色 (admin/auditor/tagger/dept_user/user)
         auth_provider: 认证来源 (local/university_sso)，用于区分本地注册和 SSO 登录
         sso_id: SSO 系统中的唯一标识符，对接学校认证时填入
+        username / display_name: 公开身份字段，公开页面只展示它们，绝不展示 student_id / full_name
     """
     __tablename__ = "users"
 
@@ -29,6 +30,9 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=True, index=True, comment="邮箱，可选")
     hashed_password = Column(String(255), nullable=True, comment="本地密码，SSO 用户可为空")
     full_name = Column(String(100))
+    # ── 公开身份字段（公开响应只允许用这两个，禁止暴露学号/真实姓名）──
+    username = Column(String(32), unique=True, nullable=True, index=True, comment="公开用户名，唯一；缺省时前端回退到展示名")
+    display_name = Column(String(64), nullable=True, comment="公开昵称，展示用")
     role = Column(String(20), default="user", nullable=False)  # admin/auditor/tagger/dept_user/user
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False)

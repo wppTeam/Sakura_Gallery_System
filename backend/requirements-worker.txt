@@ -1,0 +1,4 @@
+# 可选异步队列 worker（默认不用：TASK_QUEUE_BACKEND=background 走进程内 BackgroundTasks）
+# 2c4g 部署按调研结论不采用 Celery（prefork 每子进程 150–250MB），改用 DB outbox。
+celery[redis]>=5.4.0
+redis>=5.2.0

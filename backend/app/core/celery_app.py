@@ -7,7 +7,7 @@ settings = get_settings()
 
 try:
     from celery import Celery
-except ModuleNotFoundError:  # pragma: no cover - optional dependency for local mode
+except ImportError:  # pragma: no cover - optional dependency for local mode
     Celery = None
 
 

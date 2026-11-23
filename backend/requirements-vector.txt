@@ -1,0 +1,7 @@
+# 可选语义检索层（默认关闭，2c4g 不装）
+#
+# 说明：Milvus standalone 官方最低 8GB RAM，2c4g 不可行；
+# 第二阶段（作品 > 2 万条）计划改为 pgvector HNSW + 外部 embedding API（纯 HTTP，无需 torch）。
+# 保留这两个依赖仅为兼容旧代码路径；相关 import 必须延迟到函数内。
+pymilvus>=3.0.0,<3.1.0
+sentence-transformers>=5.5.0,<6.0.0

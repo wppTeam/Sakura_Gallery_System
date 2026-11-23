@@ -1,0 +1,4671 @@
+{
+  "schema": 1,
+  "generated_at": "2026-11-23T08:56:33Z",
+  "generator": "scripts/seed_demo.py",
+  "source_dirs": {
+    "2023": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)",
+    "2024": "/mnt/publicaccess/wppbackup/2024-end of year-remix"
+  },
+  "users": [
+    {
+      "student_id": "jackwpp",
+      "username": "jackwpp",
+      "display_name": "王海翔",
+      "full_name": "王海翔",
+      "role": "user",
+      "email": "jackwpp@example.com",
+      "id": "293cbf8c-a4da-5996-a299-55098a0f6724"
+    },
+    {
+      "student_id": "seed-admin",
+      "username": "sakura_staff",
+      "display_name": "视觉百花编辑部",
+      "full_name": "视觉百花管理员",
+      "role": "admin",
+      "email": "seed-admin@example.com",
+      "id": "1f3baaab-6646-5be2-bd04-191b9a442f4a"
+    },
+    {
+      "student_id": "seed-auditor",
+      "username": "sakura_review",
+      "display_name": "内容审核员",
+      "full_name": "内容审核员",
+      "role": "auditor",
+      "email": "seed-auditor@example.com",
+      "id": "c9c0af03-7c4d-5d1f-abe3-f3d51755f1ef"
+    },
+    {
+      "student_id": "seed-viewer",
+      "username": "sakura_viewer",
+      "display_name": "测试同学",
+      "full_name": "测试同学",
+      "role": "user",
+      "email": "seed-viewer@example.com",
+      "id": "3734f9a7-74bc-52a8-8b65-5d42837721a4"
+    }
+  ],
+  "photos": [
+    {
+      "id": "6e12ee4b-d80e-5aa0-94bd-5bcd233321ec",
+      "title": "七之一 · 生活瞬间 01",
+      "album": "2024 七之一：生活瞬间",
+      "group": "2024/七之一",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Autumn",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "生活瞬间",
+        "日常"
+      ],
+      "width": 6048,
+      "height": 4024,
+      "captured_at": "2024-10-31T22:50:58",
+      "mime_type": "image/jpeg",
+      "file_size": 4034495,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之一：生活瞬间/_DSC0068.jpg",
+      "source_sha256": "6eefab1785c0c4e0f314aa48a7ba4fcacce2de227234935ad0c301754ae74e19",
+      "gps_in_source": false,
+      "target_filename": "_DSC0068.jpg",
+      "files": {
+        "original": "originals/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec.jpg",
+        "thumbnail": "thumbnails/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec_thumb.jpg",
+        "compressed": "compressed/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec_320.webp",
+            "jpeg": "variants/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec_320.jpg",
+            "webp_bytes": 12422,
+            "jpeg_bytes": 16205
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec_640.webp",
+            "jpeg": "variants/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec_640.jpg",
+            "webp_bytes": 30068,
+            "jpeg_bytes": 44484
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec_1080.webp",
+            "jpeg": "variants/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec_1080.jpg",
+            "webp_bytes": 59716,
+            "jpeg_bytes": 97220
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec_1600.webp",
+            "jpeg": "variants/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec_1600.jpg",
+            "webp_bytes": 101068,
+            "jpeg_bytes": 177026
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec_2400.webp",
+            "jpeg": "variants/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec/6e12ee4b-d80e-5aa0-94bd-5bcd233321ec_2400.jpg",
+            "webp_bytes": 177590,
+            "jpeg_bytes": 339020
+          }
+        }
+      },
+      "lqip_chars": 287
+    },
+    {
+      "id": "018c2038-491c-5c46-90d4-4fd3982b5398",
+      "title": "七之二 · 可爱的东西 01",
+      "album": "2024 七之二：可爱的东西",
+      "group": "2024/七之二",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Summer",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "可爱的东西",
+        "可爱"
+      ],
+      "width": 6048,
+      "height": 4024,
+      "captured_at": "2024-06-03T21:50:55",
+      "mime_type": "image/jpeg",
+      "file_size": 21543892,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之二：可爱的东西/_DSC0124.jpg",
+      "source_sha256": "be7d0901e85b1e84c4a64ad4daa32428b32da7247e61d2c450869087a6da9299",
+      "gps_in_source": false,
+      "target_filename": "_DSC0124.jpg",
+      "files": {
+        "original": "originals/018c2038-491c-5c46-90d4-4fd3982b5398.jpg",
+        "thumbnail": "thumbnails/018c2038-491c-5c46-90d4-4fd3982b5398_thumb.jpg",
+        "compressed": "compressed/018c2038-491c-5c46-90d4-4fd3982b5398_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/018c2038-491c-5c46-90d4-4fd3982b5398/018c2038-491c-5c46-90d4-4fd3982b5398_320.webp",
+            "jpeg": "variants/018c2038-491c-5c46-90d4-4fd3982b5398/018c2038-491c-5c46-90d4-4fd3982b5398_320.jpg",
+            "webp_bytes": 7152,
+            "jpeg_bytes": 10411
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/018c2038-491c-5c46-90d4-4fd3982b5398/018c2038-491c-5c46-90d4-4fd3982b5398_640.webp",
+            "jpeg": "variants/018c2038-491c-5c46-90d4-4fd3982b5398/018c2038-491c-5c46-90d4-4fd3982b5398_640.jpg",
+            "webp_bytes": 19284,
+            "jpeg_bytes": 31142
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/018c2038-491c-5c46-90d4-4fd3982b5398/018c2038-491c-5c46-90d4-4fd3982b5398_1080.webp",
+            "jpeg": "variants/018c2038-491c-5c46-90d4-4fd3982b5398/018c2038-491c-5c46-90d4-4fd3982b5398_1080.jpg",
+            "webp_bytes": 46546,
+            "jpeg_bytes": 79924
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/018c2038-491c-5c46-90d4-4fd3982b5398/018c2038-491c-5c46-90d4-4fd3982b5398_1600.webp",
+            "jpeg": "variants/018c2038-491c-5c46-90d4-4fd3982b5398/018c2038-491c-5c46-90d4-4fd3982b5398_1600.jpg",
+            "webp_bytes": 112156,
+            "jpeg_bytes": 185084
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/018c2038-491c-5c46-90d4-4fd3982b5398/018c2038-491c-5c46-90d4-4fd3982b5398_2400.webp",
+            "jpeg": "variants/018c2038-491c-5c46-90d4-4fd3982b5398/018c2038-491c-5c46-90d4-4fd3982b5398_2400.jpg",
+            "webp_bytes": 373624,
+            "jpeg_bytes": 483446
+          }
+        }
+      },
+      "lqip_chars": 191
+    },
+    {
+      "id": "ee62953a-643c-5579-9746-9db3e5fb933f",
+      "title": "七之三 · 花开花飞春又来 01",
+      "album": "2024 七之三：花开花飞春又来",
+      "group": "2024/七之三",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Summer",
+      "campus": null,
+      "photo_type": "自然生态",
+      "tags": [
+        "2024年度总结",
+        "花开花飞春又来",
+        "花"
+      ],
+      "width": 4024,
+      "height": 6048,
+      "captured_at": "2024-06-07T16:36:03",
+      "mime_type": "image/jpeg",
+      "file_size": 17834262,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之三：花开花飞春又来/_DSC0589.jpg",
+      "source_sha256": "0c48218210e5c4869be77174de6581cecbe6c8d45fab28a778caf9a1add93971",
+      "gps_in_source": false,
+      "target_filename": "_DSC0589.jpg",
+      "files": {
+        "original": "originals/ee62953a-643c-5579-9746-9db3e5fb933f.jpg",
+        "thumbnail": "thumbnails/ee62953a-643c-5579-9746-9db3e5fb933f_thumb.jpg",
+        "compressed": "compressed/ee62953a-643c-5579-9746-9db3e5fb933f_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/ee62953a-643c-5579-9746-9db3e5fb933f/ee62953a-643c-5579-9746-9db3e5fb933f_320.webp",
+            "jpeg": "variants/ee62953a-643c-5579-9746-9db3e5fb933f/ee62953a-643c-5579-9746-9db3e5fb933f_320.jpg",
+            "webp_bytes": 27710,
+            "jpeg_bytes": 28109
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/ee62953a-643c-5579-9746-9db3e5fb933f/ee62953a-643c-5579-9746-9db3e5fb933f_640.webp",
+            "jpeg": "variants/ee62953a-643c-5579-9746-9db3e5fb933f/ee62953a-643c-5579-9746-9db3e5fb933f_640.jpg",
+            "webp_bytes": 76062,
+            "jpeg_bytes": 84357
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/ee62953a-643c-5579-9746-9db3e5fb933f/ee62953a-643c-5579-9746-9db3e5fb933f_1080.webp",
+            "jpeg": "variants/ee62953a-643c-5579-9746-9db3e5fb933f/ee62953a-643c-5579-9746-9db3e5fb933f_1080.jpg",
+            "webp_bytes": 151874,
+            "jpeg_bytes": 189018
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/ee62953a-643c-5579-9746-9db3e5fb933f/ee62953a-643c-5579-9746-9db3e5fb933f_1600.webp",
+            "jpeg": "variants/ee62953a-643c-5579-9746-9db3e5fb933f/ee62953a-643c-5579-9746-9db3e5fb933f_1600.jpg",
+            "webp_bytes": 251682,
+            "jpeg_bytes": 344143
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/ee62953a-643c-5579-9746-9db3e5fb933f/ee62953a-643c-5579-9746-9db3e5fb933f_2400.webp",
+            "jpeg": "variants/ee62953a-643c-5579-9746-9db3e5fb933f/ee62953a-643c-5579-9746-9db3e5fb933f_2400.jpg",
+            "webp_bytes": 441302,
+            "jpeg_bytes": 648192
+          }
+        }
+      },
+      "lqip_chars": 239
+    },
+    {
+      "id": "f2cd49e9-5aaa-53d3-9a27-b5dae254f943",
+      "title": "七之四 · The Decisive Moments 01",
+      "album": "2024 七之四：The Decisive Moments",
+      "group": "2024/七之四",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Summer",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "The Decisive Moments",
+        "街头"
+      ],
+      "width": 6048,
+      "height": 4024,
+      "captured_at": "2024-06-16T14:23:28",
+      "mime_type": "image/jpeg",
+      "file_size": 20185517,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之四：The Decisive Moments/_DSC0111.jpg",
+      "source_sha256": "db21bdaa95274f462c48660b0a0996416cb23772908718e53075b9f59eb15527",
+      "gps_in_source": false,
+      "target_filename": "_DSC0111.jpg",
+      "files": {
+        "original": "originals/f2cd49e9-5aaa-53d3-9a27-b5dae254f943.jpg",
+        "thumbnail": "thumbnails/f2cd49e9-5aaa-53d3-9a27-b5dae254f943_thumb.jpg",
+        "compressed": "compressed/f2cd49e9-5aaa-53d3-9a27-b5dae254f943_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/f2cd49e9-5aaa-53d3-9a27-b5dae254f943/f2cd49e9-5aaa-53d3-9a27-b5dae254f943_320.webp",
+            "jpeg": "variants/f2cd49e9-5aaa-53d3-9a27-b5dae254f943/f2cd49e9-5aaa-53d3-9a27-b5dae254f943_320.jpg",
+            "webp_bytes": 17642,
+            "jpeg_bytes": 19070
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/f2cd49e9-5aaa-53d3-9a27-b5dae254f943/f2cd49e9-5aaa-53d3-9a27-b5dae254f943_640.webp",
+            "jpeg": "variants/f2cd49e9-5aaa-53d3-9a27-b5dae254f943/f2cd49e9-5aaa-53d3-9a27-b5dae254f943_640.jpg",
+            "webp_bytes": 49880,
+            "jpeg_bytes": 64014
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/f2cd49e9-5aaa-53d3-9a27-b5dae254f943/f2cd49e9-5aaa-53d3-9a27-b5dae254f943_1080.webp",
+            "jpeg": "variants/f2cd49e9-5aaa-53d3-9a27-b5dae254f943/f2cd49e9-5aaa-53d3-9a27-b5dae254f943_1080.jpg",
+            "webp_bytes": 102280,
+            "jpeg_bytes": 149466
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/f2cd49e9-5aaa-53d3-9a27-b5dae254f943/f2cd49e9-5aaa-53d3-9a27-b5dae254f943_1600.webp",
+            "jpeg": "variants/f2cd49e9-5aaa-53d3-9a27-b5dae254f943/f2cd49e9-5aaa-53d3-9a27-b5dae254f943_1600.jpg",
+            "webp_bytes": 208990,
+            "jpeg_bytes": 299159
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/f2cd49e9-5aaa-53d3-9a27-b5dae254f943/f2cd49e9-5aaa-53d3-9a27-b5dae254f943_2400.webp",
+            "jpeg": "variants/f2cd49e9-5aaa-53d3-9a27-b5dae254f943/f2cd49e9-5aaa-53d3-9a27-b5dae254f943_2400.jpg",
+            "webp_bytes": 626492,
+            "jpeg_bytes": 693499
+          }
+        }
+      },
+      "lqip_chars": 183
+    },
+    {
+      "id": "322ebadd-009f-5c59-a492-d241c97770da",
+      "title": "七之五 · 社畜群侠传 01",
+      "album": "2024 七之五：社畜群侠传",
+      "group": "2024/七之五",
+      "status": "approved",
+      "category": "Activity",
+      "season": null,
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "社畜群侠传",
+        "活动"
+      ],
+      "width": 4884,
+      "height": 3663,
+      "captured_at": null,
+      "mime_type": "image/jpeg",
+      "file_size": 3027342,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之五：社畜群侠传/2024051402-1_(4)(1).jpg",
+      "source_sha256": "3543411c3d5579f7fdfda70df11bc95248ec56c2f8d96a3ea56bc9603e78d774",
+      "gps_in_source": false,
+      "target_filename": "2024051402-1_(4)(1).jpg",
+      "files": {
+        "original": "originals/322ebadd-009f-5c59-a492-d241c97770da.jpg",
+        "thumbnail": "thumbnails/322ebadd-009f-5c59-a492-d241c97770da_thumb.jpg",
+        "compressed": "compressed/322ebadd-009f-5c59-a492-d241c97770da_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 240,
+            "webp": "variants/322ebadd-009f-5c59-a492-d241c97770da/322ebadd-009f-5c59-a492-d241c97770da_320.webp",
+            "jpeg": "variants/322ebadd-009f-5c59-a492-d241c97770da/322ebadd-009f-5c59-a492-d241c97770da_320.jpg",
+            "webp_bytes": 19624,
+            "jpeg_bytes": 23527
+          },
+          "640": {
+            "width": 640,
+            "height": 480,
+            "webp": "variants/322ebadd-009f-5c59-a492-d241c97770da/322ebadd-009f-5c59-a492-d241c97770da_640.webp",
+            "jpeg": "variants/322ebadd-009f-5c59-a492-d241c97770da/322ebadd-009f-5c59-a492-d241c97770da_640.jpg",
+            "webp_bytes": 71104,
+            "jpeg_bytes": 85295
+          },
+          "1080": {
+            "width": 1080,
+            "height": 810,
+            "webp": "variants/322ebadd-009f-5c59-a492-d241c97770da/322ebadd-009f-5c59-a492-d241c97770da_1080.webp",
+            "jpeg": "variants/322ebadd-009f-5c59-a492-d241c97770da/322ebadd-009f-5c59-a492-d241c97770da_1080.jpg",
+            "webp_bytes": 193994,
+            "jpeg_bytes": 232008
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1200,
+            "webp": "variants/322ebadd-009f-5c59-a492-d241c97770da/322ebadd-009f-5c59-a492-d241c97770da_1600.webp",
+            "jpeg": "variants/322ebadd-009f-5c59-a492-d241c97770da/322ebadd-009f-5c59-a492-d241c97770da_1600.jpg",
+            "webp_bytes": 402912,
+            "jpeg_bytes": 485105
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1800,
+            "webp": "variants/322ebadd-009f-5c59-a492-d241c97770da/322ebadd-009f-5c59-a492-d241c97770da_2400.webp",
+            "jpeg": "variants/322ebadd-009f-5c59-a492-d241c97770da/322ebadd-009f-5c59-a492-d241c97770da_2400.jpg",
+            "webp_bytes": 854002,
+            "jpeg_bytes": 1026265
+          }
+        }
+      },
+      "lqip_chars": 279
+    },
+    {
+      "id": "2a3193c9-f8bc-5cd7-a71e-7353e352064d",
+      "title": "七之六 · ta在丛中笑 01",
+      "album": "2024 七之六：ta在丛中笑",
+      "group": "2024/七之六",
+      "status": "pending",
+      "category": "Documentary",
+      "season": "Summer",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "ta在丛中笑",
+        "笑容"
+      ],
+      "width": 4024,
+      "height": 6048,
+      "captured_at": "2024-06-16T16:03:43",
+      "mime_type": "image/jpeg",
+      "file_size": 14462461,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之六：ta在丛中笑/_DSC0379.jpg",
+      "source_sha256": "87ad0b1fa7b37f8f579684ab81920917847f2bcfbcd6b50bbbd6f0b0372ab721",
+      "gps_in_source": false,
+      "target_filename": "_DSC0379.jpg",
+      "files": {
+        "original": "originals/2a3193c9-f8bc-5cd7-a71e-7353e352064d.jpg",
+        "thumbnail": "thumbnails/2a3193c9-f8bc-5cd7-a71e-7353e352064d_thumb.jpg",
+        "compressed": "compressed/2a3193c9-f8bc-5cd7-a71e-7353e352064d_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/2a3193c9-f8bc-5cd7-a71e-7353e352064d/2a3193c9-f8bc-5cd7-a71e-7353e352064d_320.webp",
+            "jpeg": "variants/2a3193c9-f8bc-5cd7-a71e-7353e352064d/2a3193c9-f8bc-5cd7-a71e-7353e352064d_320.jpg",
+            "webp_bytes": 7944,
+            "jpeg_bytes": 11620
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/2a3193c9-f8bc-5cd7-a71e-7353e352064d/2a3193c9-f8bc-5cd7-a71e-7353e352064d_640.webp",
+            "jpeg": "variants/2a3193c9-f8bc-5cd7-a71e-7353e352064d/2a3193c9-f8bc-5cd7-a71e-7353e352064d_640.jpg",
+            "webp_bytes": 24364,
+            "jpeg_bytes": 37633
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/2a3193c9-f8bc-5cd7-a71e-7353e352064d/2a3193c9-f8bc-5cd7-a71e-7353e352064d_1080.webp",
+            "jpeg": "variants/2a3193c9-f8bc-5cd7-a71e-7353e352064d/2a3193c9-f8bc-5cd7-a71e-7353e352064d_1080.jpg",
+            "webp_bytes": 60040,
+            "jpeg_bytes": 94534
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/2a3193c9-f8bc-5cd7-a71e-7353e352064d/2a3193c9-f8bc-5cd7-a71e-7353e352064d_1600.webp",
+            "jpeg": "variants/2a3193c9-f8bc-5cd7-a71e-7353e352064d/2a3193c9-f8bc-5cd7-a71e-7353e352064d_1600.jpg",
+            "webp_bytes": 123666,
+            "jpeg_bytes": 197182
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/2a3193c9-f8bc-5cd7-a71e-7353e352064d/2a3193c9-f8bc-5cd7-a71e-7353e352064d_2400.webp",
+            "jpeg": "variants/2a3193c9-f8bc-5cd7-a71e-7353e352064d/2a3193c9-f8bc-5cd7-a71e-7353e352064d_2400.jpg",
+            "webp_bytes": 278464,
+            "jpeg_bytes": 441808
+          }
+        }
+      },
+      "lqip_chars": 211
+    },
+    {
+      "id": "6b998c56-fa34-5813-bdf6-ec39cf985fe8",
+      "title": "七之七 · 北化与我 01",
+      "album": "2024 七之七：北化与我",
+      "group": "2024/七之七",
+      "status": "approved",
+      "category": "Landscape",
+      "season": null,
+      "campus": "昌平校区",
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "北化与我",
+        "校园",
+        "北化"
+      ],
+      "width": 3619,
+      "height": 3619,
+      "captured_at": null,
+      "mime_type": "image/jpeg",
+      "file_size": 1493674,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之七：北化与我/_DSC0642(1).jpg",
+      "source_sha256": "0df5dbe0212a7cdfe995354c6f9bb7698636ba6af0641455fcd868f84ff47847",
+      "gps_in_source": false,
+      "target_filename": "_DSC0642(1).jpg",
+      "files": {
+        "original": "originals/6b998c56-fa34-5813-bdf6-ec39cf985fe8.jpg",
+        "thumbnail": "thumbnails/6b998c56-fa34-5813-bdf6-ec39cf985fe8_thumb.jpg",
+        "compressed": "compressed/6b998c56-fa34-5813-bdf6-ec39cf985fe8_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 320,
+            "webp": "variants/6b998c56-fa34-5813-bdf6-ec39cf985fe8/6b998c56-fa34-5813-bdf6-ec39cf985fe8_320.webp",
+            "jpeg": "variants/6b998c56-fa34-5813-bdf6-ec39cf985fe8/6b998c56-fa34-5813-bdf6-ec39cf985fe8_320.jpg",
+            "webp_bytes": 27046,
+            "jpeg_bytes": 29918
+          },
+          "640": {
+            "width": 640,
+            "height": 640,
+            "webp": "variants/6b998c56-fa34-5813-bdf6-ec39cf985fe8/6b998c56-fa34-5813-bdf6-ec39cf985fe8_640.webp",
+            "jpeg": "variants/6b998c56-fa34-5813-bdf6-ec39cf985fe8/6b998c56-fa34-5813-bdf6-ec39cf985fe8_640.jpg",
+            "webp_bytes": 91340,
+            "jpeg_bytes": 104669
+          },
+          "1080": {
+            "width": 1080,
+            "height": 1080,
+            "webp": "variants/6b998c56-fa34-5813-bdf6-ec39cf985fe8/6b998c56-fa34-5813-bdf6-ec39cf985fe8_1080.webp",
+            "jpeg": "variants/6b998c56-fa34-5813-bdf6-ec39cf985fe8/6b998c56-fa34-5813-bdf6-ec39cf985fe8_1080.jpg",
+            "webp_bytes": 222472,
+            "jpeg_bytes": 264608
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1600,
+            "webp": "variants/6b998c56-fa34-5813-bdf6-ec39cf985fe8/6b998c56-fa34-5813-bdf6-ec39cf985fe8_1600.webp",
+            "jpeg": "variants/6b998c56-fa34-5813-bdf6-ec39cf985fe8/6b998c56-fa34-5813-bdf6-ec39cf985fe8_1600.jpg",
+            "webp_bytes": 411428,
+            "jpeg_bytes": 508985
+          },
+          "2400": {
+            "width": 2400,
+            "height": 2400,
+            "webp": "variants/6b998c56-fa34-5813-bdf6-ec39cf985fe8/6b998c56-fa34-5813-bdf6-ec39cf985fe8_2400.webp",
+            "jpeg": "variants/6b998c56-fa34-5813-bdf6-ec39cf985fe8/6b998c56-fa34-5813-bdf6-ec39cf985fe8_2400.jpg",
+            "webp_bytes": 742086,
+            "jpeg_bytes": 957664
+          }
+        }
+      },
+      "lqip_chars": 279
+    },
+    {
+      "id": "36b9e76b-82ef-579e-9694-d2ba40d25106",
+      "title": "2024 校园春季 01",
+      "album": "2024 校园四季",
+      "group": "2024/校园四季",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Spring",
+      "campus": "昌平校区",
+      "photo_type": "自然生态",
+      "tags": [
+        "2024年度总结",
+        "校园四季",
+        "春季"
+      ],
+      "width": 6048,
+      "height": 4024,
+      "captured_at": "2024-04-15T17:31:17",
+      "mime_type": "image/jpeg",
+      "file_size": 15912847,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/春/_DSC7521.jpg",
+      "source_sha256": "f4c7ae432afb2d65b6250569b2d455f044637e7ddbe7e4fc3021810c077aaf3d",
+      "gps_in_source": false,
+      "target_filename": "_DSC7521.jpg",
+      "files": {
+        "original": "originals/36b9e76b-82ef-579e-9694-d2ba40d25106.jpg",
+        "thumbnail": "thumbnails/36b9e76b-82ef-579e-9694-d2ba40d25106_thumb.jpg",
+        "compressed": "compressed/36b9e76b-82ef-579e-9694-d2ba40d25106_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/36b9e76b-82ef-579e-9694-d2ba40d25106/36b9e76b-82ef-579e-9694-d2ba40d25106_320.webp",
+            "jpeg": "variants/36b9e76b-82ef-579e-9694-d2ba40d25106/36b9e76b-82ef-579e-9694-d2ba40d25106_320.jpg",
+            "webp_bytes": 17218,
+            "jpeg_bytes": 19497
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/36b9e76b-82ef-579e-9694-d2ba40d25106/36b9e76b-82ef-579e-9694-d2ba40d25106_640.webp",
+            "jpeg": "variants/36b9e76b-82ef-579e-9694-d2ba40d25106/36b9e76b-82ef-579e-9694-d2ba40d25106_640.jpg",
+            "webp_bytes": 56780,
+            "jpeg_bytes": 66691
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/36b9e76b-82ef-579e-9694-d2ba40d25106/36b9e76b-82ef-579e-9694-d2ba40d25106_1080.webp",
+            "jpeg": "variants/36b9e76b-82ef-579e-9694-d2ba40d25106/36b9e76b-82ef-579e-9694-d2ba40d25106_1080.jpg",
+            "webp_bytes": 127874,
+            "jpeg_bytes": 158951
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/36b9e76b-82ef-579e-9694-d2ba40d25106/36b9e76b-82ef-579e-9694-d2ba40d25106_1600.webp",
+            "jpeg": "variants/36b9e76b-82ef-579e-9694-d2ba40d25106/36b9e76b-82ef-579e-9694-d2ba40d25106_1600.jpg",
+            "webp_bytes": 227700,
+            "jpeg_bytes": 296302
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/36b9e76b-82ef-579e-9694-d2ba40d25106/36b9e76b-82ef-579e-9694-d2ba40d25106_2400.webp",
+            "jpeg": "variants/36b9e76b-82ef-579e-9694-d2ba40d25106/36b9e76b-82ef-579e-9694-d2ba40d25106_2400.jpg",
+            "webp_bytes": 409072,
+            "jpeg_bytes": 558932
+          }
+        }
+      },
+      "lqip_chars": 227
+    },
+    {
+      "id": "c8748512-bb26-5666-8191-c44acd153d5d",
+      "title": "1月 · 第一次拍摄人像，也是第一次用全画幅相机做严肃拍…",
+      "album": "2023 · 1月",
+      "group": "2023/月度随笔",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Winter",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "1月"
+      ],
+      "width": 6048,
+      "height": 4024,
+      "captured_at": "2023-01-11T17:30:48",
+      "mime_type": "image/jpeg",
+      "file_size": 13912294,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/1月/111after-20.jpg",
+      "source_sha256": "859a3bb3f8a300119e6a0a985c72d018d6ce0f1b466faea363538ca37a97d0e1",
+      "gps_in_source": false,
+      "target_filename": "111after-20.jpg",
+      "files": {
+        "original": "originals/c8748512-bb26-5666-8191-c44acd153d5d.jpg",
+        "thumbnail": "thumbnails/c8748512-bb26-5666-8191-c44acd153d5d_thumb.jpg",
+        "compressed": "compressed/c8748512-bb26-5666-8191-c44acd153d5d_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/c8748512-bb26-5666-8191-c44acd153d5d/c8748512-bb26-5666-8191-c44acd153d5d_320.webp",
+            "jpeg": "variants/c8748512-bb26-5666-8191-c44acd153d5d/c8748512-bb26-5666-8191-c44acd153d5d_320.jpg",
+            "webp_bytes": 14076,
+            "jpeg_bytes": 16435
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/c8748512-bb26-5666-8191-c44acd153d5d/c8748512-bb26-5666-8191-c44acd153d5d_640.webp",
+            "jpeg": "variants/c8748512-bb26-5666-8191-c44acd153d5d/c8748512-bb26-5666-8191-c44acd153d5d_640.jpg",
+            "webp_bytes": 47224,
+            "jpeg_bytes": 57465
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/c8748512-bb26-5666-8191-c44acd153d5d/c8748512-bb26-5666-8191-c44acd153d5d_1080.webp",
+            "jpeg": "variants/c8748512-bb26-5666-8191-c44acd153d5d/c8748512-bb26-5666-8191-c44acd153d5d_1080.jpg",
+            "webp_bytes": 116086,
+            "jpeg_bytes": 143901
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/c8748512-bb26-5666-8191-c44acd153d5d/c8748512-bb26-5666-8191-c44acd153d5d_1600.webp",
+            "jpeg": "variants/c8748512-bb26-5666-8191-c44acd153d5d/c8748512-bb26-5666-8191-c44acd153d5d_1600.jpg",
+            "webp_bytes": 208206,
+            "jpeg_bytes": 278465
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/c8748512-bb26-5666-8191-c44acd153d5d/c8748512-bb26-5666-8191-c44acd153d5d_2400.webp",
+            "jpeg": "variants/c8748512-bb26-5666-8191-c44acd153d5d/c8748512-bb26-5666-8191-c44acd153d5d_2400.jpg",
+            "webp_bytes": 368992,
+            "jpeg_bytes": 550055
+          }
+        }
+      },
+      "lqip_chars": 183
+    },
+    {
+      "id": "b8b8252b-71f5-57e9-9b68-a754408e4ba4",
+      "title": "2023 年度精选 01",
+      "album": "2023/年度精选",
+      "group": "2023/年度精选",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Spring",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "年度精选"
+      ],
+      "width": 3588,
+      "height": 4784,
+      "captured_at": "2023-04-29T18:47:10",
+      "mime_type": "image/jpeg",
+      "file_size": 17116200,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/年度 9张图/_1157396.jpg",
+      "source_sha256": "2c25f1ca33c83c57732cb43936c8ceddb7baee40464a901cd8b5bd36895ffebd",
+      "gps_in_source": false,
+      "target_filename": "_1157396.jpg",
+      "files": {
+        "original": "originals/b8b8252b-71f5-57e9-9b68-a754408e4ba4.jpg",
+        "thumbnail": "thumbnails/b8b8252b-71f5-57e9-9b68-a754408e4ba4_thumb.jpg",
+        "compressed": "compressed/b8b8252b-71f5-57e9-9b68-a754408e4ba4_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 240,
+            "height": 320,
+            "webp": "variants/b8b8252b-71f5-57e9-9b68-a754408e4ba4/b8b8252b-71f5-57e9-9b68-a754408e4ba4_320.webp",
+            "jpeg": "variants/b8b8252b-71f5-57e9-9b68-a754408e4ba4/b8b8252b-71f5-57e9-9b68-a754408e4ba4_320.jpg",
+            "webp_bytes": 15720,
+            "jpeg_bytes": 18661
+          },
+          "640": {
+            "width": 480,
+            "height": 640,
+            "webp": "variants/b8b8252b-71f5-57e9-9b68-a754408e4ba4/b8b8252b-71f5-57e9-9b68-a754408e4ba4_640.webp",
+            "jpeg": "variants/b8b8252b-71f5-57e9-9b68-a754408e4ba4/b8b8252b-71f5-57e9-9b68-a754408e4ba4_640.jpg",
+            "webp_bytes": 50462,
+            "jpeg_bytes": 61792
+          },
+          "1080": {
+            "width": 810,
+            "height": 1080,
+            "webp": "variants/b8b8252b-71f5-57e9-9b68-a754408e4ba4/b8b8252b-71f5-57e9-9b68-a754408e4ba4_1080.webp",
+            "jpeg": "variants/b8b8252b-71f5-57e9-9b68-a754408e4ba4/b8b8252b-71f5-57e9-9b68-a754408e4ba4_1080.jpg",
+            "webp_bytes": 129952,
+            "jpeg_bytes": 158843
+          },
+          "1600": {
+            "width": 1200,
+            "height": 1600,
+            "webp": "variants/b8b8252b-71f5-57e9-9b68-a754408e4ba4/b8b8252b-71f5-57e9-9b68-a754408e4ba4_1600.webp",
+            "jpeg": "variants/b8b8252b-71f5-57e9-9b68-a754408e4ba4/b8b8252b-71f5-57e9-9b68-a754408e4ba4_1600.jpg",
+            "webp_bytes": 285172,
+            "jpeg_bytes": 334805
+          },
+          "2400": {
+            "width": 1800,
+            "height": 2400,
+            "webp": "variants/b8b8252b-71f5-57e9-9b68-a754408e4ba4/b8b8252b-71f5-57e9-9b68-a754408e4ba4_2400.webp",
+            "jpeg": "variants/b8b8252b-71f5-57e9-9b68-a754408e4ba4/b8b8252b-71f5-57e9-9b68-a754408e4ba4_2400.jpg",
+            "webp_bytes": 752458,
+            "jpeg_bytes": 798784
+          }
+        }
+      },
+      "lqip_chars": 219
+    },
+    {
+      "id": "91b64f33-cfe5-5cd0-9a8c-98537dae0ad9",
+      "title": "2023 手机摄影 01",
+      "album": "2023/手机摄影",
+      "group": "2023/手机摄影",
+      "status": "approved",
+      "category": "Documentary",
+      "season": null,
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "手机摄影"
+      ],
+      "width": 4205,
+      "height": 4205,
+      "captured_at": null,
+      "mime_type": "image/jpeg",
+      "file_size": 2498104,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/年度 手机摄影/1703930163201.jpg",
+      "source_sha256": "0a685ce075858709b7e803adce6ac4b9eba8f34f33942414cb4de7a65091a795",
+      "gps_in_source": true,
+      "target_filename": "1703930163201.jpg",
+      "files": {
+        "original": "originals/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9.jpg",
+        "thumbnail": "thumbnails/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9_thumb.jpg",
+        "compressed": "compressed/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 320,
+            "webp": "variants/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9_320.webp",
+            "jpeg": "variants/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9_320.jpg",
+            "webp_bytes": 10262,
+            "jpeg_bytes": 16080
+          },
+          "640": {
+            "width": 640,
+            "height": 640,
+            "webp": "variants/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9_640.webp",
+            "jpeg": "variants/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9_640.jpg",
+            "webp_bytes": 28532,
+            "jpeg_bytes": 47878
+          },
+          "1080": {
+            "width": 1080,
+            "height": 1080,
+            "webp": "variants/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9_1080.webp",
+            "jpeg": "variants/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9_1080.jpg",
+            "webp_bytes": 62328,
+            "jpeg_bytes": 109658
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1600,
+            "webp": "variants/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9_1600.webp",
+            "jpeg": "variants/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9_1600.jpg",
+            "webp_bytes": 107782,
+            "jpeg_bytes": 203116
+          },
+          "2400": {
+            "width": 2400,
+            "height": 2400,
+            "webp": "variants/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9_2400.webp",
+            "jpeg": "variants/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9/91b64f33-cfe5-5cd0-9a8c-98537dae0ad9_2400.jpg",
+            "webp_bytes": 185774,
+            "jpeg_bytes": 378889
+          }
+        }
+      },
+      "lqip_chars": 247
+    },
+    {
+      "id": "5fe18c7f-466c-5fe7-b38d-8887536a78f7",
+      "title": "七之一 · 生活瞬间 02",
+      "album": "2024 七之一：生活瞬间",
+      "group": "2024/七之一",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Autumn",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "生活瞬间",
+        "日常"
+      ],
+      "width": 4024,
+      "height": 6048,
+      "captured_at": "2024-11-05T17:53:17",
+      "mime_type": "image/jpeg",
+      "file_size": 11143299,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之一：生活瞬间/_DSC2110.jpg",
+      "source_sha256": "1f6a98a6943ceb4b2ca12baebbf55bf6d9c1771d56e1c2587c3e8c2d81515645",
+      "gps_in_source": false,
+      "target_filename": "_DSC2110.jpg",
+      "files": {
+        "original": "originals/5fe18c7f-466c-5fe7-b38d-8887536a78f7.jpg",
+        "thumbnail": "thumbnails/5fe18c7f-466c-5fe7-b38d-8887536a78f7_thumb.jpg",
+        "compressed": "compressed/5fe18c7f-466c-5fe7-b38d-8887536a78f7_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/5fe18c7f-466c-5fe7-b38d-8887536a78f7/5fe18c7f-466c-5fe7-b38d-8887536a78f7_320.webp",
+            "jpeg": "variants/5fe18c7f-466c-5fe7-b38d-8887536a78f7/5fe18c7f-466c-5fe7-b38d-8887536a78f7_320.jpg",
+            "webp_bytes": 12306,
+            "jpeg_bytes": 15395
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/5fe18c7f-466c-5fe7-b38d-8887536a78f7/5fe18c7f-466c-5fe7-b38d-8887536a78f7_640.webp",
+            "jpeg": "variants/5fe18c7f-466c-5fe7-b38d-8887536a78f7/5fe18c7f-466c-5fe7-b38d-8887536a78f7_640.jpg",
+            "webp_bytes": 28798,
+            "jpeg_bytes": 41452
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/5fe18c7f-466c-5fe7-b38d-8887536a78f7/5fe18c7f-466c-5fe7-b38d-8887536a78f7_1080.webp",
+            "jpeg": "variants/5fe18c7f-466c-5fe7-b38d-8887536a78f7/5fe18c7f-466c-5fe7-b38d-8887536a78f7_1080.jpg",
+            "webp_bytes": 52068,
+            "jpeg_bytes": 86748
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/5fe18c7f-466c-5fe7-b38d-8887536a78f7/5fe18c7f-466c-5fe7-b38d-8887536a78f7_1600.webp",
+            "jpeg": "variants/5fe18c7f-466c-5fe7-b38d-8887536a78f7/5fe18c7f-466c-5fe7-b38d-8887536a78f7_1600.jpg",
+            "webp_bytes": 85794,
+            "jpeg_bytes": 155274
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/5fe18c7f-466c-5fe7-b38d-8887536a78f7/5fe18c7f-466c-5fe7-b38d-8887536a78f7_2400.webp",
+            "jpeg": "variants/5fe18c7f-466c-5fe7-b38d-8887536a78f7/5fe18c7f-466c-5fe7-b38d-8887536a78f7_2400.jpg",
+            "webp_bytes": 148860,
+            "jpeg_bytes": 303817
+          }
+        }
+      },
+      "lqip_chars": 235
+    },
+    {
+      "id": "094a61bf-071e-517b-941f-8f4e791a9c9f",
+      "title": "七之二 · 可爱的东西 02",
+      "album": "2024 七之二：可爱的东西",
+      "group": "2024/七之二",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Summer",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "可爱的东西",
+        "可爱"
+      ],
+      "width": 5729,
+      "height": 3223,
+      "captured_at": "2024-08-26T18:46:32",
+      "mime_type": "image/jpeg",
+      "file_size": 12369371,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之二：可爱的东西/_DSC1465.jpg",
+      "source_sha256": "8de0dea0ff4349b896db5710a047d2419a7497a50cc199d05e5eb7ebe517d4a1",
+      "gps_in_source": false,
+      "target_filename": "_DSC1465.jpg",
+      "files": {
+        "original": "originals/094a61bf-071e-517b-941f-8f4e791a9c9f.jpg",
+        "thumbnail": "thumbnails/094a61bf-071e-517b-941f-8f4e791a9c9f_thumb.jpg",
+        "compressed": "compressed/094a61bf-071e-517b-941f-8f4e791a9c9f_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 180,
+            "webp": "variants/094a61bf-071e-517b-941f-8f4e791a9c9f/094a61bf-071e-517b-941f-8f4e791a9c9f_320.webp",
+            "jpeg": "variants/094a61bf-071e-517b-941f-8f4e791a9c9f/094a61bf-071e-517b-941f-8f4e791a9c9f_320.jpg",
+            "webp_bytes": 14404,
+            "jpeg_bytes": 16352
+          },
+          "640": {
+            "width": 640,
+            "height": 360,
+            "webp": "variants/094a61bf-071e-517b-941f-8f4e791a9c9f/094a61bf-071e-517b-941f-8f4e791a9c9f_640.webp",
+            "jpeg": "variants/094a61bf-071e-517b-941f-8f4e791a9c9f/094a61bf-071e-517b-941f-8f4e791a9c9f_640.jpg",
+            "webp_bytes": 41992,
+            "jpeg_bytes": 49936
+          },
+          "1080": {
+            "width": 1080,
+            "height": 608,
+            "webp": "variants/094a61bf-071e-517b-941f-8f4e791a9c9f/094a61bf-071e-517b-941f-8f4e791a9c9f_1080.webp",
+            "jpeg": "variants/094a61bf-071e-517b-941f-8f4e791a9c9f/094a61bf-071e-517b-941f-8f4e791a9c9f_1080.jpg",
+            "webp_bytes": 94340,
+            "jpeg_bytes": 119430
+          },
+          "1600": {
+            "width": 1600,
+            "height": 900,
+            "webp": "variants/094a61bf-071e-517b-941f-8f4e791a9c9f/094a61bf-071e-517b-941f-8f4e791a9c9f_1600.webp",
+            "jpeg": "variants/094a61bf-071e-517b-941f-8f4e791a9c9f/094a61bf-071e-517b-941f-8f4e791a9c9f_1600.jpg",
+            "webp_bytes": 174788,
+            "jpeg_bytes": 235607
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1350,
+            "webp": "variants/094a61bf-071e-517b-941f-8f4e791a9c9f/094a61bf-071e-517b-941f-8f4e791a9c9f_2400.webp",
+            "jpeg": "variants/094a61bf-071e-517b-941f-8f4e791a9c9f/094a61bf-071e-517b-941f-8f4e791a9c9f_2400.jpg",
+            "webp_bytes": 364990,
+            "jpeg_bytes": 497042
+          }
+        }
+      },
+      "lqip_chars": 231
+    },
+    {
+      "id": "5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb",
+      "title": "七之三 · 花开花飞春又来 02",
+      "album": "2024 七之三：花开花飞春又来",
+      "group": "2024/七之三",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Spring",
+      "campus": null,
+      "photo_type": "自然生态",
+      "tags": [
+        "2024年度总结",
+        "花开花飞春又来",
+        "花"
+      ],
+      "width": 3977,
+      "height": 5977,
+      "captured_at": "2024-04-10T16:14:28",
+      "mime_type": "image/jpeg",
+      "file_size": 12021047,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之三：花开花飞春又来/_DSC6674.jpg",
+      "source_sha256": "7eadcaae6361b445a9a05cf2383d022d628d7950363dc7ab3902f241c70ebf1f",
+      "gps_in_source": false,
+      "target_filename": "_DSC6674.jpg",
+      "files": {
+        "original": "originals/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb.jpg",
+        "thumbnail": "thumbnails/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb_thumb.jpg",
+        "compressed": "compressed/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb_320.webp",
+            "jpeg": "variants/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb_320.jpg",
+            "webp_bytes": 19804,
+            "jpeg_bytes": 21374
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb_640.webp",
+            "jpeg": "variants/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb_640.jpg",
+            "webp_bytes": 69582,
+            "jpeg_bytes": 75529
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb_1080.webp",
+            "jpeg": "variants/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb_1080.jpg",
+            "webp_bytes": 159024,
+            "jpeg_bytes": 183038
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb_1600.webp",
+            "jpeg": "variants/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb_1600.jpg",
+            "webp_bytes": 281732,
+            "jpeg_bytes": 344245
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb_2400.webp",
+            "jpeg": "variants/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb/5adbc4a6-59c4-53c9-96ac-3dc5192ad9fb_2400.jpg",
+            "webp_bytes": 494490,
+            "jpeg_bytes": 654335
+          }
+        }
+      },
+      "lqip_chars": 215
+    },
+    {
+      "id": "ae54b12f-84a7-51ac-b8f9-4d410813b2e5",
+      "title": "七之四 · The Decisive Moments 02",
+      "album": "2024 七之四：The Decisive Moments",
+      "group": "2024/七之四",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Summer",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "The Decisive Moments",
+        "街头"
+      ],
+      "width": 6048,
+      "height": 4024,
+      "captured_at": "2024-06-09T20:17:57",
+      "mime_type": "image/jpeg",
+      "file_size": 21322717,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之四：The Decisive Moments/_DSC1189.jpg",
+      "source_sha256": "ef1a98b8ecbf7f305eae7d9ac2de35b0d9990b8780f5e22fcf9016c46c2aeb90",
+      "gps_in_source": false,
+      "target_filename": "_DSC1189.jpg",
+      "files": {
+        "original": "originals/ae54b12f-84a7-51ac-b8f9-4d410813b2e5.jpg",
+        "thumbnail": "thumbnails/ae54b12f-84a7-51ac-b8f9-4d410813b2e5_thumb.jpg",
+        "compressed": "compressed/ae54b12f-84a7-51ac-b8f9-4d410813b2e5_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/ae54b12f-84a7-51ac-b8f9-4d410813b2e5/ae54b12f-84a7-51ac-b8f9-4d410813b2e5_320.webp",
+            "jpeg": "variants/ae54b12f-84a7-51ac-b8f9-4d410813b2e5/ae54b12f-84a7-51ac-b8f9-4d410813b2e5_320.jpg",
+            "webp_bytes": 6510,
+            "jpeg_bytes": 9426
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/ae54b12f-84a7-51ac-b8f9-4d410813b2e5/ae54b12f-84a7-51ac-b8f9-4d410813b2e5_640.webp",
+            "jpeg": "variants/ae54b12f-84a7-51ac-b8f9-4d410813b2e5/ae54b12f-84a7-51ac-b8f9-4d410813b2e5_640.jpg",
+            "webp_bytes": 23352,
+            "jpeg_bytes": 35732
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/ae54b12f-84a7-51ac-b8f9-4d410813b2e5/ae54b12f-84a7-51ac-b8f9-4d410813b2e5_1080.webp",
+            "jpeg": "variants/ae54b12f-84a7-51ac-b8f9-4d410813b2e5/ae54b12f-84a7-51ac-b8f9-4d410813b2e5_1080.jpg",
+            "webp_bytes": 60570,
+            "jpeg_bytes": 98848
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/ae54b12f-84a7-51ac-b8f9-4d410813b2e5/ae54b12f-84a7-51ac-b8f9-4d410813b2e5_1600.webp",
+            "jpeg": "variants/ae54b12f-84a7-51ac-b8f9-4d410813b2e5/ae54b12f-84a7-51ac-b8f9-4d410813b2e5_1600.jpg",
+            "webp_bytes": 132352,
+            "jpeg_bytes": 207274
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/ae54b12f-84a7-51ac-b8f9-4d410813b2e5/ae54b12f-84a7-51ac-b8f9-4d410813b2e5_2400.webp",
+            "jpeg": "variants/ae54b12f-84a7-51ac-b8f9-4d410813b2e5/ae54b12f-84a7-51ac-b8f9-4d410813b2e5_2400.jpg",
+            "webp_bytes": 356654,
+            "jpeg_bytes": 476725
+          }
+        }
+      },
+      "lqip_chars": 151
+    },
+    {
+      "id": "6f398191-9c60-553e-b9ec-9b32859a4dad",
+      "title": "七之五 · 社畜群侠传 02",
+      "album": "2024 七之五：社畜群侠传",
+      "group": "2024/七之五",
+      "status": "approved",
+      "category": "Activity",
+      "season": "Winter",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "社畜群侠传",
+        "活动"
+      ],
+      "width": 6048,
+      "height": 4024,
+      "captured_at": "2024-12-10T14:07:52",
+      "mime_type": "image/jpeg",
+      "file_size": 18664819,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之五：社畜群侠传/_DSC2426-已增强-降噪.jpg",
+      "source_sha256": "599bf171bf96cab157ab30049bea70de3b7d67f259b95cce8f4c977ec25d8004",
+      "gps_in_source": false,
+      "target_filename": "_DSC2426-已增强-降噪.jpg",
+      "files": {
+        "original": "originals/6f398191-9c60-553e-b9ec-9b32859a4dad.jpg",
+        "thumbnail": "thumbnails/6f398191-9c60-553e-b9ec-9b32859a4dad_thumb.jpg",
+        "compressed": "compressed/6f398191-9c60-553e-b9ec-9b32859a4dad_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/6f398191-9c60-553e-b9ec-9b32859a4dad/6f398191-9c60-553e-b9ec-9b32859a4dad_320.webp",
+            "jpeg": "variants/6f398191-9c60-553e-b9ec-9b32859a4dad/6f398191-9c60-553e-b9ec-9b32859a4dad_320.jpg",
+            "webp_bytes": 17448,
+            "jpeg_bytes": 20278
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/6f398191-9c60-553e-b9ec-9b32859a4dad/6f398191-9c60-553e-b9ec-9b32859a4dad_640.webp",
+            "jpeg": "variants/6f398191-9c60-553e-b9ec-9b32859a4dad/6f398191-9c60-553e-b9ec-9b32859a4dad_640.jpg",
+            "webp_bytes": 50004,
+            "jpeg_bytes": 63522
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/6f398191-9c60-553e-b9ec-9b32859a4dad/6f398191-9c60-553e-b9ec-9b32859a4dad_1080.webp",
+            "jpeg": "variants/6f398191-9c60-553e-b9ec-9b32859a4dad/6f398191-9c60-553e-b9ec-9b32859a4dad_1080.jpg",
+            "webp_bytes": 105544,
+            "jpeg_bytes": 146207
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/6f398191-9c60-553e-b9ec-9b32859a4dad/6f398191-9c60-553e-b9ec-9b32859a4dad_1600.webp",
+            "jpeg": "variants/6f398191-9c60-553e-b9ec-9b32859a4dad/6f398191-9c60-553e-b9ec-9b32859a4dad_1600.jpg",
+            "webp_bytes": 181376,
+            "jpeg_bytes": 269443
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/6f398191-9c60-553e-b9ec-9b32859a4dad/6f398191-9c60-553e-b9ec-9b32859a4dad_2400.webp",
+            "jpeg": "variants/6f398191-9c60-553e-b9ec-9b32859a4dad/6f398191-9c60-553e-b9ec-9b32859a4dad_2400.jpg",
+            "webp_bytes": 318252,
+            "jpeg_bytes": 511140
+          }
+        }
+      },
+      "lqip_chars": 247
+    },
+    {
+      "id": "f5f17c21-2c95-502e-b136-e69de0b3ba28",
+      "title": "七之六 · ta在丛中笑 02",
+      "album": "2024 七之六：ta在丛中笑",
+      "group": "2024/七之六",
+      "status": "pending",
+      "category": "Documentary",
+      "season": "Spring",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "ta在丛中笑",
+        "笑容"
+      ],
+      "width": 4024,
+      "height": 6048,
+      "captured_at": "2024-05-31T16:09:26",
+      "mime_type": "image/jpeg",
+      "file_size": 13034650,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之六：ta在丛中笑/_DSC1912.jpg",
+      "source_sha256": "cd44dbe1caff68f1b2634e67c6ba46b5d313a00ccddc7421da0a0367c14f0fcd",
+      "gps_in_source": false,
+      "target_filename": "_DSC1912.jpg",
+      "files": {
+        "original": "originals/f5f17c21-2c95-502e-b136-e69de0b3ba28.jpg",
+        "thumbnail": "thumbnails/f5f17c21-2c95-502e-b136-e69de0b3ba28_thumb.jpg",
+        "compressed": "compressed/f5f17c21-2c95-502e-b136-e69de0b3ba28_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/f5f17c21-2c95-502e-b136-e69de0b3ba28/f5f17c21-2c95-502e-b136-e69de0b3ba28_320.webp",
+            "jpeg": "variants/f5f17c21-2c95-502e-b136-e69de0b3ba28/f5f17c21-2c95-502e-b136-e69de0b3ba28_320.jpg",
+            "webp_bytes": 12514,
+            "jpeg_bytes": 15081
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/f5f17c21-2c95-502e-b136-e69de0b3ba28/f5f17c21-2c95-502e-b136-e69de0b3ba28_640.webp",
+            "jpeg": "variants/f5f17c21-2c95-502e-b136-e69de0b3ba28/f5f17c21-2c95-502e-b136-e69de0b3ba28_640.jpg",
+            "webp_bytes": 37682,
+            "jpeg_bytes": 48063
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/f5f17c21-2c95-502e-b136-e69de0b3ba28/f5f17c21-2c95-502e-b136-e69de0b3ba28_1080.webp",
+            "jpeg": "variants/f5f17c21-2c95-502e-b136-e69de0b3ba28/f5f17c21-2c95-502e-b136-e69de0b3ba28_1080.jpg",
+            "webp_bytes": 87716,
+            "jpeg_bytes": 117259
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/f5f17c21-2c95-502e-b136-e69de0b3ba28/f5f17c21-2c95-502e-b136-e69de0b3ba28_1600.webp",
+            "jpeg": "variants/f5f17c21-2c95-502e-b136-e69de0b3ba28/f5f17c21-2c95-502e-b136-e69de0b3ba28_1600.jpg",
+            "webp_bytes": 162864,
+            "jpeg_bytes": 229079
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/f5f17c21-2c95-502e-b136-e69de0b3ba28/f5f17c21-2c95-502e-b136-e69de0b3ba28_2400.webp",
+            "jpeg": "variants/f5f17c21-2c95-502e-b136-e69de0b3ba28/f5f17c21-2c95-502e-b136-e69de0b3ba28_2400.jpg",
+            "webp_bytes": 310678,
+            "jpeg_bytes": 456113
+          }
+        }
+      },
+      "lqip_chars": 211
+    },
+    {
+      "id": "14a00a05-e112-5b64-98d3-bd7ddda637f8",
+      "title": "七之七 · 北化与我 02",
+      "album": "2024 七之七：北化与我",
+      "group": "2024/七之七",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Autumn",
+      "campus": "昌平校区",
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "北化与我",
+        "校园",
+        "北化"
+      ],
+      "width": 3939,
+      "height": 5908,
+      "captured_at": "2024-10-28T13:06:58",
+      "mime_type": "image/jpeg",
+      "file_size": 21085572,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之七：北化与我/_DSC3430.jpg",
+      "source_sha256": "ad6836bb3e26330b7742655ed7e8b515edf8a1f76c3c98a3f1fbc1692599ae02",
+      "gps_in_source": false,
+      "target_filename": "_DSC3430.jpg",
+      "files": {
+        "original": "originals/14a00a05-e112-5b64-98d3-bd7ddda637f8.jpg",
+        "thumbnail": "thumbnails/14a00a05-e112-5b64-98d3-bd7ddda637f8_thumb.jpg",
+        "compressed": "compressed/14a00a05-e112-5b64-98d3-bd7ddda637f8_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 214,
+            "height": 320,
+            "webp": "variants/14a00a05-e112-5b64-98d3-bd7ddda637f8/14a00a05-e112-5b64-98d3-bd7ddda637f8_320.webp",
+            "jpeg": "variants/14a00a05-e112-5b64-98d3-bd7ddda637f8/14a00a05-e112-5b64-98d3-bd7ddda637f8_320.jpg",
+            "webp_bytes": 17162,
+            "jpeg_bytes": 20120
+          },
+          "640": {
+            "width": 427,
+            "height": 640,
+            "webp": "variants/14a00a05-e112-5b64-98d3-bd7ddda637f8/14a00a05-e112-5b64-98d3-bd7ddda637f8_640.webp",
+            "jpeg": "variants/14a00a05-e112-5b64-98d3-bd7ddda637f8/14a00a05-e112-5b64-98d3-bd7ddda637f8_640.jpg",
+            "webp_bytes": 60310,
+            "jpeg_bytes": 71874
+          },
+          "1080": {
+            "width": 720,
+            "height": 1080,
+            "webp": "variants/14a00a05-e112-5b64-98d3-bd7ddda637f8/14a00a05-e112-5b64-98d3-bd7ddda637f8_1080.webp",
+            "jpeg": "variants/14a00a05-e112-5b64-98d3-bd7ddda637f8/14a00a05-e112-5b64-98d3-bd7ddda637f8_1080.jpg",
+            "webp_bytes": 162996,
+            "jpeg_bytes": 190197
+          },
+          "1600": {
+            "width": 1067,
+            "height": 1600,
+            "webp": "variants/14a00a05-e112-5b64-98d3-bd7ddda637f8/14a00a05-e112-5b64-98d3-bd7ddda637f8_1600.webp",
+            "jpeg": "variants/14a00a05-e112-5b64-98d3-bd7ddda637f8/14a00a05-e112-5b64-98d3-bd7ddda637f8_1600.jpg",
+            "webp_bytes": 352060,
+            "jpeg_bytes": 403638
+          },
+          "2400": {
+            "width": 1600,
+            "height": 2400,
+            "webp": "variants/14a00a05-e112-5b64-98d3-bd7ddda637f8/14a00a05-e112-5b64-98d3-bd7ddda637f8_2400.webp",
+            "jpeg": "variants/14a00a05-e112-5b64-98d3-bd7ddda637f8/14a00a05-e112-5b64-98d3-bd7ddda637f8_2400.jpg",
+            "webp_bytes": 751134,
+            "jpeg_bytes": 865767
+          }
+        }
+      },
+      "lqip_chars": 231
+    },
+    {
+      "id": "6af3e38d-f199-54ef-89c3-96b422c6d9da",
+      "title": "2024 校园夏季 02",
+      "album": "2024 校园四季",
+      "group": "2024/校园四季",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Summer",
+      "campus": "昌平校区",
+      "photo_type": "自然生态",
+      "tags": [
+        "2024年度总结",
+        "校园四季",
+        "夏季"
+      ],
+      "width": 6048,
+      "height": 4024,
+      "captured_at": "2024-06-16T16:39:23",
+      "mime_type": "image/jpeg",
+      "file_size": 19941998,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/夏/_DSC0533.jpg",
+      "source_sha256": "f6e2c1ac9c983f478153dc750d9bdf99d7ca2fa2cca800b6554372c915152001",
+      "gps_in_source": false,
+      "target_filename": "_DSC0533.jpg",
+      "files": {
+        "original": "originals/6af3e38d-f199-54ef-89c3-96b422c6d9da.jpg",
+        "thumbnail": "thumbnails/6af3e38d-f199-54ef-89c3-96b422c6d9da_thumb.jpg",
+        "compressed": "compressed/6af3e38d-f199-54ef-89c3-96b422c6d9da_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/6af3e38d-f199-54ef-89c3-96b422c6d9da/6af3e38d-f199-54ef-89c3-96b422c6d9da_320.webp",
+            "jpeg": "variants/6af3e38d-f199-54ef-89c3-96b422c6d9da/6af3e38d-f199-54ef-89c3-96b422c6d9da_320.jpg",
+            "webp_bytes": 13976,
+            "jpeg_bytes": 16917
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/6af3e38d-f199-54ef-89c3-96b422c6d9da/6af3e38d-f199-54ef-89c3-96b422c6d9da_640.webp",
+            "jpeg": "variants/6af3e38d-f199-54ef-89c3-96b422c6d9da/6af3e38d-f199-54ef-89c3-96b422c6d9da_640.jpg",
+            "webp_bytes": 53908,
+            "jpeg_bytes": 62579
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/6af3e38d-f199-54ef-89c3-96b422c6d9da/6af3e38d-f199-54ef-89c3-96b422c6d9da_1080.webp",
+            "jpeg": "variants/6af3e38d-f199-54ef-89c3-96b422c6d9da/6af3e38d-f199-54ef-89c3-96b422c6d9da_1080.jpg",
+            "webp_bytes": 154332,
+            "jpeg_bytes": 175405
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/6af3e38d-f199-54ef-89c3-96b422c6d9da/6af3e38d-f199-54ef-89c3-96b422c6d9da_1600.webp",
+            "jpeg": "variants/6af3e38d-f199-54ef-89c3-96b422c6d9da/6af3e38d-f199-54ef-89c3-96b422c6d9da_1600.jpg",
+            "webp_bytes": 339798,
+            "jpeg_bytes": 385835
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/6af3e38d-f199-54ef-89c3-96b422c6d9da/6af3e38d-f199-54ef-89c3-96b422c6d9da_2400.webp",
+            "jpeg": "variants/6af3e38d-f199-54ef-89c3-96b422c6d9da/6af3e38d-f199-54ef-89c3-96b422c6d9da_2400.jpg",
+            "webp_bytes": 787492,
+            "jpeg_bytes": 875607
+          }
+        }
+      },
+      "lqip_chars": 199
+    },
+    {
+      "id": "3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc",
+      "title": "2月 · 这里能看出来当时的调色多少沾点青橙了，不过还行…",
+      "album": "2023 · 2月",
+      "group": "2023/月度随笔",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Winter",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "2月",
+        "猫"
+      ],
+      "width": 4485,
+      "height": 3364,
+      "captured_at": "2023-02-18T17:41:14",
+      "mime_type": "image/jpeg",
+      "file_size": 10934830,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/2月/20230218-14.jpg",
+      "source_sha256": "c403317f32b7c06e52064fa33b749eb7944cb6d6e31dddaa99f3663944ca7500",
+      "gps_in_source": false,
+      "target_filename": "20230218-14.jpg",
+      "files": {
+        "original": "originals/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc.jpg",
+        "thumbnail": "thumbnails/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc_thumb.jpg",
+        "compressed": "compressed/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 240,
+            "webp": "variants/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc_320.webp",
+            "jpeg": "variants/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc_320.jpg",
+            "webp_bytes": 19414,
+            "jpeg_bytes": 21869
+          },
+          "640": {
+            "width": 640,
+            "height": 480,
+            "webp": "variants/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc_640.webp",
+            "jpeg": "variants/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc_640.jpg",
+            "webp_bytes": 51122,
+            "jpeg_bytes": 64683
+          },
+          "1080": {
+            "width": 1080,
+            "height": 810,
+            "webp": "variants/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc_1080.webp",
+            "jpeg": "variants/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc_1080.jpg",
+            "webp_bytes": 102462,
+            "jpeg_bytes": 147328
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1200,
+            "webp": "variants/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc_1600.webp",
+            "jpeg": "variants/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc_1600.jpg",
+            "webp_bytes": 189408,
+            "jpeg_bytes": 280832
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1800,
+            "webp": "variants/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc_2400.webp",
+            "jpeg": "variants/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc/3d8e7d73-8ee5-50b5-8ebf-1182b9373fdc_2400.jpg",
+            "webp_bytes": 495936,
+            "jpeg_bytes": 620756
+          }
+        }
+      },
+      "lqip_chars": 251
+    },
+    {
+      "id": "ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b",
+      "title": "2023 年度精选 02",
+      "album": "2023/年度精选",
+      "group": "2023/年度精选",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Summer",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "年度精选"
+      ],
+      "width": 3464,
+      "height": 5206,
+      "captured_at": "2023-08-23T16:52:03",
+      "mime_type": "image/jpeg",
+      "file_size": 9690801,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/年度 9张图/DSC_0871.jpg",
+      "source_sha256": "6a39a27edffe5c15e3eed5339630c43eb65d6355c61163a792c2b99db4adf972",
+      "gps_in_source": false,
+      "target_filename": "DSC_0871.jpg",
+      "files": {
+        "original": "originals/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b.jpg",
+        "thumbnail": "thumbnails/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b_thumb.jpg",
+        "compressed": "compressed/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b_320.webp",
+            "jpeg": "variants/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b_320.jpg",
+            "webp_bytes": 10798,
+            "jpeg_bytes": 13228
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b_640.webp",
+            "jpeg": "variants/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b_640.jpg",
+            "webp_bytes": 35544,
+            "jpeg_bytes": 44836
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b_1080.webp",
+            "jpeg": "variants/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b_1080.jpg",
+            "webp_bytes": 89652,
+            "jpeg_bytes": 113475
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b_1600.webp",
+            "jpeg": "variants/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b_1600.jpg",
+            "webp_bytes": 175726,
+            "jpeg_bytes": 228485
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b_2400.webp",
+            "jpeg": "variants/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b/ec8a3d57-dd2e-55b6-8e66-7b5e26dfd02b_2400.jpg",
+            "webp_bytes": 340714,
+            "jpeg_bytes": 459952
+          }
+        }
+      },
+      "lqip_chars": 207
+    },
+    {
+      "id": "a505183f-f971-5842-b610-207c356fc037",
+      "title": "2023 手机摄影 02",
+      "album": "2023/手机摄影",
+      "group": "2023/手机摄影",
+      "status": "approved",
+      "category": "Documentary",
+      "season": null,
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "手机摄影"
+      ],
+      "width": 4040,
+      "height": 3417,
+      "captured_at": null,
+      "mime_type": "image/jpeg",
+      "file_size": 1969352,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/年度 手机摄影/1703930323849.jpg",
+      "source_sha256": "a2dfa86458bcdba7faccf5b5d9858496dd83aa766912795ff640180b21194f91",
+      "gps_in_source": true,
+      "target_filename": "1703930323849.jpg",
+      "files": {
+        "original": "originals/a505183f-f971-5842-b610-207c356fc037.jpg",
+        "thumbnail": "thumbnails/a505183f-f971-5842-b610-207c356fc037_thumb.jpg",
+        "compressed": "compressed/a505183f-f971-5842-b610-207c356fc037_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 270,
+            "webp": "variants/a505183f-f971-5842-b610-207c356fc037/a505183f-f971-5842-b610-207c356fc037_320.webp",
+            "jpeg": "variants/a505183f-f971-5842-b610-207c356fc037/a505183f-f971-5842-b610-207c356fc037_320.jpg",
+            "webp_bytes": 5334,
+            "jpeg_bytes": 10470
+          },
+          "640": {
+            "width": 640,
+            "height": 541,
+            "webp": "variants/a505183f-f971-5842-b610-207c356fc037/a505183f-f971-5842-b610-207c356fc037_640.webp",
+            "jpeg": "variants/a505183f-f971-5842-b610-207c356fc037/a505183f-f971-5842-b610-207c356fc037_640.jpg",
+            "webp_bytes": 13830,
+            "jpeg_bytes": 29564
+          },
+          "1080": {
+            "width": 1080,
+            "height": 913,
+            "webp": "variants/a505183f-f971-5842-b610-207c356fc037/a505183f-f971-5842-b610-207c356fc037_1080.webp",
+            "jpeg": "variants/a505183f-f971-5842-b610-207c356fc037/a505183f-f971-5842-b610-207c356fc037_1080.jpg",
+            "webp_bytes": 29486,
+            "jpeg_bytes": 68393
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1353,
+            "webp": "variants/a505183f-f971-5842-b610-207c356fc037/a505183f-f971-5842-b610-207c356fc037_1600.webp",
+            "jpeg": "variants/a505183f-f971-5842-b610-207c356fc037/a505183f-f971-5842-b610-207c356fc037_1600.jpg",
+            "webp_bytes": 52164,
+            "jpeg_bytes": 129639
+          },
+          "2400": {
+            "width": 2400,
+            "height": 2030,
+            "webp": "variants/a505183f-f971-5842-b610-207c356fc037/a505183f-f971-5842-b610-207c356fc037_2400.webp",
+            "jpeg": "variants/a505183f-f971-5842-b610-207c356fc037/a505183f-f971-5842-b610-207c356fc037_2400.jpg",
+            "webp_bytes": 90262,
+            "jpeg_bytes": 258911
+          }
+        }
+      },
+      "lqip_chars": 259
+    },
+    {
+      "id": "505209eb-d6f2-5bad-91f1-1350454f41c2",
+      "title": "七之一 · 生活瞬间 03",
+      "album": "2024 七之一：生活瞬间",
+      "group": "2024/七之一",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Autumn",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "生活瞬间",
+        "日常"
+      ],
+      "width": 3900,
+      "height": 5862,
+      "captured_at": "2024-10-19T14:07:22",
+      "mime_type": "image/jpeg",
+      "file_size": 10758097,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之一：生活瞬间/_DSC8005.jpg",
+      "source_sha256": "c8743c93e9203ca0680c997febaeaae698af4d51a5e54ea97fade336f6ace263",
+      "gps_in_source": false,
+      "target_filename": "_DSC8005.jpg",
+      "files": {
+        "original": "originals/505209eb-d6f2-5bad-91f1-1350454f41c2.jpg",
+        "thumbnail": "thumbnails/505209eb-d6f2-5bad-91f1-1350454f41c2_thumb.jpg",
+        "compressed": "compressed/505209eb-d6f2-5bad-91f1-1350454f41c2_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/505209eb-d6f2-5bad-91f1-1350454f41c2/505209eb-d6f2-5bad-91f1-1350454f41c2_320.webp",
+            "jpeg": "variants/505209eb-d6f2-5bad-91f1-1350454f41c2/505209eb-d6f2-5bad-91f1-1350454f41c2_320.jpg",
+            "webp_bytes": 8796,
+            "jpeg_bytes": 11725
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/505209eb-d6f2-5bad-91f1-1350454f41c2/505209eb-d6f2-5bad-91f1-1350454f41c2_640.webp",
+            "jpeg": "variants/505209eb-d6f2-5bad-91f1-1350454f41c2/505209eb-d6f2-5bad-91f1-1350454f41c2_640.jpg",
+            "webp_bytes": 28534,
+            "jpeg_bytes": 38633
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/505209eb-d6f2-5bad-91f1-1350454f41c2/505209eb-d6f2-5bad-91f1-1350454f41c2_1080.webp",
+            "jpeg": "variants/505209eb-d6f2-5bad-91f1-1350454f41c2/505209eb-d6f2-5bad-91f1-1350454f41c2_1080.jpg",
+            "webp_bytes": 74790,
+            "jpeg_bytes": 99291
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/505209eb-d6f2-5bad-91f1-1350454f41c2/505209eb-d6f2-5bad-91f1-1350454f41c2_1600.webp",
+            "jpeg": "variants/505209eb-d6f2-5bad-91f1-1350454f41c2/505209eb-d6f2-5bad-91f1-1350454f41c2_1600.jpg",
+            "webp_bytes": 150564,
+            "jpeg_bytes": 205010
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/505209eb-d6f2-5bad-91f1-1350454f41c2/505209eb-d6f2-5bad-91f1-1350454f41c2_2400.webp",
+            "jpeg": "variants/505209eb-d6f2-5bad-91f1-1350454f41c2/505209eb-d6f2-5bad-91f1-1350454f41c2_2400.jpg",
+            "webp_bytes": 303272,
+            "jpeg_bytes": 429058
+          }
+        }
+      },
+      "lqip_chars": 199
+    },
+    {
+      "id": "f6094518-52ae-57c3-97d3-ef84f33f0868",
+      "title": "七之二 · 可爱的东西 03",
+      "album": "2024 七之二：可爱的东西",
+      "group": "2024/七之二",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Summer",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "可爱的东西",
+        "可爱"
+      ],
+      "width": 6048,
+      "height": 4024,
+      "captured_at": "2024-07-14T14:33:07",
+      "mime_type": "image/jpeg",
+      "file_size": 20739623,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之二：可爱的东西/_DSC4670.jpg",
+      "source_sha256": "85732d10f8c37f50477043d878e492bc9b429d36e805e582103ba3701a95563f",
+      "gps_in_source": false,
+      "target_filename": "_DSC4670.jpg",
+      "files": {
+        "original": "originals/f6094518-52ae-57c3-97d3-ef84f33f0868.jpg",
+        "thumbnail": "thumbnails/f6094518-52ae-57c3-97d3-ef84f33f0868_thumb.jpg",
+        "compressed": "compressed/f6094518-52ae-57c3-97d3-ef84f33f0868_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/f6094518-52ae-57c3-97d3-ef84f33f0868/f6094518-52ae-57c3-97d3-ef84f33f0868_320.webp",
+            "jpeg": "variants/f6094518-52ae-57c3-97d3-ef84f33f0868/f6094518-52ae-57c3-97d3-ef84f33f0868_320.jpg",
+            "webp_bytes": 23898,
+            "jpeg_bytes": 25163
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/f6094518-52ae-57c3-97d3-ef84f33f0868/f6094518-52ae-57c3-97d3-ef84f33f0868_640.webp",
+            "jpeg": "variants/f6094518-52ae-57c3-97d3-ef84f33f0868/f6094518-52ae-57c3-97d3-ef84f33f0868_640.jpg",
+            "webp_bytes": 90246,
+            "jpeg_bytes": 93915
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/f6094518-52ae-57c3-97d3-ef84f33f0868/f6094518-52ae-57c3-97d3-ef84f33f0868_1080.webp",
+            "jpeg": "variants/f6094518-52ae-57c3-97d3-ef84f33f0868/f6094518-52ae-57c3-97d3-ef84f33f0868_1080.jpg",
+            "webp_bytes": 236440,
+            "jpeg_bytes": 246576
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/f6094518-52ae-57c3-97d3-ef84f33f0868/f6094518-52ae-57c3-97d3-ef84f33f0868_1600.webp",
+            "jpeg": "variants/f6094518-52ae-57c3-97d3-ef84f33f0868/f6094518-52ae-57c3-97d3-ef84f33f0868_1600.jpg",
+            "webp_bytes": 461644,
+            "jpeg_bytes": 492496
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/f6094518-52ae-57c3-97d3-ef84f33f0868/f6094518-52ae-57c3-97d3-ef84f33f0868_2400.webp",
+            "jpeg": "variants/f6094518-52ae-57c3-97d3-ef84f33f0868/f6094518-52ae-57c3-97d3-ef84f33f0868_2400.jpg",
+            "webp_bytes": 879456,
+            "jpeg_bytes": 979759
+          }
+        }
+      },
+      "lqip_chars": 227
+    },
+    {
+      "id": "b2b716cb-50d3-5939-b82a-bba2ec2f40ce",
+      "title": "七之三 · 花开花飞春又来 03",
+      "album": "2024 七之三：花开花飞春又来",
+      "group": "2024/七之三",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Spring",
+      "campus": null,
+      "photo_type": "自然生态",
+      "tags": [
+        "2024年度总结",
+        "花开花飞春又来",
+        "花"
+      ],
+      "width": 3875,
+      "height": 5824,
+      "captured_at": "2024-04-20T16:35:31",
+      "mime_type": "image/jpeg",
+      "file_size": 12456041,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之三：花开花飞春又来/_DSC8008.jpg",
+      "source_sha256": "661bd6b2f63669076bc8ce1ed533f542998fa9795c8e90837da969d49cd48189",
+      "gps_in_source": false,
+      "target_filename": "_DSC8008.jpg",
+      "files": {
+        "original": "originals/b2b716cb-50d3-5939-b82a-bba2ec2f40ce.jpg",
+        "thumbnail": "thumbnails/b2b716cb-50d3-5939-b82a-bba2ec2f40ce_thumb.jpg",
+        "compressed": "compressed/b2b716cb-50d3-5939-b82a-bba2ec2f40ce_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/b2b716cb-50d3-5939-b82a-bba2ec2f40ce/b2b716cb-50d3-5939-b82a-bba2ec2f40ce_320.webp",
+            "jpeg": "variants/b2b716cb-50d3-5939-b82a-bba2ec2f40ce/b2b716cb-50d3-5939-b82a-bba2ec2f40ce_320.jpg",
+            "webp_bytes": 23826,
+            "jpeg_bytes": 26121
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/b2b716cb-50d3-5939-b82a-bba2ec2f40ce/b2b716cb-50d3-5939-b82a-bba2ec2f40ce_640.webp",
+            "jpeg": "variants/b2b716cb-50d3-5939-b82a-bba2ec2f40ce/b2b716cb-50d3-5939-b82a-bba2ec2f40ce_640.jpg",
+            "webp_bytes": 69584,
+            "jpeg_bytes": 82004
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/b2b716cb-50d3-5939-b82a-bba2ec2f40ce/b2b716cb-50d3-5939-b82a-bba2ec2f40ce_1080.webp",
+            "jpeg": "variants/b2b716cb-50d3-5939-b82a-bba2ec2f40ce/b2b716cb-50d3-5939-b82a-bba2ec2f40ce_1080.jpg",
+            "webp_bytes": 154054,
+            "jpeg_bytes": 189346
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/b2b716cb-50d3-5939-b82a-bba2ec2f40ce/b2b716cb-50d3-5939-b82a-bba2ec2f40ce_1600.webp",
+            "jpeg": "variants/b2b716cb-50d3-5939-b82a-bba2ec2f40ce/b2b716cb-50d3-5939-b82a-bba2ec2f40ce_1600.jpg",
+            "webp_bytes": 273694,
+            "jpeg_bytes": 352346
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/b2b716cb-50d3-5939-b82a-bba2ec2f40ce/b2b716cb-50d3-5939-b82a-bba2ec2f40ce_2400.webp",
+            "jpeg": "variants/b2b716cb-50d3-5939-b82a-bba2ec2f40ce/b2b716cb-50d3-5939-b82a-bba2ec2f40ce_2400.jpg",
+            "webp_bytes": 481460,
+            "jpeg_bytes": 662826
+          }
+        }
+      },
+      "lqip_chars": 223
+    },
+    {
+      "id": "5cd196fa-e258-5a8f-9f65-ab1371a6173e",
+      "title": "七之四 · The Decisive Moments 03",
+      "album": "2024 七之四：The Decisive Moments",
+      "group": "2024/七之四",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Summer",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "The Decisive Moments",
+        "街头"
+      ],
+      "width": 4024,
+      "height": 6048,
+      "captured_at": "2024-07-07T12:33:21",
+      "mime_type": "image/jpeg",
+      "file_size": 13567157,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之四：The Decisive Moments/_DSC4104.jpg",
+      "source_sha256": "bad5271934482717a6608e24680938dc4ba13d7bc5d7776ec20ab496295b8d24",
+      "gps_in_source": false,
+      "target_filename": "_DSC4104.jpg",
+      "files": {
+        "original": "originals/5cd196fa-e258-5a8f-9f65-ab1371a6173e.jpg",
+        "thumbnail": "thumbnails/5cd196fa-e258-5a8f-9f65-ab1371a6173e_thumb.jpg",
+        "compressed": "compressed/5cd196fa-e258-5a8f-9f65-ab1371a6173e_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/5cd196fa-e258-5a8f-9f65-ab1371a6173e/5cd196fa-e258-5a8f-9f65-ab1371a6173e_320.webp",
+            "jpeg": "variants/5cd196fa-e258-5a8f-9f65-ab1371a6173e/5cd196fa-e258-5a8f-9f65-ab1371a6173e_320.jpg",
+            "webp_bytes": 15558,
+            "jpeg_bytes": 17512
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/5cd196fa-e258-5a8f-9f65-ab1371a6173e/5cd196fa-e258-5a8f-9f65-ab1371a6173e_640.webp",
+            "jpeg": "variants/5cd196fa-e258-5a8f-9f65-ab1371a6173e/5cd196fa-e258-5a8f-9f65-ab1371a6173e_640.jpg",
+            "webp_bytes": 51350,
+            "jpeg_bytes": 61475
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/5cd196fa-e258-5a8f-9f65-ab1371a6173e/5cd196fa-e258-5a8f-9f65-ab1371a6173e_1080.webp",
+            "jpeg": "variants/5cd196fa-e258-5a8f-9f65-ab1371a6173e/5cd196fa-e258-5a8f-9f65-ab1371a6173e_1080.jpg",
+            "webp_bytes": 124970,
+            "jpeg_bytes": 157290
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/5cd196fa-e258-5a8f-9f65-ab1371a6173e/5cd196fa-e258-5a8f-9f65-ab1371a6173e_1600.webp",
+            "jpeg": "variants/5cd196fa-e258-5a8f-9f65-ab1371a6173e/5cd196fa-e258-5a8f-9f65-ab1371a6173e_1600.jpg",
+            "webp_bytes": 241182,
+            "jpeg_bytes": 315772
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/5cd196fa-e258-5a8f-9f65-ab1371a6173e/5cd196fa-e258-5a8f-9f65-ab1371a6173e_2400.webp",
+            "jpeg": "variants/5cd196fa-e258-5a8f-9f65-ab1371a6173e/5cd196fa-e258-5a8f-9f65-ab1371a6173e_2400.jpg",
+            "webp_bytes": 469530,
+            "jpeg_bytes": 639000
+          }
+        }
+      },
+      "lqip_chars": 199
+    },
+    {
+      "id": "dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb",
+      "title": "七之五 · 社畜群侠传 03",
+      "album": "2024 七之五：社畜群侠传",
+      "group": "2024/七之五",
+      "status": "approved",
+      "category": "Activity",
+      "season": "Winter",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "社畜群侠传",
+        "活动"
+      ],
+      "width": 3653,
+      "height": 5480,
+      "captured_at": "2024-12-08T19:14:03",
+      "mime_type": "image/jpeg",
+      "file_size": 9852451,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之五：社畜群侠传/_YXC8754-已增强-降噪.jpg",
+      "source_sha256": "2b3ab9390922b4b0beddcb6fc57d206b9a97292cdbf06d35c3994d8406953217",
+      "gps_in_source": false,
+      "target_filename": "_YXC8754-已增强-降噪.jpg",
+      "files": {
+        "original": "originals/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb.jpg",
+        "thumbnail": "thumbnails/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb_thumb.jpg",
+        "compressed": "compressed/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 214,
+            "height": 320,
+            "webp": "variants/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb_320.webp",
+            "jpeg": "variants/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb_320.jpg",
+            "webp_bytes": 6592,
+            "jpeg_bytes": 9586
+          },
+          "640": {
+            "width": 427,
+            "height": 640,
+            "webp": "variants/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb_640.webp",
+            "jpeg": "variants/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb_640.jpg",
+            "webp_bytes": 16088,
+            "jpeg_bytes": 26225
+          },
+          "1080": {
+            "width": 720,
+            "height": 1080,
+            "webp": "variants/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb_1080.webp",
+            "jpeg": "variants/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb_1080.jpg",
+            "webp_bytes": 31238,
+            "jpeg_bytes": 56516
+          },
+          "1600": {
+            "width": 1067,
+            "height": 1600,
+            "webp": "variants/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb_1600.webp",
+            "jpeg": "variants/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb_1600.jpg",
+            "webp_bytes": 53922,
+            "jpeg_bytes": 103218
+          },
+          "2400": {
+            "width": 1600,
+            "height": 2400,
+            "webp": "variants/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb_2400.webp",
+            "jpeg": "variants/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb/dac9c3c0-8bb6-5fe3-993b-a72c46a42ebb_2400.jpg",
+            "webp_bytes": 101032,
+            "jpeg_bytes": 205329
+          }
+        }
+      },
+      "lqip_chars": 183
+    },
+    {
+      "id": "e3eeaaf1-03ec-54a7-a6c9-d26542a873ea",
+      "title": "七之六 · ta在丛中笑 03",
+      "album": "2024 七之六：ta在丛中笑",
+      "group": "2024/七之六",
+      "status": "pending",
+      "category": "Documentary",
+      "season": "Winter",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "ta在丛中笑",
+        "笑容"
+      ],
+      "width": 3628,
+      "height": 5452,
+      "captured_at": "2024-12-21T21:26:40",
+      "mime_type": "image/jpeg",
+      "file_size": 8124254,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之六：ta在丛中笑/_DSC4207.jpg",
+      "source_sha256": "ce5381fe8fa2ddceb1c0a84c766e88c7cd1c45dc4c84c4cb68d9bc71a7eaaa59",
+      "gps_in_source": false,
+      "target_filename": "_DSC4207.jpg",
+      "files": {
+        "original": "originals/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea.jpg",
+        "thumbnail": "thumbnails/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea_thumb.jpg",
+        "compressed": "compressed/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea_320.webp",
+            "jpeg": "variants/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea_320.jpg",
+            "webp_bytes": 13194,
+            "jpeg_bytes": 16331
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea_640.webp",
+            "jpeg": "variants/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea_640.jpg",
+            "webp_bytes": 36910,
+            "jpeg_bytes": 49447
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea_1080.webp",
+            "jpeg": "variants/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea_1080.jpg",
+            "webp_bytes": 89016,
+            "jpeg_bytes": 124004
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea_1600.webp",
+            "jpeg": "variants/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea_1600.jpg",
+            "webp_bytes": 218456,
+            "jpeg_bytes": 273471
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea_2400.webp",
+            "jpeg": "variants/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea/e3eeaaf1-03ec-54a7-a6c9-d26542a873ea_2400.jpg",
+            "webp_bytes": 655558,
+            "jpeg_bytes": 677685
+          }
+        }
+      },
+      "lqip_chars": 247,
+      "original_recompressed": true,
+      "source_sha256_unmodified": true
+    },
+    {
+      "id": "41f40cb8-7ae3-5091-b930-793e00007405",
+      "title": "七之七 · 北化与我 03",
+      "album": "2024 七之七：北化与我",
+      "group": "2024/七之七",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Winter",
+      "campus": "昌平校区",
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "北化与我",
+        "校园",
+        "北化"
+      ],
+      "width": 3890,
+      "height": 5847,
+      "captured_at": "2024-12-30T17:11:00",
+      "mime_type": "image/jpeg",
+      "file_size": 13958538,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之七：北化与我/_DSC7591.jpg",
+      "source_sha256": "a4d2195318d363d8f90aa225b3c3da55fd3b937a7320b93312f27d5fade9f514",
+      "gps_in_source": false,
+      "target_filename": "_DSC7591.jpg",
+      "files": {
+        "original": "originals/41f40cb8-7ae3-5091-b930-793e00007405.jpg",
+        "thumbnail": "thumbnails/41f40cb8-7ae3-5091-b930-793e00007405_thumb.jpg",
+        "compressed": "compressed/41f40cb8-7ae3-5091-b930-793e00007405_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/41f40cb8-7ae3-5091-b930-793e00007405/41f40cb8-7ae3-5091-b930-793e00007405_320.webp",
+            "jpeg": "variants/41f40cb8-7ae3-5091-b930-793e00007405/41f40cb8-7ae3-5091-b930-793e00007405_320.jpg",
+            "webp_bytes": 9866,
+            "jpeg_bytes": 12997
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/41f40cb8-7ae3-5091-b930-793e00007405/41f40cb8-7ae3-5091-b930-793e00007405_640.webp",
+            "jpeg": "variants/41f40cb8-7ae3-5091-b930-793e00007405/41f40cb8-7ae3-5091-b930-793e00007405_640.jpg",
+            "webp_bytes": 29156,
+            "jpeg_bytes": 42284
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/41f40cb8-7ae3-5091-b930-793e00007405/41f40cb8-7ae3-5091-b930-793e00007405_1080.webp",
+            "jpeg": "variants/41f40cb8-7ae3-5091-b930-793e00007405/41f40cb8-7ae3-5091-b930-793e00007405_1080.jpg",
+            "webp_bytes": 66530,
+            "jpeg_bytes": 100604
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/41f40cb8-7ae3-5091-b930-793e00007405/41f40cb8-7ae3-5091-b930-793e00007405_1600.webp",
+            "jpeg": "variants/41f40cb8-7ae3-5091-b930-793e00007405/41f40cb8-7ae3-5091-b930-793e00007405_1600.jpg",
+            "webp_bytes": 123154,
+            "jpeg_bytes": 194813
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/41f40cb8-7ae3-5091-b930-793e00007405/41f40cb8-7ae3-5091-b930-793e00007405_2400.webp",
+            "jpeg": "variants/41f40cb8-7ae3-5091-b930-793e00007405/41f40cb8-7ae3-5091-b930-793e00007405_2400.jpg",
+            "webp_bytes": 239016,
+            "jpeg_bytes": 408516
+          }
+        }
+      },
+      "lqip_chars": 215
+    },
+    {
+      "id": "64d00e3d-18d5-54fb-ac48-794e57325fda",
+      "title": "2024 校园秋季 03",
+      "album": "2024 校园四季",
+      "group": "2024/校园四季",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Autumn",
+      "campus": "昌平校区",
+      "photo_type": "自然生态",
+      "tags": [
+        "2024年度总结",
+        "校园四季",
+        "秋季"
+      ],
+      "width": 3915,
+      "height": 5884,
+      "captured_at": "2024-11-01T12:48:05",
+      "mime_type": "image/jpeg",
+      "file_size": 25022291,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/秋/_DSC0186.jpg",
+      "source_sha256": "0c8f59f306b210c298f2a4f8f4cdd29c7a61529bd24bf0625b9e7e864056a721",
+      "gps_in_source": false,
+      "target_filename": "_DSC0186.jpg",
+      "files": {
+        "original": "originals/64d00e3d-18d5-54fb-ac48-794e57325fda.jpg",
+        "thumbnail": "thumbnails/64d00e3d-18d5-54fb-ac48-794e57325fda_thumb.jpg",
+        "compressed": "compressed/64d00e3d-18d5-54fb-ac48-794e57325fda_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/64d00e3d-18d5-54fb-ac48-794e57325fda/64d00e3d-18d5-54fb-ac48-794e57325fda_320.webp",
+            "jpeg": "variants/64d00e3d-18d5-54fb-ac48-794e57325fda/64d00e3d-18d5-54fb-ac48-794e57325fda_320.jpg",
+            "webp_bytes": 27018,
+            "jpeg_bytes": 26954
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/64d00e3d-18d5-54fb-ac48-794e57325fda/64d00e3d-18d5-54fb-ac48-794e57325fda_640.webp",
+            "jpeg": "variants/64d00e3d-18d5-54fb-ac48-794e57325fda/64d00e3d-18d5-54fb-ac48-794e57325fda_640.jpg",
+            "webp_bytes": 105514,
+            "jpeg_bytes": 106815
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/64d00e3d-18d5-54fb-ac48-794e57325fda/64d00e3d-18d5-54fb-ac48-794e57325fda_1080.webp",
+            "jpeg": "variants/64d00e3d-18d5-54fb-ac48-794e57325fda/64d00e3d-18d5-54fb-ac48-794e57325fda_1080.jpg",
+            "webp_bytes": 289792,
+            "jpeg_bytes": 295454
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/64d00e3d-18d5-54fb-ac48-794e57325fda/64d00e3d-18d5-54fb-ac48-794e57325fda_1600.webp",
+            "jpeg": "variants/64d00e3d-18d5-54fb-ac48-794e57325fda/64d00e3d-18d5-54fb-ac48-794e57325fda_1600.jpg",
+            "webp_bytes": 617846,
+            "jpeg_bytes": 628448
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/64d00e3d-18d5-54fb-ac48-794e57325fda/64d00e3d-18d5-54fb-ac48-794e57325fda_2400.webp",
+            "jpeg": "variants/64d00e3d-18d5-54fb-ac48-794e57325fda/64d00e3d-18d5-54fb-ac48-794e57325fda_2400.jpg",
+            "webp_bytes": 1313280,
+            "jpeg_bytes": 1331820
+          }
+        }
+      },
+      "lqip_chars": 215
+    },
+    {
+      "id": "1ff18663-108e-58fa-ba9a-17f43a1ce97b",
+      "title": "3月 · 两只鸳鸯，还有小孩子扔的米花，恰恰好的位置与时…",
+      "album": "2023 · 3月",
+      "group": "2023/月度随笔",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Spring",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "3月",
+        "花"
+      ],
+      "width": 3489,
+      "height": 4652,
+      "captured_at": "2023-03-03T18:20:12",
+      "mime_type": "image/jpeg",
+      "file_size": 8831900,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/3月/20230303-8.jpg",
+      "source_sha256": "b95a6bdc0a9dd9c39a971cf2996253294f1f12d66986e0c09d1ff6a18f0c4dd3",
+      "gps_in_source": false,
+      "target_filename": "20230303-8.jpg",
+      "files": {
+        "original": "originals/1ff18663-108e-58fa-ba9a-17f43a1ce97b.jpg",
+        "thumbnail": "thumbnails/1ff18663-108e-58fa-ba9a-17f43a1ce97b_thumb.jpg",
+        "compressed": "compressed/1ff18663-108e-58fa-ba9a-17f43a1ce97b_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 240,
+            "height": 320,
+            "webp": "variants/1ff18663-108e-58fa-ba9a-17f43a1ce97b/1ff18663-108e-58fa-ba9a-17f43a1ce97b_320.webp",
+            "jpeg": "variants/1ff18663-108e-58fa-ba9a-17f43a1ce97b/1ff18663-108e-58fa-ba9a-17f43a1ce97b_320.jpg",
+            "webp_bytes": 10834,
+            "jpeg_bytes": 14485
+          },
+          "640": {
+            "width": 480,
+            "height": 640,
+            "webp": "variants/1ff18663-108e-58fa-ba9a-17f43a1ce97b/1ff18663-108e-58fa-ba9a-17f43a1ce97b_640.webp",
+            "jpeg": "variants/1ff18663-108e-58fa-ba9a-17f43a1ce97b/1ff18663-108e-58fa-ba9a-17f43a1ce97b_640.jpg",
+            "webp_bytes": 27090,
+            "jpeg_bytes": 40637
+          },
+          "1080": {
+            "width": 810,
+            "height": 1080,
+            "webp": "variants/1ff18663-108e-58fa-ba9a-17f43a1ce97b/1ff18663-108e-58fa-ba9a-17f43a1ce97b_1080.webp",
+            "jpeg": "variants/1ff18663-108e-58fa-ba9a-17f43a1ce97b/1ff18663-108e-58fa-ba9a-17f43a1ce97b_1080.jpg",
+            "webp_bytes": 53970,
+            "jpeg_bytes": 88399
+          },
+          "1600": {
+            "width": 1200,
+            "height": 1600,
+            "webp": "variants/1ff18663-108e-58fa-ba9a-17f43a1ce97b/1ff18663-108e-58fa-ba9a-17f43a1ce97b_1600.webp",
+            "jpeg": "variants/1ff18663-108e-58fa-ba9a-17f43a1ce97b/1ff18663-108e-58fa-ba9a-17f43a1ce97b_1600.jpg",
+            "webp_bytes": 88706,
+            "jpeg_bytes": 162421
+          },
+          "2400": {
+            "width": 1800,
+            "height": 2400,
+            "webp": "variants/1ff18663-108e-58fa-ba9a-17f43a1ce97b/1ff18663-108e-58fa-ba9a-17f43a1ce97b_2400.webp",
+            "jpeg": "variants/1ff18663-108e-58fa-ba9a-17f43a1ce97b/1ff18663-108e-58fa-ba9a-17f43a1ce97b_2400.jpg",
+            "webp_bytes": 164612,
+            "jpeg_bytes": 329728
+          }
+        }
+      },
+      "lqip_chars": 199
+    },
+    {
+      "id": "396eef7a-c2f3-5b43-a1d1-3f425cbbf403",
+      "title": "2023 年度精选 03",
+      "album": "2023/年度精选",
+      "group": "2023/年度精选",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Summer",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "年度精选"
+      ],
+      "width": 4024,
+      "height": 6048,
+      "captured_at": "2023-07-07T17:56:44",
+      "mime_type": "image/jpeg",
+      "file_size": 8557176,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/年度 9张图/DSC_3537.jpg",
+      "source_sha256": "51b413e646e0f640fda555d666375676ae6b2e8edd24ee826899447061a7e346",
+      "gps_in_source": false,
+      "target_filename": "DSC_3537.jpg",
+      "files": {
+        "original": "originals/396eef7a-c2f3-5b43-a1d1-3f425cbbf403.jpg",
+        "thumbnail": "thumbnails/396eef7a-c2f3-5b43-a1d1-3f425cbbf403_thumb.jpg",
+        "compressed": "compressed/396eef7a-c2f3-5b43-a1d1-3f425cbbf403_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/396eef7a-c2f3-5b43-a1d1-3f425cbbf403/396eef7a-c2f3-5b43-a1d1-3f425cbbf403_320.webp",
+            "jpeg": "variants/396eef7a-c2f3-5b43-a1d1-3f425cbbf403/396eef7a-c2f3-5b43-a1d1-3f425cbbf403_320.jpg",
+            "webp_bytes": 11336,
+            "jpeg_bytes": 14874
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/396eef7a-c2f3-5b43-a1d1-3f425cbbf403/396eef7a-c2f3-5b43-a1d1-3f425cbbf403_640.webp",
+            "jpeg": "variants/396eef7a-c2f3-5b43-a1d1-3f425cbbf403/396eef7a-c2f3-5b43-a1d1-3f425cbbf403_640.jpg",
+            "webp_bytes": 25848,
+            "jpeg_bytes": 40458
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/396eef7a-c2f3-5b43-a1d1-3f425cbbf403/396eef7a-c2f3-5b43-a1d1-3f425cbbf403_1080.webp",
+            "jpeg": "variants/396eef7a-c2f3-5b43-a1d1-3f425cbbf403/396eef7a-c2f3-5b43-a1d1-3f425cbbf403_1080.jpg",
+            "webp_bytes": 48254,
+            "jpeg_bytes": 84151
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/396eef7a-c2f3-5b43-a1d1-3f425cbbf403/396eef7a-c2f3-5b43-a1d1-3f425cbbf403_1600.webp",
+            "jpeg": "variants/396eef7a-c2f3-5b43-a1d1-3f425cbbf403/396eef7a-c2f3-5b43-a1d1-3f425cbbf403_1600.jpg",
+            "webp_bytes": 74926,
+            "jpeg_bytes": 146063
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/396eef7a-c2f3-5b43-a1d1-3f425cbbf403/396eef7a-c2f3-5b43-a1d1-3f425cbbf403_2400.webp",
+            "jpeg": "variants/396eef7a-c2f3-5b43-a1d1-3f425cbbf403/396eef7a-c2f3-5b43-a1d1-3f425cbbf403_2400.jpg",
+            "webp_bytes": 123246,
+            "jpeg_bytes": 256993
+          }
+        }
+      },
+      "lqip_chars": 239
+    },
+    {
+      "id": "825dd702-7e7d-58e2-9b3c-33390fe0ce45",
+      "title": "2023 手机摄影 03",
+      "album": "2023/手机摄影",
+      "group": "2023/手机摄影",
+      "status": "approved",
+      "category": "Documentary",
+      "season": null,
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "手机摄影"
+      ],
+      "width": 3000,
+      "height": 4000,
+      "captured_at": null,
+      "mime_type": "image/jpeg",
+      "file_size": 3328190,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/年度 手机摄影/1703930233382.jpg",
+      "source_sha256": "770c632e4f42728fae86e5de47352b9db66bca3412ec8d367bd720910a207b53",
+      "gps_in_source": true,
+      "target_filename": "1703930233382.jpg",
+      "files": {
+        "original": "originals/825dd702-7e7d-58e2-9b3c-33390fe0ce45.jpg",
+        "thumbnail": "thumbnails/825dd702-7e7d-58e2-9b3c-33390fe0ce45_thumb.jpg",
+        "compressed": "compressed/825dd702-7e7d-58e2-9b3c-33390fe0ce45_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 240,
+            "height": 320,
+            "webp": "variants/825dd702-7e7d-58e2-9b3c-33390fe0ce45/825dd702-7e7d-58e2-9b3c-33390fe0ce45_320.webp",
+            "jpeg": "variants/825dd702-7e7d-58e2-9b3c-33390fe0ce45/825dd702-7e7d-58e2-9b3c-33390fe0ce45_320.jpg",
+            "webp_bytes": 16000,
+            "jpeg_bytes": 19769
+          },
+          "640": {
+            "width": 480,
+            "height": 640,
+            "webp": "variants/825dd702-7e7d-58e2-9b3c-33390fe0ce45/825dd702-7e7d-58e2-9b3c-33390fe0ce45_640.webp",
+            "jpeg": "variants/825dd702-7e7d-58e2-9b3c-33390fe0ce45/825dd702-7e7d-58e2-9b3c-33390fe0ce45_640.jpg",
+            "webp_bytes": 48180,
+            "jpeg_bytes": 65125
+          },
+          "1080": {
+            "width": 810,
+            "height": 1080,
+            "webp": "variants/825dd702-7e7d-58e2-9b3c-33390fe0ce45/825dd702-7e7d-58e2-9b3c-33390fe0ce45_1080.webp",
+            "jpeg": "variants/825dd702-7e7d-58e2-9b3c-33390fe0ce45/825dd702-7e7d-58e2-9b3c-33390fe0ce45_1080.jpg",
+            "webp_bytes": 104660,
+            "jpeg_bytes": 157353
+          },
+          "1600": {
+            "width": 1200,
+            "height": 1600,
+            "webp": "variants/825dd702-7e7d-58e2-9b3c-33390fe0ce45/825dd702-7e7d-58e2-9b3c-33390fe0ce45_1600.webp",
+            "jpeg": "variants/825dd702-7e7d-58e2-9b3c-33390fe0ce45/825dd702-7e7d-58e2-9b3c-33390fe0ce45_1600.jpg",
+            "webp_bytes": 185730,
+            "jpeg_bytes": 299027
+          },
+          "2400": {
+            "width": 1800,
+            "height": 2400,
+            "webp": "variants/825dd702-7e7d-58e2-9b3c-33390fe0ce45/825dd702-7e7d-58e2-9b3c-33390fe0ce45_2400.webp",
+            "jpeg": "variants/825dd702-7e7d-58e2-9b3c-33390fe0ce45/825dd702-7e7d-58e2-9b3c-33390fe0ce45_2400.jpg",
+            "webp_bytes": 339178,
+            "jpeg_bytes": 579203
+          }
+        }
+      },
+      "lqip_chars": 203
+    },
+    {
+      "id": "6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7",
+      "title": "七之一 · 生活瞬间 04",
+      "album": "2024 七之一：生活瞬间",
+      "group": "2024/七之一",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Spring",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "生活瞬间",
+        "日常"
+      ],
+      "width": 6048,
+      "height": 4024,
+      "captured_at": "2024-03-22T19:07:59",
+      "mime_type": "image/jpeg",
+      "file_size": 11248033,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之一：生活瞬间/DSC_3298.jpg",
+      "source_sha256": "fb4e5cc54885fb024284a9091a6564ebbd30750cda3e9be6f56b10f969cc113c",
+      "gps_in_source": false,
+      "target_filename": "DSC_3298.jpg",
+      "files": {
+        "original": "originals/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7.jpg",
+        "thumbnail": "thumbnails/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7_thumb.jpg",
+        "compressed": "compressed/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7_320.webp",
+            "jpeg": "variants/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7_320.jpg",
+            "webp_bytes": 10108,
+            "jpeg_bytes": 13852
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7_640.webp",
+            "jpeg": "variants/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7_640.jpg",
+            "webp_bytes": 24498,
+            "jpeg_bytes": 38864
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7_1080.webp",
+            "jpeg": "variants/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7_1080.jpg",
+            "webp_bytes": 47884,
+            "jpeg_bytes": 82077
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7_1600.webp",
+            "jpeg": "variants/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7_1600.jpg",
+            "webp_bytes": 78006,
+            "jpeg_bytes": 146098
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7_2400.webp",
+            "jpeg": "variants/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7/6dd3e3ff-c483-5ea1-bf76-3b00a87c97d7_2400.jpg",
+            "webp_bytes": 131484,
+            "jpeg_bytes": 274118
+          }
+        }
+      },
+      "lqip_chars": 215
+    },
+    {
+      "id": "4620e1a0-919d-598d-884f-d57aa176bd9e",
+      "title": "七之二 · 可爱的东西 04",
+      "album": "2024 七之二：可爱的东西",
+      "group": "2024/七之二",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Autumn",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "可爱的东西",
+        "可爱"
+      ],
+      "width": 5296,
+      "height": 3524,
+      "captured_at": "2024-10-28T16:39:18",
+      "mime_type": "image/jpeg",
+      "file_size": 11263531,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之二：可爱的东西/_DSC9735.jpg",
+      "source_sha256": "d9f1e8c22f51327936598b8b763e751b940df8ff3d0051f69aab07df72627f31",
+      "gps_in_source": false,
+      "target_filename": "_DSC9735.jpg",
+      "files": {
+        "original": "originals/4620e1a0-919d-598d-884f-d57aa176bd9e.jpg",
+        "thumbnail": "thumbnails/4620e1a0-919d-598d-884f-d57aa176bd9e_thumb.jpg",
+        "compressed": "compressed/4620e1a0-919d-598d-884f-d57aa176bd9e_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/4620e1a0-919d-598d-884f-d57aa176bd9e/4620e1a0-919d-598d-884f-d57aa176bd9e_320.webp",
+            "jpeg": "variants/4620e1a0-919d-598d-884f-d57aa176bd9e/4620e1a0-919d-598d-884f-d57aa176bd9e_320.jpg",
+            "webp_bytes": 13982,
+            "jpeg_bytes": 17296
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/4620e1a0-919d-598d-884f-d57aa176bd9e/4620e1a0-919d-598d-884f-d57aa176bd9e_640.webp",
+            "jpeg": "variants/4620e1a0-919d-598d-884f-d57aa176bd9e/4620e1a0-919d-598d-884f-d57aa176bd9e_640.jpg",
+            "webp_bytes": 35402,
+            "jpeg_bytes": 49142
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/4620e1a0-919d-598d-884f-d57aa176bd9e/4620e1a0-919d-598d-884f-d57aa176bd9e_1080.webp",
+            "jpeg": "variants/4620e1a0-919d-598d-884f-d57aa176bd9e/4620e1a0-919d-598d-884f-d57aa176bd9e_1080.jpg",
+            "webp_bytes": 70034,
+            "jpeg_bytes": 108607
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/4620e1a0-919d-598d-884f-d57aa176bd9e/4620e1a0-919d-598d-884f-d57aa176bd9e_1600.webp",
+            "jpeg": "variants/4620e1a0-919d-598d-884f-d57aa176bd9e/4620e1a0-919d-598d-884f-d57aa176bd9e_1600.jpg",
+            "webp_bytes": 125824,
+            "jpeg_bytes": 208023
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/4620e1a0-919d-598d-884f-d57aa176bd9e/4620e1a0-919d-598d-884f-d57aa176bd9e_2400.webp",
+            "jpeg": "variants/4620e1a0-919d-598d-884f-d57aa176bd9e/4620e1a0-919d-598d-884f-d57aa176bd9e_2400.jpg",
+            "webp_bytes": 281428,
+            "jpeg_bytes": 452255
+          }
+        }
+      },
+      "lqip_chars": 255
+    },
+    {
+      "id": "331133ab-5305-5a97-a50d-c32127ed0666",
+      "title": "七之三 · 花开花飞春又来 04",
+      "album": "2024 七之三：花开花飞春又来",
+      "group": "2024/七之三",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Spring",
+      "campus": null,
+      "photo_type": "自然生态",
+      "tags": [
+        "2024年度总结",
+        "花开花飞春又来",
+        "花"
+      ],
+      "width": 4024,
+      "height": 6048,
+      "captured_at": "2024-03-20T17:23:39",
+      "mime_type": "image/jpeg",
+      "file_size": 20705457,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之三：花开花飞春又来/DSC_1957.jpg",
+      "source_sha256": "c7137a842b4c05d1b7d821afb2136bc2921c3ff7de348cda6d92b1db8a89a9c2",
+      "gps_in_source": false,
+      "target_filename": "DSC_1957.jpg",
+      "files": {
+        "original": "originals/331133ab-5305-5a97-a50d-c32127ed0666.jpg",
+        "thumbnail": "thumbnails/331133ab-5305-5a97-a50d-c32127ed0666_thumb.jpg",
+        "compressed": "compressed/331133ab-5305-5a97-a50d-c32127ed0666_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/331133ab-5305-5a97-a50d-c32127ed0666/331133ab-5305-5a97-a50d-c32127ed0666_320.webp",
+            "jpeg": "variants/331133ab-5305-5a97-a50d-c32127ed0666/331133ab-5305-5a97-a50d-c32127ed0666_320.jpg",
+            "webp_bytes": 25288,
+            "jpeg_bytes": 25549
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/331133ab-5305-5a97-a50d-c32127ed0666/331133ab-5305-5a97-a50d-c32127ed0666_640.webp",
+            "jpeg": "variants/331133ab-5305-5a97-a50d-c32127ed0666/331133ab-5305-5a97-a50d-c32127ed0666_640.jpg",
+            "webp_bytes": 76464,
+            "jpeg_bytes": 86924
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/331133ab-5305-5a97-a50d-c32127ed0666/331133ab-5305-5a97-a50d-c32127ed0666_1080.webp",
+            "jpeg": "variants/331133ab-5305-5a97-a50d-c32127ed0666/331133ab-5305-5a97-a50d-c32127ed0666_1080.jpg",
+            "webp_bytes": 161308,
+            "jpeg_bytes": 202311
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/331133ab-5305-5a97-a50d-c32127ed0666/331133ab-5305-5a97-a50d-c32127ed0666_1600.webp",
+            "jpeg": "variants/331133ab-5305-5a97-a50d-c32127ed0666/331133ab-5305-5a97-a50d-c32127ed0666_1600.jpg",
+            "webp_bytes": 290280,
+            "jpeg_bytes": 380925
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/331133ab-5305-5a97-a50d-c32127ed0666/331133ab-5305-5a97-a50d-c32127ed0666_2400.webp",
+            "jpeg": "variants/331133ab-5305-5a97-a50d-c32127ed0666/331133ab-5305-5a97-a50d-c32127ed0666_2400.jpg",
+            "webp_bytes": 580132,
+            "jpeg_bytes": 751914
+          }
+        }
+      },
+      "lqip_chars": 223
+    },
+    {
+      "id": "b3f90c6a-243f-5fcb-a2db-077b28fe66cc",
+      "title": "七之四 · The Decisive Moments 04",
+      "album": "2024 七之四：The Decisive Moments",
+      "group": "2024/七之四",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Summer",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "The Decisive Moments",
+        "街头"
+      ],
+      "width": 5552,
+      "height": 3694,
+      "captured_at": "2024-07-24T19:28:10",
+      "mime_type": "image/jpeg",
+      "file_size": 10266790,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之四：The Decisive Moments/_DSC9956.jpg",
+      "source_sha256": "7c72205b68040af1d5b28eb64171c759ddf4721e29595d774c74e893464544ad",
+      "gps_in_source": false,
+      "target_filename": "_DSC9956.jpg",
+      "files": {
+        "original": "originals/b3f90c6a-243f-5fcb-a2db-077b28fe66cc.jpg",
+        "thumbnail": "thumbnails/b3f90c6a-243f-5fcb-a2db-077b28fe66cc_thumb.jpg",
+        "compressed": "compressed/b3f90c6a-243f-5fcb-a2db-077b28fe66cc_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/b3f90c6a-243f-5fcb-a2db-077b28fe66cc/b3f90c6a-243f-5fcb-a2db-077b28fe66cc_320.webp",
+            "jpeg": "variants/b3f90c6a-243f-5fcb-a2db-077b28fe66cc/b3f90c6a-243f-5fcb-a2db-077b28fe66cc_320.jpg",
+            "webp_bytes": 13600,
+            "jpeg_bytes": 16879
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/b3f90c6a-243f-5fcb-a2db-077b28fe66cc/b3f90c6a-243f-5fcb-a2db-077b28fe66cc_640.webp",
+            "jpeg": "variants/b3f90c6a-243f-5fcb-a2db-077b28fe66cc/b3f90c6a-243f-5fcb-a2db-077b28fe66cc_640.jpg",
+            "webp_bytes": 39274,
+            "jpeg_bytes": 53633
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/b3f90c6a-243f-5fcb-a2db-077b28fe66cc/b3f90c6a-243f-5fcb-a2db-077b28fe66cc_1080.webp",
+            "jpeg": "variants/b3f90c6a-243f-5fcb-a2db-077b28fe66cc/b3f90c6a-243f-5fcb-a2db-077b28fe66cc_1080.jpg",
+            "webp_bytes": 87202,
+            "jpeg_bytes": 127199
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/b3f90c6a-243f-5fcb-a2db-077b28fe66cc/b3f90c6a-243f-5fcb-a2db-077b28fe66cc_1600.webp",
+            "jpeg": "variants/b3f90c6a-243f-5fcb-a2db-077b28fe66cc/b3f90c6a-243f-5fcb-a2db-077b28fe66cc_1600.jpg",
+            "webp_bytes": 159316,
+            "jpeg_bytes": 245095
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/b3f90c6a-243f-5fcb-a2db-077b28fe66cc/b3f90c6a-243f-5fcb-a2db-077b28fe66cc_2400.webp",
+            "jpeg": "variants/b3f90c6a-243f-5fcb-a2db-077b28fe66cc/b3f90c6a-243f-5fcb-a2db-077b28fe66cc_2400.jpg",
+            "webp_bytes": 307036,
+            "jpeg_bytes": 492674
+          }
+        }
+      },
+      "lqip_chars": 187
+    },
+    {
+      "id": "5f5385e2-0335-58a2-ae6b-7551e404eba9",
+      "title": "七之五 · 社畜群侠传 04",
+      "album": "2024 七之五：社畜群侠传",
+      "group": "2024/七之五",
+      "status": "approved",
+      "category": "Activity",
+      "season": "Autumn",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "社畜群侠传",
+        "活动"
+      ],
+      "width": 5208,
+      "height": 3472,
+      "captured_at": "2024-10-25T20:41:26",
+      "mime_type": "image/jpeg",
+      "file_size": 9111466,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之五：社畜群侠传/YXC_6989-已增强-降噪.jpg",
+      "source_sha256": "774fcd83728717d88b77c0bbf35c681f8d4477c05487cf31aa97016ca8ca6403",
+      "gps_in_source": false,
+      "target_filename": "YXC_6989-已增强-降噪.jpg",
+      "files": {
+        "original": "originals/5f5385e2-0335-58a2-ae6b-7551e404eba9.jpg",
+        "thumbnail": "thumbnails/5f5385e2-0335-58a2-ae6b-7551e404eba9_thumb.jpg",
+        "compressed": "compressed/5f5385e2-0335-58a2-ae6b-7551e404eba9_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 214,
+            "webp": "variants/5f5385e2-0335-58a2-ae6b-7551e404eba9/5f5385e2-0335-58a2-ae6b-7551e404eba9_320.webp",
+            "jpeg": "variants/5f5385e2-0335-58a2-ae6b-7551e404eba9/5f5385e2-0335-58a2-ae6b-7551e404eba9_320.jpg",
+            "webp_bytes": 18570,
+            "jpeg_bytes": 21591
+          },
+          "640": {
+            "width": 640,
+            "height": 427,
+            "webp": "variants/5f5385e2-0335-58a2-ae6b-7551e404eba9/5f5385e2-0335-58a2-ae6b-7551e404eba9_640.webp",
+            "jpeg": "variants/5f5385e2-0335-58a2-ae6b-7551e404eba9/5f5385e2-0335-58a2-ae6b-7551e404eba9_640.jpg",
+            "webp_bytes": 54160,
+            "jpeg_bytes": 67116
+          },
+          "1080": {
+            "width": 1080,
+            "height": 720,
+            "webp": "variants/5f5385e2-0335-58a2-ae6b-7551e404eba9/5f5385e2-0335-58a2-ae6b-7551e404eba9_1080.webp",
+            "jpeg": "variants/5f5385e2-0335-58a2-ae6b-7551e404eba9/5f5385e2-0335-58a2-ae6b-7551e404eba9_1080.jpg",
+            "webp_bytes": 115220,
+            "jpeg_bytes": 154298
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1067,
+            "webp": "variants/5f5385e2-0335-58a2-ae6b-7551e404eba9/5f5385e2-0335-58a2-ae6b-7551e404eba9_1600.webp",
+            "jpeg": "variants/5f5385e2-0335-58a2-ae6b-7551e404eba9/5f5385e2-0335-58a2-ae6b-7551e404eba9_1600.jpg",
+            "webp_bytes": 202792,
+            "jpeg_bytes": 285671
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1600,
+            "webp": "variants/5f5385e2-0335-58a2-ae6b-7551e404eba9/5f5385e2-0335-58a2-ae6b-7551e404eba9_2400.webp",
+            "jpeg": "variants/5f5385e2-0335-58a2-ae6b-7551e404eba9/5f5385e2-0335-58a2-ae6b-7551e404eba9_2400.jpg",
+            "webp_bytes": 354176,
+            "jpeg_bytes": 533606
+          }
+        }
+      },
+      "lqip_chars": 239
+    },
+    {
+      "id": "a7a8f972-bd30-52e9-9d9f-aa1835707aca",
+      "title": "七之六 · ta在丛中笑 04",
+      "album": "2024 七之六：ta在丛中笑",
+      "group": "2024/七之六",
+      "status": "pending",
+      "category": "Documentary",
+      "season": "Autumn",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "ta在丛中笑",
+        "笑容"
+      ],
+      "width": 6048,
+      "height": 4024,
+      "captured_at": "2024-09-24T12:47:52",
+      "mime_type": "image/jpeg",
+      "file_size": 12625266,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之六：ta在丛中笑/DSC_2289.jpg",
+      "source_sha256": "585212d784eb229060c8c66df3bc409a6b40d98b07b68598ecc8e342dd930e32",
+      "gps_in_source": false,
+      "target_filename": "DSC_2289.jpg",
+      "files": {
+        "original": "originals/a7a8f972-bd30-52e9-9d9f-aa1835707aca.jpg",
+        "thumbnail": "thumbnails/a7a8f972-bd30-52e9-9d9f-aa1835707aca_thumb.jpg",
+        "compressed": "compressed/a7a8f972-bd30-52e9-9d9f-aa1835707aca_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/a7a8f972-bd30-52e9-9d9f-aa1835707aca/a7a8f972-bd30-52e9-9d9f-aa1835707aca_320.webp",
+            "jpeg": "variants/a7a8f972-bd30-52e9-9d9f-aa1835707aca/a7a8f972-bd30-52e9-9d9f-aa1835707aca_320.jpg",
+            "webp_bytes": 18366,
+            "jpeg_bytes": 21196
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/a7a8f972-bd30-52e9-9d9f-aa1835707aca/a7a8f972-bd30-52e9-9d9f-aa1835707aca_640.webp",
+            "jpeg": "variants/a7a8f972-bd30-52e9-9d9f-aa1835707aca/a7a8f972-bd30-52e9-9d9f-aa1835707aca_640.jpg",
+            "webp_bytes": 50872,
+            "jpeg_bytes": 62765
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/a7a8f972-bd30-52e9-9d9f-aa1835707aca/a7a8f972-bd30-52e9-9d9f-aa1835707aca_1080.webp",
+            "jpeg": "variants/a7a8f972-bd30-52e9-9d9f-aa1835707aca/a7a8f972-bd30-52e9-9d9f-aa1835707aca_1080.jpg",
+            "webp_bytes": 104290,
+            "jpeg_bytes": 137690
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/a7a8f972-bd30-52e9-9d9f-aa1835707aca/a7a8f972-bd30-52e9-9d9f-aa1835707aca_1600.webp",
+            "jpeg": "variants/a7a8f972-bd30-52e9-9d9f-aa1835707aca/a7a8f972-bd30-52e9-9d9f-aa1835707aca_1600.jpg",
+            "webp_bytes": 168816,
+            "jpeg_bytes": 246729
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/a7a8f972-bd30-52e9-9d9f-aa1835707aca/a7a8f972-bd30-52e9-9d9f-aa1835707aca_2400.webp",
+            "jpeg": "variants/a7a8f972-bd30-52e9-9d9f-aa1835707aca/a7a8f972-bd30-52e9-9d9f-aa1835707aca_2400.jpg",
+            "webp_bytes": 290140,
+            "jpeg_bytes": 452985
+          }
+        }
+      },
+      "lqip_chars": 267
+    },
+    {
+      "id": "425d15af-fdc1-5b5f-9850-36397ebf7563",
+      "title": "七之七 · 北化与我 04",
+      "album": "2024 七之七：北化与我",
+      "group": "2024/七之七",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Winter",
+      "campus": "昌平校区",
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "北化与我",
+        "校园",
+        "北化"
+      ],
+      "width": 6048,
+      "height": 4024,
+      "captured_at": "2024-12-14T00:55:05",
+      "mime_type": "image/jpeg",
+      "file_size": 18107340,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之七：北化与我/DSC_0267-已增强-降噪.jpg",
+      "source_sha256": "54465f1652aa6f0cba9de1867f9ecdee85698bdf6f694fecbbf32e69707d2804",
+      "gps_in_source": false,
+      "target_filename": "DSC_0267-已增强-降噪.jpg",
+      "files": {
+        "original": "originals/425d15af-fdc1-5b5f-9850-36397ebf7563.jpg",
+        "thumbnail": "thumbnails/425d15af-fdc1-5b5f-9850-36397ebf7563_thumb.jpg",
+        "compressed": "compressed/425d15af-fdc1-5b5f-9850-36397ebf7563_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/425d15af-fdc1-5b5f-9850-36397ebf7563/425d15af-fdc1-5b5f-9850-36397ebf7563_320.webp",
+            "jpeg": "variants/425d15af-fdc1-5b5f-9850-36397ebf7563/425d15af-fdc1-5b5f-9850-36397ebf7563_320.jpg",
+            "webp_bytes": 7842,
+            "jpeg_bytes": 10686
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/425d15af-fdc1-5b5f-9850-36397ebf7563/425d15af-fdc1-5b5f-9850-36397ebf7563_640.webp",
+            "jpeg": "variants/425d15af-fdc1-5b5f-9850-36397ebf7563/425d15af-fdc1-5b5f-9850-36397ebf7563_640.jpg",
+            "webp_bytes": 26642,
+            "jpeg_bytes": 36332
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/425d15af-fdc1-5b5f-9850-36397ebf7563/425d15af-fdc1-5b5f-9850-36397ebf7563_1080.webp",
+            "jpeg": "variants/425d15af-fdc1-5b5f-9850-36397ebf7563/425d15af-fdc1-5b5f-9850-36397ebf7563_1080.jpg",
+            "webp_bytes": 67008,
+            "jpeg_bytes": 91838
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/425d15af-fdc1-5b5f-9850-36397ebf7563/425d15af-fdc1-5b5f-9850-36397ebf7563_1600.webp",
+            "jpeg": "variants/425d15af-fdc1-5b5f-9850-36397ebf7563/425d15af-fdc1-5b5f-9850-36397ebf7563_1600.jpg",
+            "webp_bytes": 133280,
+            "jpeg_bytes": 184372
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/425d15af-fdc1-5b5f-9850-36397ebf7563/425d15af-fdc1-5b5f-9850-36397ebf7563_2400.webp",
+            "jpeg": "variants/425d15af-fdc1-5b5f-9850-36397ebf7563/425d15af-fdc1-5b5f-9850-36397ebf7563_2400.jpg",
+            "webp_bytes": 260268,
+            "jpeg_bytes": 385829
+          }
+        }
+      },
+      "lqip_chars": 211
+    },
+    {
+      "id": "fef69ddd-879f-50ec-8651-2807cd592b0a",
+      "title": "2024 校园冬季 04",
+      "album": "2024 校园四季",
+      "group": "2024/校园四季",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Winter",
+      "campus": "昌平校区",
+      "photo_type": "自然生态",
+      "tags": [
+        "2024年度总结",
+        "校园四季",
+        "冬季"
+      ],
+      "width": 6048,
+      "height": 4024,
+      "captured_at": "2024-12-14T04:07:16",
+      "mime_type": "image/jpeg",
+      "file_size": 17537328,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/冬/DSC_0022-已增强-降噪.jpg",
+      "source_sha256": "9010c9e8a91206169b1f5476f9a686244f94b38f8088f769f3e78d983f7c26d5",
+      "gps_in_source": false,
+      "target_filename": "DSC_0022-已增强-降噪.jpg",
+      "files": {
+        "original": "originals/fef69ddd-879f-50ec-8651-2807cd592b0a.jpg",
+        "thumbnail": "thumbnails/fef69ddd-879f-50ec-8651-2807cd592b0a_thumb.jpg",
+        "compressed": "compressed/fef69ddd-879f-50ec-8651-2807cd592b0a_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/fef69ddd-879f-50ec-8651-2807cd592b0a/fef69ddd-879f-50ec-8651-2807cd592b0a_320.webp",
+            "jpeg": "variants/fef69ddd-879f-50ec-8651-2807cd592b0a/fef69ddd-879f-50ec-8651-2807cd592b0a_320.jpg",
+            "webp_bytes": 12868,
+            "jpeg_bytes": 14519
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/fef69ddd-879f-50ec-8651-2807cd592b0a/fef69ddd-879f-50ec-8651-2807cd592b0a_640.webp",
+            "jpeg": "variants/fef69ddd-879f-50ec-8651-2807cd592b0a/fef69ddd-879f-50ec-8651-2807cd592b0a_640.jpg",
+            "webp_bytes": 43524,
+            "jpeg_bytes": 53352
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/fef69ddd-879f-50ec-8651-2807cd592b0a/fef69ddd-879f-50ec-8651-2807cd592b0a_1080.webp",
+            "jpeg": "variants/fef69ddd-879f-50ec-8651-2807cd592b0a/fef69ddd-879f-50ec-8651-2807cd592b0a_1080.jpg",
+            "webp_bytes": 100058,
+            "jpeg_bytes": 134123
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/fef69ddd-879f-50ec-8651-2807cd592b0a/fef69ddd-879f-50ec-8651-2807cd592b0a_1600.webp",
+            "jpeg": "variants/fef69ddd-879f-50ec-8651-2807cd592b0a/fef69ddd-879f-50ec-8651-2807cd592b0a_1600.jpg",
+            "webp_bytes": 180538,
+            "jpeg_bytes": 260354
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/fef69ddd-879f-50ec-8651-2807cd592b0a/fef69ddd-879f-50ec-8651-2807cd592b0a_2400.webp",
+            "jpeg": "variants/fef69ddd-879f-50ec-8651-2807cd592b0a/fef69ddd-879f-50ec-8651-2807cd592b0a_2400.jpg",
+            "webp_bytes": 322946,
+            "jpeg_bytes": 497027
+          }
+        }
+      },
+      "lqip_chars": 199
+    },
+    {
+      "id": "4d51af8b-1051-508a-81bc-800d52884640",
+      "title": "4月 · 同上，依然是硬座火车，拥挤的车厢，半夜热的要命…",
+      "album": "2023 · 4月",
+      "group": "2023/月度随笔",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Spring",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "4月"
+      ],
+      "width": 5184,
+      "height": 3888,
+      "captured_at": "2023-04-27T23:33:00",
+      "mime_type": "image/jpeg",
+      "file_size": 15443660,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/4月/_1156892.jpg",
+      "source_sha256": "991cdf7b4c892e0251de62c3bec67f1670052199d5b7facee7ba217a41e5b365",
+      "gps_in_source": false,
+      "target_filename": "_1156892.jpg",
+      "files": {
+        "original": "originals/4d51af8b-1051-508a-81bc-800d52884640.jpg",
+        "thumbnail": "thumbnails/4d51af8b-1051-508a-81bc-800d52884640_thumb.jpg",
+        "compressed": "compressed/4d51af8b-1051-508a-81bc-800d52884640_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 240,
+            "webp": "variants/4d51af8b-1051-508a-81bc-800d52884640/4d51af8b-1051-508a-81bc-800d52884640_320.webp",
+            "jpeg": "variants/4d51af8b-1051-508a-81bc-800d52884640/4d51af8b-1051-508a-81bc-800d52884640_320.jpg",
+            "webp_bytes": 10886,
+            "jpeg_bytes": 14732
+          },
+          "640": {
+            "width": 640,
+            "height": 480,
+            "webp": "variants/4d51af8b-1051-508a-81bc-800d52884640/4d51af8b-1051-508a-81bc-800d52884640_640.webp",
+            "jpeg": "variants/4d51af8b-1051-508a-81bc-800d52884640/4d51af8b-1051-508a-81bc-800d52884640_640.jpg",
+            "webp_bytes": 25494,
+            "jpeg_bytes": 41350
+          },
+          "1080": {
+            "width": 1080,
+            "height": 810,
+            "webp": "variants/4d51af8b-1051-508a-81bc-800d52884640/4d51af8b-1051-508a-81bc-800d52884640_1080.webp",
+            "jpeg": "variants/4d51af8b-1051-508a-81bc-800d52884640/4d51af8b-1051-508a-81bc-800d52884640_1080.jpg",
+            "webp_bytes": 53914,
+            "jpeg_bytes": 92900
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1200,
+            "webp": "variants/4d51af8b-1051-508a-81bc-800d52884640/4d51af8b-1051-508a-81bc-800d52884640_1600.webp",
+            "jpeg": "variants/4d51af8b-1051-508a-81bc-800d52884640/4d51af8b-1051-508a-81bc-800d52884640_1600.jpg",
+            "webp_bytes": 115344,
+            "jpeg_bytes": 184173
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1800,
+            "webp": "variants/4d51af8b-1051-508a-81bc-800d52884640/4d51af8b-1051-508a-81bc-800d52884640_2400.webp",
+            "jpeg": "variants/4d51af8b-1051-508a-81bc-800d52884640/4d51af8b-1051-508a-81bc-800d52884640_2400.jpg",
+            "webp_bytes": 356002,
+            "jpeg_bytes": 450286
+          }
+        }
+      },
+      "lqip_chars": 231
+    },
+    {
+      "id": "708795ab-3444-5e6a-9071-976332d2b504",
+      "title": "2023 年度精选 04",
+      "album": "2023/年度精选",
+      "group": "2023/年度精选",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Winter",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "年度精选"
+      ],
+      "width": 3982,
+      "height": 5985,
+      "captured_at": "2023-12-15T10:38:07",
+      "mime_type": "image/jpeg",
+      "file_size": 19157130,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/年度 9张图/DSC_6826.jpg",
+      "source_sha256": "4396022dacbb9e563abf732c918fd0fbddbb5bca51e9bb75b4da80c3295aec03",
+      "gps_in_source": false,
+      "target_filename": "DSC_6826.jpg",
+      "files": {
+        "original": "originals/708795ab-3444-5e6a-9071-976332d2b504.jpg",
+        "thumbnail": "thumbnails/708795ab-3444-5e6a-9071-976332d2b504_thumb.jpg",
+        "compressed": "compressed/708795ab-3444-5e6a-9071-976332d2b504_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/708795ab-3444-5e6a-9071-976332d2b504/708795ab-3444-5e6a-9071-976332d2b504_320.webp",
+            "jpeg": "variants/708795ab-3444-5e6a-9071-976332d2b504/708795ab-3444-5e6a-9071-976332d2b504_320.jpg",
+            "webp_bytes": 22498,
+            "jpeg_bytes": 23695
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/708795ab-3444-5e6a-9071-976332d2b504/708795ab-3444-5e6a-9071-976332d2b504_640.webp",
+            "jpeg": "variants/708795ab-3444-5e6a-9071-976332d2b504/708795ab-3444-5e6a-9071-976332d2b504_640.jpg",
+            "webp_bytes": 84436,
+            "jpeg_bytes": 89295
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/708795ab-3444-5e6a-9071-976332d2b504/708795ab-3444-5e6a-9071-976332d2b504_1080.webp",
+            "jpeg": "variants/708795ab-3444-5e6a-9071-976332d2b504/708795ab-3444-5e6a-9071-976332d2b504_1080.jpg",
+            "webp_bytes": 233776,
+            "jpeg_bytes": 245749
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/708795ab-3444-5e6a-9071-976332d2b504/708795ab-3444-5e6a-9071-976332d2b504_1600.webp",
+            "jpeg": "variants/708795ab-3444-5e6a-9071-976332d2b504/708795ab-3444-5e6a-9071-976332d2b504_1600.jpg",
+            "webp_bytes": 490276,
+            "jpeg_bytes": 526806
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/708795ab-3444-5e6a-9071-976332d2b504/708795ab-3444-5e6a-9071-976332d2b504_2400.webp",
+            "jpeg": "variants/708795ab-3444-5e6a-9071-976332d2b504/708795ab-3444-5e6a-9071-976332d2b504_2400.jpg",
+            "webp_bytes": 1035966,
+            "jpeg_bytes": 1130497
+          }
+        }
+      },
+      "lqip_chars": 223
+    },
+    {
+      "id": "0ab85037-fe6c-5967-a70b-4513ddfcee77",
+      "title": "2023 手机摄影 04",
+      "album": "2023/手机摄影",
+      "group": "2023/手机摄影",
+      "status": "approved",
+      "category": "Documentary",
+      "season": null,
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "手机摄影"
+      ],
+      "width": 4096,
+      "height": 3072,
+      "captured_at": null,
+      "mime_type": "image/jpeg",
+      "file_size": 2008314,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/年度 手机摄影/1703930260167.jpg",
+      "source_sha256": "88cf13c9ce9946d0d79a1db4cf7a865e37c3825667076a5c0f335be68cbd4cef",
+      "gps_in_source": true,
+      "target_filename": "1703930260167.jpg",
+      "files": {
+        "original": "originals/0ab85037-fe6c-5967-a70b-4513ddfcee77.jpg",
+        "thumbnail": "thumbnails/0ab85037-fe6c-5967-a70b-4513ddfcee77_thumb.jpg",
+        "compressed": "compressed/0ab85037-fe6c-5967-a70b-4513ddfcee77_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 240,
+            "webp": "variants/0ab85037-fe6c-5967-a70b-4513ddfcee77/0ab85037-fe6c-5967-a70b-4513ddfcee77_320.webp",
+            "jpeg": "variants/0ab85037-fe6c-5967-a70b-4513ddfcee77/0ab85037-fe6c-5967-a70b-4513ddfcee77_320.jpg",
+            "webp_bytes": 11330,
+            "jpeg_bytes": 15334
+          },
+          "640": {
+            "width": 640,
+            "height": 480,
+            "webp": "variants/0ab85037-fe6c-5967-a70b-4513ddfcee77/0ab85037-fe6c-5967-a70b-4513ddfcee77_640.webp",
+            "jpeg": "variants/0ab85037-fe6c-5967-a70b-4513ddfcee77/0ab85037-fe6c-5967-a70b-4513ddfcee77_640.jpg",
+            "webp_bytes": 32546,
+            "jpeg_bytes": 46490
+          },
+          "1080": {
+            "width": 1080,
+            "height": 810,
+            "webp": "variants/0ab85037-fe6c-5967-a70b-4513ddfcee77/0ab85037-fe6c-5967-a70b-4513ddfcee77_1080.webp",
+            "jpeg": "variants/0ab85037-fe6c-5967-a70b-4513ddfcee77/0ab85037-fe6c-5967-a70b-4513ddfcee77_1080.jpg",
+            "webp_bytes": 66616,
+            "jpeg_bytes": 104335
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1200,
+            "webp": "variants/0ab85037-fe6c-5967-a70b-4513ddfcee77/0ab85037-fe6c-5967-a70b-4513ddfcee77_1600.webp",
+            "jpeg": "variants/0ab85037-fe6c-5967-a70b-4513ddfcee77/0ab85037-fe6c-5967-a70b-4513ddfcee77_1600.jpg",
+            "webp_bytes": 112646,
+            "jpeg_bytes": 190993
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1800,
+            "webp": "variants/0ab85037-fe6c-5967-a70b-4513ddfcee77/0ab85037-fe6c-5967-a70b-4513ddfcee77_2400.webp",
+            "jpeg": "variants/0ab85037-fe6c-5967-a70b-4513ddfcee77/0ab85037-fe6c-5967-a70b-4513ddfcee77_2400.jpg",
+            "webp_bytes": 175954,
+            "jpeg_bytes": 352791
+          }
+        }
+      },
+      "lqip_chars": 227
+    },
+    {
+      "id": "42cd40e8-ed58-5540-a872-771bb1a9d91d",
+      "title": "七之一 · 生活瞬间 05",
+      "album": "2024 七之一：生活瞬间",
+      "group": "2024/七之一",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Winter",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "生活瞬间",
+        "日常"
+      ],
+      "width": 5874,
+      "height": 3908,
+      "captured_at": "2024-02-24T21:09:20",
+      "mime_type": "image/jpeg",
+      "file_size": 14398288,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之一：生活瞬间/DSC_9660.jpg",
+      "source_sha256": "694da2af3612ced00d9388726ca55fd87961512f7e88ec05f4f051f2cf0c8428",
+      "gps_in_source": false,
+      "target_filename": "DSC_9660.jpg",
+      "files": {
+        "original": "originals/42cd40e8-ed58-5540-a872-771bb1a9d91d.jpg",
+        "thumbnail": "thumbnails/42cd40e8-ed58-5540-a872-771bb1a9d91d_thumb.jpg",
+        "compressed": "compressed/42cd40e8-ed58-5540-a872-771bb1a9d91d_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/42cd40e8-ed58-5540-a872-771bb1a9d91d/42cd40e8-ed58-5540-a872-771bb1a9d91d_320.webp",
+            "jpeg": "variants/42cd40e8-ed58-5540-a872-771bb1a9d91d/42cd40e8-ed58-5540-a872-771bb1a9d91d_320.jpg",
+            "webp_bytes": 17792,
+            "jpeg_bytes": 20624
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/42cd40e8-ed58-5540-a872-771bb1a9d91d/42cd40e8-ed58-5540-a872-771bb1a9d91d_640.webp",
+            "jpeg": "variants/42cd40e8-ed58-5540-a872-771bb1a9d91d/42cd40e8-ed58-5540-a872-771bb1a9d91d_640.jpg",
+            "webp_bytes": 48518,
+            "jpeg_bytes": 61892
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/42cd40e8-ed58-5540-a872-771bb1a9d91d/42cd40e8-ed58-5540-a872-771bb1a9d91d_1080.webp",
+            "jpeg": "variants/42cd40e8-ed58-5540-a872-771bb1a9d91d/42cd40e8-ed58-5540-a872-771bb1a9d91d_1080.jpg",
+            "webp_bytes": 96244,
+            "jpeg_bytes": 135564
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/42cd40e8-ed58-5540-a872-771bb1a9d91d/42cd40e8-ed58-5540-a872-771bb1a9d91d_1600.webp",
+            "jpeg": "variants/42cd40e8-ed58-5540-a872-771bb1a9d91d/42cd40e8-ed58-5540-a872-771bb1a9d91d_1600.jpg",
+            "webp_bytes": 156690,
+            "jpeg_bytes": 241883
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/42cd40e8-ed58-5540-a872-771bb1a9d91d/42cd40e8-ed58-5540-a872-771bb1a9d91d_2400.webp",
+            "jpeg": "variants/42cd40e8-ed58-5540-a872-771bb1a9d91d/42cd40e8-ed58-5540-a872-771bb1a9d91d_2400.jpg",
+            "webp_bytes": 261910,
+            "jpeg_bytes": 455888
+          }
+        }
+      },
+      "lqip_chars": 251
+    },
+    {
+      "id": "84c48fae-afbb-58f5-997e-0d81721b6335",
+      "title": "七之二 · 可爱的东西 05",
+      "album": "2024 七之二：可爱的东西",
+      "group": "2024/七之二",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Winter",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "可爱的东西",
+        "可爱"
+      ],
+      "width": 3758,
+      "height": 5648,
+      "captured_at": "2024-02-24T18:29:42",
+      "mime_type": "image/jpeg",
+      "file_size": 11794733,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之二：可爱的东西/DSC_9491.jpg",
+      "source_sha256": "67580abe7a02d5159395da0e9cb056e1e92e6c8bda100ba4270477c37b4768f5",
+      "gps_in_source": false,
+      "target_filename": "DSC_9491.jpg",
+      "files": {
+        "original": "originals/84c48fae-afbb-58f5-997e-0d81721b6335.jpg",
+        "thumbnail": "thumbnails/84c48fae-afbb-58f5-997e-0d81721b6335_thumb.jpg",
+        "compressed": "compressed/84c48fae-afbb-58f5-997e-0d81721b6335_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/84c48fae-afbb-58f5-997e-0d81721b6335/84c48fae-afbb-58f5-997e-0d81721b6335_320.webp",
+            "jpeg": "variants/84c48fae-afbb-58f5-997e-0d81721b6335/84c48fae-afbb-58f5-997e-0d81721b6335_320.jpg",
+            "webp_bytes": 17416,
+            "jpeg_bytes": 20673
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/84c48fae-afbb-58f5-997e-0d81721b6335/84c48fae-afbb-58f5-997e-0d81721b6335_640.webp",
+            "jpeg": "variants/84c48fae-afbb-58f5-997e-0d81721b6335/84c48fae-afbb-58f5-997e-0d81721b6335_640.jpg",
+            "webp_bytes": 45956,
+            "jpeg_bytes": 60482
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/84c48fae-afbb-58f5-997e-0d81721b6335/84c48fae-afbb-58f5-997e-0d81721b6335_1080.webp",
+            "jpeg": "variants/84c48fae-afbb-58f5-997e-0d81721b6335/84c48fae-afbb-58f5-997e-0d81721b6335_1080.jpg",
+            "webp_bytes": 92016,
+            "jpeg_bytes": 132287
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/84c48fae-afbb-58f5-997e-0d81721b6335/84c48fae-afbb-58f5-997e-0d81721b6335_1600.webp",
+            "jpeg": "variants/84c48fae-afbb-58f5-997e-0d81721b6335/84c48fae-afbb-58f5-997e-0d81721b6335_1600.jpg",
+            "webp_bytes": 153154,
+            "jpeg_bytes": 239835
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/84c48fae-afbb-58f5-997e-0d81721b6335/84c48fae-afbb-58f5-997e-0d81721b6335_2400.webp",
+            "jpeg": "variants/84c48fae-afbb-58f5-997e-0d81721b6335/84c48fae-afbb-58f5-997e-0d81721b6335_2400.jpg",
+            "webp_bytes": 281510,
+            "jpeg_bytes": 462705
+          }
+        }
+      },
+      "lqip_chars": 255
+    },
+    {
+      "id": "6bc1d784-2869-5c61-9ad6-9c18a014e7a3",
+      "title": "七之三 · 花开花飞春又来 05",
+      "album": "2024 七之三：花开花飞春又来",
+      "group": "2024/七之三",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Spring",
+      "campus": null,
+      "photo_type": "自然生态",
+      "tags": [
+        "2024年度总结",
+        "花开花飞春又来",
+        "花"
+      ],
+      "width": 3271,
+      "height": 4916,
+      "captured_at": "2024-04-02T14:46:11",
+      "mime_type": "image/jpeg",
+      "file_size": 12748234,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之三：花开花飞春又来/DSC_5535.jpg",
+      "source_sha256": "2a387a3345bed9c61a4c467235146f0d780d40ce42e76a76cefd765a0ad7bc94",
+      "gps_in_source": false,
+      "target_filename": "DSC_5535.jpg",
+      "files": {
+        "original": "originals/6bc1d784-2869-5c61-9ad6-9c18a014e7a3.jpg",
+        "thumbnail": "thumbnails/6bc1d784-2869-5c61-9ad6-9c18a014e7a3_thumb.jpg",
+        "compressed": "compressed/6bc1d784-2869-5c61-9ad6-9c18a014e7a3_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/6bc1d784-2869-5c61-9ad6-9c18a014e7a3/6bc1d784-2869-5c61-9ad6-9c18a014e7a3_320.webp",
+            "jpeg": "variants/6bc1d784-2869-5c61-9ad6-9c18a014e7a3/6bc1d784-2869-5c61-9ad6-9c18a014e7a3_320.jpg",
+            "webp_bytes": 18450,
+            "jpeg_bytes": 19595
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/6bc1d784-2869-5c61-9ad6-9c18a014e7a3/6bc1d784-2869-5c61-9ad6-9c18a014e7a3_640.webp",
+            "jpeg": "variants/6bc1d784-2869-5c61-9ad6-9c18a014e7a3/6bc1d784-2869-5c61-9ad6-9c18a014e7a3_640.jpg",
+            "webp_bytes": 73748,
+            "jpeg_bytes": 75504
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/6bc1d784-2869-5c61-9ad6-9c18a014e7a3/6bc1d784-2869-5c61-9ad6-9c18a014e7a3_1080.webp",
+            "jpeg": "variants/6bc1d784-2869-5c61-9ad6-9c18a014e7a3/6bc1d784-2869-5c61-9ad6-9c18a014e7a3_1080.jpg",
+            "webp_bytes": 191300,
+            "jpeg_bytes": 204909
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/6bc1d784-2869-5c61-9ad6-9c18a014e7a3/6bc1d784-2869-5c61-9ad6-9c18a014e7a3_1600.webp",
+            "jpeg": "variants/6bc1d784-2869-5c61-9ad6-9c18a014e7a3/6bc1d784-2869-5c61-9ad6-9c18a014e7a3_1600.jpg",
+            "webp_bytes": 377070,
+            "jpeg_bytes": 429180
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/6bc1d784-2869-5c61-9ad6-9c18a014e7a3/6bc1d784-2869-5c61-9ad6-9c18a014e7a3_2400.webp",
+            "jpeg": "variants/6bc1d784-2869-5c61-9ad6-9c18a014e7a3/6bc1d784-2869-5c61-9ad6-9c18a014e7a3_2400.jpg",
+            "webp_bytes": 745308,
+            "jpeg_bytes": 882078
+          }
+        }
+      },
+      "lqip_chars": 235
+    },
+    {
+      "id": "24ba5ca4-e459-52f2-a712-d400152d2311",
+      "title": "七之四 · The Decisive Moments 05",
+      "album": "2024 七之四：The Decisive Moments",
+      "group": "2024/七之四",
+      "status": "approved",
+      "category": "Documentary",
+      "season": "Spring",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "The Decisive Moments",
+        "街头"
+      ],
+      "width": 4024,
+      "height": 4024,
+      "captured_at": "2024-03-01T14:20:53",
+      "mime_type": "image/jpeg",
+      "file_size": 9591132,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之四：The Decisive Moments/DSC_9814.jpg",
+      "source_sha256": "e831d0fcf7c881bbc19b1bac9fc2f9966a8503705e8c6e07efea5f81b0aef917",
+      "gps_in_source": false,
+      "target_filename": "DSC_9814.jpg",
+      "files": {
+        "original": "originals/24ba5ca4-e459-52f2-a712-d400152d2311.jpg",
+        "thumbnail": "thumbnails/24ba5ca4-e459-52f2-a712-d400152d2311_thumb.jpg",
+        "compressed": "compressed/24ba5ca4-e459-52f2-a712-d400152d2311_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 320,
+            "webp": "variants/24ba5ca4-e459-52f2-a712-d400152d2311/24ba5ca4-e459-52f2-a712-d400152d2311_320.webp",
+            "jpeg": "variants/24ba5ca4-e459-52f2-a712-d400152d2311/24ba5ca4-e459-52f2-a712-d400152d2311_320.jpg",
+            "webp_bytes": 18320,
+            "jpeg_bytes": 21947
+          },
+          "640": {
+            "width": 640,
+            "height": 640,
+            "webp": "variants/24ba5ca4-e459-52f2-a712-d400152d2311/24ba5ca4-e459-52f2-a712-d400152d2311_640.webp",
+            "jpeg": "variants/24ba5ca4-e459-52f2-a712-d400152d2311/24ba5ca4-e459-52f2-a712-d400152d2311_640.jpg",
+            "webp_bytes": 65808,
+            "jpeg_bytes": 83841
+          },
+          "1080": {
+            "width": 1080,
+            "height": 1080,
+            "webp": "variants/24ba5ca4-e459-52f2-a712-d400152d2311/24ba5ca4-e459-52f2-a712-d400152d2311_1080.webp",
+            "jpeg": "variants/24ba5ca4-e459-52f2-a712-d400152d2311/24ba5ca4-e459-52f2-a712-d400152d2311_1080.jpg",
+            "webp_bytes": 156142,
+            "jpeg_bytes": 219059
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1600,
+            "webp": "variants/24ba5ca4-e459-52f2-a712-d400152d2311/24ba5ca4-e459-52f2-a712-d400152d2311_1600.webp",
+            "jpeg": "variants/24ba5ca4-e459-52f2-a712-d400152d2311/24ba5ca4-e459-52f2-a712-d400152d2311_1600.jpg",
+            "webp_bytes": 289262,
+            "jpeg_bytes": 430250
+          },
+          "2400": {
+            "width": 2400,
+            "height": 2400,
+            "webp": "variants/24ba5ca4-e459-52f2-a712-d400152d2311/24ba5ca4-e459-52f2-a712-d400152d2311_2400.webp",
+            "jpeg": "variants/24ba5ca4-e459-52f2-a712-d400152d2311/24ba5ca4-e459-52f2-a712-d400152d2311_2400.jpg",
+            "webp_bytes": 546552,
+            "jpeg_bytes": 854312
+          }
+        }
+      },
+      "lqip_chars": 263
+    },
+    {
+      "id": "e86f6d3b-ecc2-5024-9a6c-56e323eb1d89",
+      "title": "七之六 · ta在丛中笑 05",
+      "album": "2024 七之六：ta在丛中笑",
+      "group": "2024/七之六",
+      "status": "pending",
+      "category": "Documentary",
+      "season": "Winter",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "ta在丛中笑",
+        "笑容"
+      ],
+      "width": 4024,
+      "height": 6048,
+      "captured_at": "2024-01-23T05:04:59",
+      "mime_type": "image/jpeg",
+      "file_size": 18201628,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之六：ta在丛中笑/DSC_3624.jpg",
+      "source_sha256": "9fd7761a395074a023dca858d26cc35478f8c2d33c681c48bf246ca9b7d17ee4",
+      "gps_in_source": false,
+      "target_filename": "DSC_3624.jpg",
+      "files": {
+        "original": "originals/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89.jpg",
+        "thumbnail": "thumbnails/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89_thumb.jpg",
+        "compressed": "compressed/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89_320.webp",
+            "jpeg": "variants/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89_320.jpg",
+            "webp_bytes": 14798,
+            "jpeg_bytes": 17375
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89_640.webp",
+            "jpeg": "variants/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89_640.jpg",
+            "webp_bytes": 42604,
+            "jpeg_bytes": 55364
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89_1080.webp",
+            "jpeg": "variants/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89_1080.jpg",
+            "webp_bytes": 91028,
+            "jpeg_bytes": 130876
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89_1600.webp",
+            "jpeg": "variants/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89_1600.jpg",
+            "webp_bytes": 159136,
+            "jpeg_bytes": 253676
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89_2400.webp",
+            "jpeg": "variants/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89/e86f6d3b-ecc2-5024-9a6c-56e323eb1d89_2400.jpg",
+            "webp_bytes": 354854,
+            "jpeg_bytes": 530577
+          }
+        }
+      },
+      "lqip_chars": 195
+    },
+    {
+      "id": "4031b100-0540-577d-9f24-0aed782a4c32",
+      "title": "七之七 · 北化与我 05",
+      "album": "2024 七之七：北化与我",
+      "group": "2024/七之七",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Summer",
+      "campus": "昌平校区",
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "北化与我",
+        "校园",
+        "北化"
+      ],
+      "width": 3619,
+      "height": 5439,
+      "captured_at": "2024-08-04T16:13:28",
+      "mime_type": "image/jpeg",
+      "file_size": 11537898,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之七：北化与我/_DSC0642.jpg",
+      "source_sha256": "7548df116e891f1128a0148003e9120dedc696643e3a811d3c2fca602ff01a80",
+      "gps_in_source": false,
+      "target_filename": "_DSC0642.jpg",
+      "files": {
+        "original": "originals/4031b100-0540-577d-9f24-0aed782a4c32.jpg",
+        "thumbnail": "thumbnails/4031b100-0540-577d-9f24-0aed782a4c32_thumb.jpg",
+        "compressed": "compressed/4031b100-0540-577d-9f24-0aed782a4c32_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/4031b100-0540-577d-9f24-0aed782a4c32/4031b100-0540-577d-9f24-0aed782a4c32_320.webp",
+            "jpeg": "variants/4031b100-0540-577d-9f24-0aed782a4c32/4031b100-0540-577d-9f24-0aed782a4c32_320.jpg",
+            "webp_bytes": 21482,
+            "jpeg_bytes": 22953
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/4031b100-0540-577d-9f24-0aed782a4c32/4031b100-0540-577d-9f24-0aed782a4c32_640.webp",
+            "jpeg": "variants/4031b100-0540-577d-9f24-0aed782a4c32/4031b100-0540-577d-9f24-0aed782a4c32_640.jpg",
+            "webp_bytes": 70540,
+            "jpeg_bytes": 78507
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/4031b100-0540-577d-9f24-0aed782a4c32/4031b100-0540-577d-9f24-0aed782a4c32_1080.webp",
+            "jpeg": "variants/4031b100-0540-577d-9f24-0aed782a4c32/4031b100-0540-577d-9f24-0aed782a4c32_1080.jpg",
+            "webp_bytes": 176206,
+            "jpeg_bytes": 198581
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/4031b100-0540-577d-9f24-0aed782a4c32/4031b100-0540-577d-9f24-0aed782a4c32_1600.webp",
+            "jpeg": "variants/4031b100-0540-577d-9f24-0aed782a4c32/4031b100-0540-577d-9f24-0aed782a4c32_1600.jpg",
+            "webp_bytes": 340956,
+            "jpeg_bytes": 397562
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/4031b100-0540-577d-9f24-0aed782a4c32/4031b100-0540-577d-9f24-0aed782a4c32_2400.webp",
+            "jpeg": "variants/4031b100-0540-577d-9f24-0aed782a4c32/4031b100-0540-577d-9f24-0aed782a4c32_2400.jpg",
+            "webp_bytes": 657500,
+            "jpeg_bytes": 788689
+          }
+        }
+      },
+      "lqip_chars": 207
+    },
+    {
+      "id": "bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2",
+      "title": "2024 校园春季 05",
+      "album": "2024 校园四季",
+      "group": "2024/校园四季",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Spring",
+      "campus": "昌平校区",
+      "photo_type": "自然生态",
+      "tags": [
+        "2024年度总结",
+        "校园四季",
+        "春季"
+      ],
+      "width": 3043,
+      "height": 2036,
+      "captured_at": "2025-03-31T18:03:03",
+      "mime_type": "image/jpeg",
+      "file_size": 2618766,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/春/DSCF3829.jpg",
+      "source_sha256": "997d3f54d52656c39d4811b0c5dab40a2749593283511539e1e5f6401256ce7e",
+      "gps_in_source": false,
+      "target_filename": "DSCF3829.jpg",
+      "files": {
+        "original": "originals/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2.jpg",
+        "thumbnail": "thumbnails/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2_thumb.jpg",
+        "compressed": "compressed/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 214,
+            "webp": "variants/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2_320.webp",
+            "jpeg": "variants/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2_320.jpg",
+            "webp_bytes": 16396,
+            "jpeg_bytes": 19177
+          },
+          "640": {
+            "width": 640,
+            "height": 428,
+            "webp": "variants/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2_640.webp",
+            "jpeg": "variants/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2_640.jpg",
+            "webp_bytes": 39078,
+            "jpeg_bytes": 52127
+          },
+          "1080": {
+            "width": 1080,
+            "height": 723,
+            "webp": "variants/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2_1080.webp",
+            "jpeg": "variants/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2_1080.jpg",
+            "webp_bytes": 74534,
+            "jpeg_bytes": 109557
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1071,
+            "webp": "variants/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2_1600.webp",
+            "jpeg": "variants/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2_1600.jpg",
+            "webp_bytes": 117324,
+            "jpeg_bytes": 187165
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1606,
+            "webp": "variants/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2_2400.webp",
+            "jpeg": "variants/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2/bf04cbca-b86c-511b-b5c7-1ff8cb8b3cc2_2400.jpg",
+            "webp_bytes": 191660,
+            "jpeg_bytes": 338468
+          }
+        }
+      },
+      "lqip_chars": 219
+    },
+    {
+      "id": "33d3581f-cc7e-57d9-b93f-980e10dea3b3",
+      "title": "5月 · 同样，老相机GX9拍摄的最后一批照片，当时一直…",
+      "album": "2023 · 5月",
+      "group": "2023/月度随笔",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Spring",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "5月",
+        "阳光"
+      ],
+      "width": 3888,
+      "height": 5184,
+      "captured_at": "2023-05-08T15:46:25",
+      "mime_type": "image/jpeg",
+      "file_size": 15141327,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/5月/20230508-12.jpg",
+      "source_sha256": "f44ab3f0df0c2d934eeeaae08d4315edb0004bde0cbc8acaa2933743d3c275b8",
+      "gps_in_source": false,
+      "target_filename": "20230508-12.jpg",
+      "files": {
+        "original": "originals/33d3581f-cc7e-57d9-b93f-980e10dea3b3.jpg",
+        "thumbnail": "thumbnails/33d3581f-cc7e-57d9-b93f-980e10dea3b3_thumb.jpg",
+        "compressed": "compressed/33d3581f-cc7e-57d9-b93f-980e10dea3b3_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 240,
+            "height": 320,
+            "webp": "variants/33d3581f-cc7e-57d9-b93f-980e10dea3b3/33d3581f-cc7e-57d9-b93f-980e10dea3b3_320.webp",
+            "jpeg": "variants/33d3581f-cc7e-57d9-b93f-980e10dea3b3/33d3581f-cc7e-57d9-b93f-980e10dea3b3_320.jpg",
+            "webp_bytes": 21590,
+            "jpeg_bytes": 23639
+          },
+          "640": {
+            "width": 480,
+            "height": 640,
+            "webp": "variants/33d3581f-cc7e-57d9-b93f-980e10dea3b3/33d3581f-cc7e-57d9-b93f-980e10dea3b3_640.webp",
+            "jpeg": "variants/33d3581f-cc7e-57d9-b93f-980e10dea3b3/33d3581f-cc7e-57d9-b93f-980e10dea3b3_640.jpg",
+            "webp_bytes": 71958,
+            "jpeg_bytes": 81947
+          },
+          "1080": {
+            "width": 810,
+            "height": 1080,
+            "webp": "variants/33d3581f-cc7e-57d9-b93f-980e10dea3b3/33d3581f-cc7e-57d9-b93f-980e10dea3b3_1080.webp",
+            "jpeg": "variants/33d3581f-cc7e-57d9-b93f-980e10dea3b3/33d3581f-cc7e-57d9-b93f-980e10dea3b3_1080.jpg",
+            "webp_bytes": 171764,
+            "jpeg_bytes": 207005
+          },
+          "1600": {
+            "width": 1200,
+            "height": 1600,
+            "webp": "variants/33d3581f-cc7e-57d9-b93f-980e10dea3b3/33d3581f-cc7e-57d9-b93f-980e10dea3b3_1600.webp",
+            "jpeg": "variants/33d3581f-cc7e-57d9-b93f-980e10dea3b3/33d3581f-cc7e-57d9-b93f-980e10dea3b3_1600.jpg",
+            "webp_bytes": 323236,
+            "jpeg_bytes": 409118
+          },
+          "2400": {
+            "width": 1800,
+            "height": 2400,
+            "webp": "variants/33d3581f-cc7e-57d9-b93f-980e10dea3b3/33d3581f-cc7e-57d9-b93f-980e10dea3b3_2400.webp",
+            "jpeg": "variants/33d3581f-cc7e-57d9-b93f-980e10dea3b3/33d3581f-cc7e-57d9-b93f-980e10dea3b3_2400.jpg",
+            "webp_bytes": 642982,
+            "jpeg_bytes": 833054
+          }
+        }
+      },
+      "lqip_chars": 235
+    },
+    {
+      "id": "911dadf8-0da0-55a3-8543-027fb2c5d611",
+      "title": "2023 年度精选 05",
+      "album": "2023/年度精选",
+      "group": "2023/年度精选",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Summer",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "年度精选"
+      ],
+      "width": 4024,
+      "height": 6048,
+      "captured_at": "2023-08-16T16:20:59",
+      "mime_type": "image/jpeg",
+      "file_size": 17156394,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/年度 9张图/DSC_9587.jpg",
+      "source_sha256": "4ec90c5574eb68ff849657745a7f3fe5631db4132b838cf1e5ee3398c172d1ba",
+      "gps_in_source": false,
+      "target_filename": "DSC_9587.jpg",
+      "files": {
+        "original": "originals/911dadf8-0da0-55a3-8543-027fb2c5d611.jpg",
+        "thumbnail": "thumbnails/911dadf8-0da0-55a3-8543-027fb2c5d611_thumb.jpg",
+        "compressed": "compressed/911dadf8-0da0-55a3-8543-027fb2c5d611_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/911dadf8-0da0-55a3-8543-027fb2c5d611/911dadf8-0da0-55a3-8543-027fb2c5d611_320.webp",
+            "jpeg": "variants/911dadf8-0da0-55a3-8543-027fb2c5d611/911dadf8-0da0-55a3-8543-027fb2c5d611_320.jpg",
+            "webp_bytes": 21722,
+            "jpeg_bytes": 23204
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/911dadf8-0da0-55a3-8543-027fb2c5d611/911dadf8-0da0-55a3-8543-027fb2c5d611_640.webp",
+            "jpeg": "variants/911dadf8-0da0-55a3-8543-027fb2c5d611/911dadf8-0da0-55a3-8543-027fb2c5d611_640.jpg",
+            "webp_bytes": 79352,
+            "jpeg_bytes": 85710
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/911dadf8-0da0-55a3-8543-027fb2c5d611/911dadf8-0da0-55a3-8543-027fb2c5d611_1080.webp",
+            "jpeg": "variants/911dadf8-0da0-55a3-8543-027fb2c5d611/911dadf8-0da0-55a3-8543-027fb2c5d611_1080.jpg",
+            "webp_bytes": 202662,
+            "jpeg_bytes": 224431
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/911dadf8-0da0-55a3-8543-027fb2c5d611/911dadf8-0da0-55a3-8543-027fb2c5d611_1600.webp",
+            "jpeg": "variants/911dadf8-0da0-55a3-8543-027fb2c5d611/911dadf8-0da0-55a3-8543-027fb2c5d611_1600.jpg",
+            "webp_bytes": 412904,
+            "jpeg_bytes": 457777
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/911dadf8-0da0-55a3-8543-027fb2c5d611/911dadf8-0da0-55a3-8543-027fb2c5d611_2400.webp",
+            "jpeg": "variants/911dadf8-0da0-55a3-8543-027fb2c5d611/911dadf8-0da0-55a3-8543-027fb2c5d611_2400.jpg",
+            "webp_bytes": 812594,
+            "jpeg_bytes": 929258
+          }
+        }
+      },
+      "lqip_chars": 207
+    },
+    {
+      "id": "b1e8c68a-31a7-534a-b74b-f1f4942d4f54",
+      "title": "七之六 · ta在丛中笑 06",
+      "album": "2024 七之六：ta在丛中笑",
+      "group": "2024/七之六",
+      "status": "pending",
+      "category": "Documentary",
+      "season": "Autumn",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2024年度总结",
+        "ta在丛中笑",
+        "笑容"
+      ],
+      "width": 4869,
+      "height": 3246,
+      "captured_at": "2024-10-25T20:27:38",
+      "mime_type": "image/jpeg",
+      "file_size": 9062092,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/七之六：ta在丛中笑/YXC_6930-已增强-降噪.jpg",
+      "source_sha256": "701d035542892d489bed2d6c347a425f2bc64c27fb6eb6d7e8ed92539cfc74d6",
+      "gps_in_source": false,
+      "target_filename": "YXC_6930-已增强-降噪.jpg",
+      "files": {
+        "original": "originals/b1e8c68a-31a7-534a-b74b-f1f4942d4f54.jpg",
+        "thumbnail": "thumbnails/b1e8c68a-31a7-534a-b74b-f1f4942d4f54_thumb.jpg",
+        "compressed": "compressed/b1e8c68a-31a7-534a-b74b-f1f4942d4f54_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 214,
+            "webp": "variants/b1e8c68a-31a7-534a-b74b-f1f4942d4f54/b1e8c68a-31a7-534a-b74b-f1f4942d4f54_320.webp",
+            "jpeg": "variants/b1e8c68a-31a7-534a-b74b-f1f4942d4f54/b1e8c68a-31a7-534a-b74b-f1f4942d4f54_320.jpg",
+            "webp_bytes": 17328,
+            "jpeg_bytes": 20472
+          },
+          "640": {
+            "width": 640,
+            "height": 427,
+            "webp": "variants/b1e8c68a-31a7-534a-b74b-f1f4942d4f54/b1e8c68a-31a7-534a-b74b-f1f4942d4f54_640.webp",
+            "jpeg": "variants/b1e8c68a-31a7-534a-b74b-f1f4942d4f54/b1e8c68a-31a7-534a-b74b-f1f4942d4f54_640.jpg",
+            "webp_bytes": 52538,
+            "jpeg_bytes": 65385
+          },
+          "1080": {
+            "width": 1080,
+            "height": 720,
+            "webp": "variants/b1e8c68a-31a7-534a-b74b-f1f4942d4f54/b1e8c68a-31a7-534a-b74b-f1f4942d4f54_1080.webp",
+            "jpeg": "variants/b1e8c68a-31a7-534a-b74b-f1f4942d4f54/b1e8c68a-31a7-534a-b74b-f1f4942d4f54_1080.jpg",
+            "webp_bytes": 115764,
+            "jpeg_bytes": 152654
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1067,
+            "webp": "variants/b1e8c68a-31a7-534a-b74b-f1f4942d4f54/b1e8c68a-31a7-534a-b74b-f1f4942d4f54_1600.webp",
+            "jpeg": "variants/b1e8c68a-31a7-534a-b74b-f1f4942d4f54/b1e8c68a-31a7-534a-b74b-f1f4942d4f54_1600.jpg",
+            "webp_bytes": 209342,
+            "jpeg_bytes": 286646
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1600,
+            "webp": "variants/b1e8c68a-31a7-534a-b74b-f1f4942d4f54/b1e8c68a-31a7-534a-b74b-f1f4942d4f54_2400.webp",
+            "jpeg": "variants/b1e8c68a-31a7-534a-b74b-f1f4942d4f54/b1e8c68a-31a7-534a-b74b-f1f4942d4f54_2400.jpg",
+            "webp_bytes": 364418,
+            "jpeg_bytes": 541596
+          }
+        }
+      },
+      "lqip_chars": 211
+    },
+    {
+      "id": "4cb7aba4-9507-50d9-a32b-a65e50b30a23",
+      "title": "2024 校园夏季 06",
+      "album": "2024 校园四季",
+      "group": "2024/校园四季",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Summer",
+      "campus": "昌平校区",
+      "photo_type": "自然生态",
+      "tags": [
+        "2024年度总结",
+        "校园四季",
+        "夏季"
+      ],
+      "width": 6019,
+      "height": 3386,
+      "captured_at": "2024-09-15T11:12:28",
+      "mime_type": "image/jpeg",
+      "file_size": 9778561,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/夏/DSC_1092.jpg",
+      "source_sha256": "8569be179a30ce72d9e671ed300ce77d7686bf6524f8ce507d6a9259b48ac80e",
+      "gps_in_source": false,
+      "target_filename": "DSC_1092.jpg",
+      "files": {
+        "original": "originals/4cb7aba4-9507-50d9-a32b-a65e50b30a23.jpg",
+        "thumbnail": "thumbnails/4cb7aba4-9507-50d9-a32b-a65e50b30a23_thumb.jpg",
+        "compressed": "compressed/4cb7aba4-9507-50d9-a32b-a65e50b30a23_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 180,
+            "webp": "variants/4cb7aba4-9507-50d9-a32b-a65e50b30a23/4cb7aba4-9507-50d9-a32b-a65e50b30a23_320.webp",
+            "jpeg": "variants/4cb7aba4-9507-50d9-a32b-a65e50b30a23/4cb7aba4-9507-50d9-a32b-a65e50b30a23_320.jpg",
+            "webp_bytes": 17434,
+            "jpeg_bytes": 20280
+          },
+          "640": {
+            "width": 640,
+            "height": 360,
+            "webp": "variants/4cb7aba4-9507-50d9-a32b-a65e50b30a23/4cb7aba4-9507-50d9-a32b-a65e50b30a23_640.webp",
+            "jpeg": "variants/4cb7aba4-9507-50d9-a32b-a65e50b30a23/4cb7aba4-9507-50d9-a32b-a65e50b30a23_640.jpg",
+            "webp_bytes": 46520,
+            "jpeg_bytes": 58013
+          },
+          "1080": {
+            "width": 1080,
+            "height": 608,
+            "webp": "variants/4cb7aba4-9507-50d9-a32b-a65e50b30a23/4cb7aba4-9507-50d9-a32b-a65e50b30a23_1080.webp",
+            "jpeg": "variants/4cb7aba4-9507-50d9-a32b-a65e50b30a23/4cb7aba4-9507-50d9-a32b-a65e50b30a23_1080.jpg",
+            "webp_bytes": 89534,
+            "jpeg_bytes": 122271
+          },
+          "1600": {
+            "width": 1600,
+            "height": 900,
+            "webp": "variants/4cb7aba4-9507-50d9-a32b-a65e50b30a23/4cb7aba4-9507-50d9-a32b-a65e50b30a23_1600.webp",
+            "jpeg": "variants/4cb7aba4-9507-50d9-a32b-a65e50b30a23/4cb7aba4-9507-50d9-a32b-a65e50b30a23_1600.jpg",
+            "webp_bytes": 144898,
+            "jpeg_bytes": 211896
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1350,
+            "webp": "variants/4cb7aba4-9507-50d9-a32b-a65e50b30a23/4cb7aba4-9507-50d9-a32b-a65e50b30a23_2400.webp",
+            "jpeg": "variants/4cb7aba4-9507-50d9-a32b-a65e50b30a23/4cb7aba4-9507-50d9-a32b-a65e50b30a23_2400.jpg",
+            "webp_bytes": 240552,
+            "jpeg_bytes": 375392
+          }
+        }
+      },
+      "lqip_chars": 255
+    },
+    {
+      "id": "be5d485e-8f7e-5721-acca-523d938e3b93",
+      "title": "7月 · 七月的故事，从天津开始，考完试的第二天就跑到了…",
+      "album": "2023 · 7月",
+      "group": "2023/月度随笔",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Summer",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "7月"
+      ],
+      "width": 5927,
+      "height": 3943,
+      "captured_at": "2023-07-01T19:26:10",
+      "mime_type": "image/jpeg",
+      "file_size": 13551268,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/7月/DSC_2838.jpg",
+      "source_sha256": "90bfa4953e787b8aba44c6fb97ce576ede8bbf5b61c7358abda085523ae02641",
+      "gps_in_source": false,
+      "target_filename": "DSC_2838.jpg",
+      "files": {
+        "original": "originals/be5d485e-8f7e-5721-acca-523d938e3b93.jpg",
+        "thumbnail": "thumbnails/be5d485e-8f7e-5721-acca-523d938e3b93_thumb.jpg",
+        "compressed": "compressed/be5d485e-8f7e-5721-acca-523d938e3b93_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/be5d485e-8f7e-5721-acca-523d938e3b93/be5d485e-8f7e-5721-acca-523d938e3b93_320.webp",
+            "jpeg": "variants/be5d485e-8f7e-5721-acca-523d938e3b93/be5d485e-8f7e-5721-acca-523d938e3b93_320.jpg",
+            "webp_bytes": 13330,
+            "jpeg_bytes": 16451
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/be5d485e-8f7e-5721-acca-523d938e3b93/be5d485e-8f7e-5721-acca-523d938e3b93_640.webp",
+            "jpeg": "variants/be5d485e-8f7e-5721-acca-523d938e3b93/be5d485e-8f7e-5721-acca-523d938e3b93_640.jpg",
+            "webp_bytes": 39988,
+            "jpeg_bytes": 53198
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/be5d485e-8f7e-5721-acca-523d938e3b93/be5d485e-8f7e-5721-acca-523d938e3b93_1080.webp",
+            "jpeg": "variants/be5d485e-8f7e-5721-acca-523d938e3b93/be5d485e-8f7e-5721-acca-523d938e3b93_1080.jpg",
+            "webp_bytes": 89504,
+            "jpeg_bytes": 128263
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/be5d485e-8f7e-5721-acca-523d938e3b93/be5d485e-8f7e-5721-acca-523d938e3b93_1600.webp",
+            "jpeg": "variants/be5d485e-8f7e-5721-acca-523d938e3b93/be5d485e-8f7e-5721-acca-523d938e3b93_1600.jpg",
+            "webp_bytes": 168926,
+            "jpeg_bytes": 252172
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/be5d485e-8f7e-5721-acca-523d938e3b93/be5d485e-8f7e-5721-acca-523d938e3b93_2400.webp",
+            "jpeg": "variants/be5d485e-8f7e-5721-acca-523d938e3b93/be5d485e-8f7e-5721-acca-523d938e3b93_2400.jpg",
+            "webp_bytes": 331292,
+            "jpeg_bytes": 519705
+          }
+        }
+      },
+      "lqip_chars": 223
+    },
+    {
+      "id": "c4af4332-774a-5828-ac4e-25c86936d1e1",
+      "title": "2024 校园秋季 07",
+      "album": "2024 校园四季",
+      "group": "2024/校园四季",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Autumn",
+      "campus": "昌平校区",
+      "photo_type": "自然生态",
+      "tags": [
+        "2024年度总结",
+        "校园四季",
+        "秋季"
+      ],
+      "width": 4024,
+      "height": 6048,
+      "captured_at": "2023-11-08T14:02:28",
+      "mime_type": "image/jpeg",
+      "file_size": 15854847,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/秋/DSC_8309.jpg",
+      "source_sha256": "3f8da6d2eb5a939dbdaec304685d11ff2fab9fd4dffd355e5a8b1ae069455f54",
+      "gps_in_source": false,
+      "target_filename": "DSC_8309.jpg",
+      "files": {
+        "original": "originals/c4af4332-774a-5828-ac4e-25c86936d1e1.jpg",
+        "thumbnail": "thumbnails/c4af4332-774a-5828-ac4e-25c86936d1e1_thumb.jpg",
+        "compressed": "compressed/c4af4332-774a-5828-ac4e-25c86936d1e1_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/c4af4332-774a-5828-ac4e-25c86936d1e1/c4af4332-774a-5828-ac4e-25c86936d1e1_320.webp",
+            "jpeg": "variants/c4af4332-774a-5828-ac4e-25c86936d1e1/c4af4332-774a-5828-ac4e-25c86936d1e1_320.jpg",
+            "webp_bytes": 18140,
+            "jpeg_bytes": 21158
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/c4af4332-774a-5828-ac4e-25c86936d1e1/c4af4332-774a-5828-ac4e-25c86936d1e1_640.webp",
+            "jpeg": "variants/c4af4332-774a-5828-ac4e-25c86936d1e1/c4af4332-774a-5828-ac4e-25c86936d1e1_640.jpg",
+            "webp_bytes": 55476,
+            "jpeg_bytes": 65992
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/c4af4332-774a-5828-ac4e-25c86936d1e1/c4af4332-774a-5828-ac4e-25c86936d1e1_1080.webp",
+            "jpeg": "variants/c4af4332-774a-5828-ac4e-25c86936d1e1/c4af4332-774a-5828-ac4e-25c86936d1e1_1080.jpg",
+            "webp_bytes": 131800,
+            "jpeg_bytes": 159421
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/c4af4332-774a-5828-ac4e-25c86936d1e1/c4af4332-774a-5828-ac4e-25c86936d1e1_1600.webp",
+            "jpeg": "variants/c4af4332-774a-5828-ac4e-25c86936d1e1/c4af4332-774a-5828-ac4e-25c86936d1e1_1600.jpg",
+            "webp_bytes": 262552,
+            "jpeg_bytes": 316060
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/c4af4332-774a-5828-ac4e-25c86936d1e1/c4af4332-774a-5828-ac4e-25c86936d1e1_2400.webp",
+            "jpeg": "variants/c4af4332-774a-5828-ac4e-25c86936d1e1/c4af4332-774a-5828-ac4e-25c86936d1e1_2400.jpg",
+            "webp_bytes": 507714,
+            "jpeg_bytes": 644872
+          }
+        }
+      },
+      "lqip_chars": 275
+    },
+    {
+      "id": "095f6be8-1e76-554a-9c00-a3c077785640",
+      "title": "8月 · 蓬莱阁的小缆车+青色，基本上就是整个夏天的调色…",
+      "album": "2023 · 8月",
+      "group": "2023/月度随笔",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Summer",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "8月",
+        "海边"
+      ],
+      "width": 4024,
+      "height": 6048,
+      "captured_at": "2023-08-18T13:47:17",
+      "mime_type": "image/jpeg",
+      "file_size": 8161087,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/8月/DSC_0158.jpg",
+      "source_sha256": "4ea8feddc105605a3ec2e587f435c2cb418105bd19ec9dc052e5340ec74fb80c",
+      "gps_in_source": false,
+      "target_filename": "DSC_0158.jpg",
+      "files": {
+        "original": "originals/095f6be8-1e76-554a-9c00-a3c077785640.jpg",
+        "thumbnail": "thumbnails/095f6be8-1e76-554a-9c00-a3c077785640_thumb.jpg",
+        "compressed": "compressed/095f6be8-1e76-554a-9c00-a3c077785640_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/095f6be8-1e76-554a-9c00-a3c077785640/095f6be8-1e76-554a-9c00-a3c077785640_320.webp",
+            "jpeg": "variants/095f6be8-1e76-554a-9c00-a3c077785640/095f6be8-1e76-554a-9c00-a3c077785640_320.jpg",
+            "webp_bytes": 11556,
+            "jpeg_bytes": 14299
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/095f6be8-1e76-554a-9c00-a3c077785640/095f6be8-1e76-554a-9c00-a3c077785640_640.webp",
+            "jpeg": "variants/095f6be8-1e76-554a-9c00-a3c077785640/095f6be8-1e76-554a-9c00-a3c077785640_640.jpg",
+            "webp_bytes": 31012,
+            "jpeg_bytes": 42078
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/095f6be8-1e76-554a-9c00-a3c077785640/095f6be8-1e76-554a-9c00-a3c077785640_1080.webp",
+            "jpeg": "variants/095f6be8-1e76-554a-9c00-a3c077785640/095f6be8-1e76-554a-9c00-a3c077785640_1080.jpg",
+            "webp_bytes": 65520,
+            "jpeg_bytes": 95347
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/095f6be8-1e76-554a-9c00-a3c077785640/095f6be8-1e76-554a-9c00-a3c077785640_1600.webp",
+            "jpeg": "variants/095f6be8-1e76-554a-9c00-a3c077785640/095f6be8-1e76-554a-9c00-a3c077785640_1600.jpg",
+            "webp_bytes": 115002,
+            "jpeg_bytes": 178035
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/095f6be8-1e76-554a-9c00-a3c077785640/095f6be8-1e76-554a-9c00-a3c077785640_2400.webp",
+            "jpeg": "variants/095f6be8-1e76-554a-9c00-a3c077785640/095f6be8-1e76-554a-9c00-a3c077785640_2400.jpg",
+            "webp_bytes": 208600,
+            "jpeg_bytes": 338397
+          }
+        }
+      },
+      "lqip_chars": 215
+    },
+    {
+      "id": "c53b55a7-007f-5ef0-9b6e-9e8fe2230de4",
+      "title": "2024 校园冬季 08",
+      "album": "2024 校园四季",
+      "group": "2024/校园四季",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Winter",
+      "campus": "昌平校区",
+      "photo_type": "自然生态",
+      "tags": [
+        "2024年度总结",
+        "校园四季",
+        "冬季"
+      ],
+      "width": 4024,
+      "height": 6048,
+      "captured_at": "2023-12-17T15:05:27",
+      "mime_type": "image/jpeg",
+      "file_size": 6755548,
+      "source": "/mnt/publicaccess/wppbackup/2024-end of year-remix/冬/DSC_7801.jpg",
+      "source_sha256": "7b0249093e6955aadf114f9d888794fa5aa45471b405549e751e7ec3c2347d5a",
+      "gps_in_source": false,
+      "target_filename": "DSC_7801.jpg",
+      "files": {
+        "original": "originals/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4.jpg",
+        "thumbnail": "thumbnails/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4_thumb.jpg",
+        "compressed": "compressed/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4_320.webp",
+            "jpeg": "variants/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4_320.jpg",
+            "webp_bytes": 5814,
+            "jpeg_bytes": 9503
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4_640.webp",
+            "jpeg": "variants/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4_640.jpg",
+            "webp_bytes": 13360,
+            "jpeg_bytes": 25288
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4_1080.webp",
+            "jpeg": "variants/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4_1080.jpg",
+            "webp_bytes": 25656,
+            "jpeg_bytes": 53576
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4_1600.webp",
+            "jpeg": "variants/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4_1600.jpg",
+            "webp_bytes": 44440,
+            "jpeg_bytes": 96648
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4_2400.webp",
+            "jpeg": "variants/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4/c53b55a7-007f-5ef0-9b6e-9e8fe2230de4_2400.jpg",
+            "webp_bytes": 79816,
+            "jpeg_bytes": 184084
+          }
+        }
+      },
+      "lqip_chars": 199
+    },
+    {
+      "id": "672e211e-3b92-52a8-ad18-bbb4a9cc6b89",
+      "title": "9月 · 景山公园 万春亭 蹲了一下午拍的日落延时，算是…",
+      "album": "2023 · 9月",
+      "group": "2023/月度随笔",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Autumn",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "9月",
+        "山",
+        "云"
+      ],
+      "width": 6048,
+      "height": 4024,
+      "captured_at": "2023-09-19T18:20:37",
+      "mime_type": "image/jpeg",
+      "file_size": 9352610,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/9月/9191-56.jpg",
+      "source_sha256": "854a4b8b7c0c4e9e7cfba3a868c1d5c0115274140cf3f8eb51c5008c17be5102",
+      "gps_in_source": false,
+      "target_filename": "9191-56.jpg",
+      "files": {
+        "original": "originals/672e211e-3b92-52a8-ad18-bbb4a9cc6b89.jpg",
+        "thumbnail": "thumbnails/672e211e-3b92-52a8-ad18-bbb4a9cc6b89_thumb.jpg",
+        "compressed": "compressed/672e211e-3b92-52a8-ad18-bbb4a9cc6b89_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 320,
+            "height": 213,
+            "webp": "variants/672e211e-3b92-52a8-ad18-bbb4a9cc6b89/672e211e-3b92-52a8-ad18-bbb4a9cc6b89_320.webp",
+            "jpeg": "variants/672e211e-3b92-52a8-ad18-bbb4a9cc6b89/672e211e-3b92-52a8-ad18-bbb4a9cc6b89_320.jpg",
+            "webp_bytes": 7120,
+            "jpeg_bytes": 10500
+          },
+          "640": {
+            "width": 640,
+            "height": 426,
+            "webp": "variants/672e211e-3b92-52a8-ad18-bbb4a9cc6b89/672e211e-3b92-52a8-ad18-bbb4a9cc6b89_640.webp",
+            "jpeg": "variants/672e211e-3b92-52a8-ad18-bbb4a9cc6b89/672e211e-3b92-52a8-ad18-bbb4a9cc6b89_640.jpg",
+            "webp_bytes": 21604,
+            "jpeg_bytes": 34177
+          },
+          "1080": {
+            "width": 1080,
+            "height": 719,
+            "webp": "variants/672e211e-3b92-52a8-ad18-bbb4a9cc6b89/672e211e-3b92-52a8-ad18-bbb4a9cc6b89_1080.webp",
+            "jpeg": "variants/672e211e-3b92-52a8-ad18-bbb4a9cc6b89/672e211e-3b92-52a8-ad18-bbb4a9cc6b89_1080.jpg",
+            "webp_bytes": 48560,
+            "jpeg_bytes": 82128
+          },
+          "1600": {
+            "width": 1600,
+            "height": 1065,
+            "webp": "variants/672e211e-3b92-52a8-ad18-bbb4a9cc6b89/672e211e-3b92-52a8-ad18-bbb4a9cc6b89_1600.webp",
+            "jpeg": "variants/672e211e-3b92-52a8-ad18-bbb4a9cc6b89/672e211e-3b92-52a8-ad18-bbb4a9cc6b89_1600.jpg",
+            "webp_bytes": 88040,
+            "jpeg_bytes": 157221
+          },
+          "2400": {
+            "width": 2400,
+            "height": 1597,
+            "webp": "variants/672e211e-3b92-52a8-ad18-bbb4a9cc6b89/672e211e-3b92-52a8-ad18-bbb4a9cc6b89_2400.webp",
+            "jpeg": "variants/672e211e-3b92-52a8-ad18-bbb4a9cc6b89/672e211e-3b92-52a8-ad18-bbb4a9cc6b89_2400.jpg",
+            "webp_bytes": 156782,
+            "jpeg_bytes": 302350
+          }
+        }
+      },
+      "lqip_chars": 187
+    },
+    {
+      "id": "0b9e6e58-1715-5fdd-b51b-7120c5de38ed",
+      "title": "10月 · 十月一在家，没事就出去溜达，图片上放没有天空，…",
+      "album": "2023 · 10月",
+      "group": "2023/月度随笔",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Autumn",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "10月",
+        "天空"
+      ],
+      "width": 3440,
+      "height": 5171,
+      "captured_at": "2023-10-03T14:33:46",
+      "mime_type": "image/jpeg",
+      "file_size": 12148178,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/10月/DSC_1636-2.jpg",
+      "source_sha256": "4cce64fbf05157e544a6b7dcaf46f4ab443c5ec02d076961743b5f8d76df6e8c",
+      "gps_in_source": false,
+      "target_filename": "DSC_1636-2.jpg",
+      "files": {
+        "original": "originals/0b9e6e58-1715-5fdd-b51b-7120c5de38ed.jpg",
+        "thumbnail": "thumbnails/0b9e6e58-1715-5fdd-b51b-7120c5de38ed_thumb.jpg",
+        "compressed": "compressed/0b9e6e58-1715-5fdd-b51b-7120c5de38ed_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 213,
+            "height": 320,
+            "webp": "variants/0b9e6e58-1715-5fdd-b51b-7120c5de38ed/0b9e6e58-1715-5fdd-b51b-7120c5de38ed_320.webp",
+            "jpeg": "variants/0b9e6e58-1715-5fdd-b51b-7120c5de38ed/0b9e6e58-1715-5fdd-b51b-7120c5de38ed_320.jpg",
+            "webp_bytes": 20894,
+            "jpeg_bytes": 23227
+          },
+          "640": {
+            "width": 426,
+            "height": 640,
+            "webp": "variants/0b9e6e58-1715-5fdd-b51b-7120c5de38ed/0b9e6e58-1715-5fdd-b51b-7120c5de38ed_640.webp",
+            "jpeg": "variants/0b9e6e58-1715-5fdd-b51b-7120c5de38ed/0b9e6e58-1715-5fdd-b51b-7120c5de38ed_640.jpg",
+            "webp_bytes": 65562,
+            "jpeg_bytes": 77207
+          },
+          "1080": {
+            "width": 719,
+            "height": 1080,
+            "webp": "variants/0b9e6e58-1715-5fdd-b51b-7120c5de38ed/0b9e6e58-1715-5fdd-b51b-7120c5de38ed_1080.webp",
+            "jpeg": "variants/0b9e6e58-1715-5fdd-b51b-7120c5de38ed/0b9e6e58-1715-5fdd-b51b-7120c5de38ed_1080.jpg",
+            "webp_bytes": 151304,
+            "jpeg_bytes": 188155
+          },
+          "1600": {
+            "width": 1065,
+            "height": 1600,
+            "webp": "variants/0b9e6e58-1715-5fdd-b51b-7120c5de38ed/0b9e6e58-1715-5fdd-b51b-7120c5de38ed_1600.webp",
+            "jpeg": "variants/0b9e6e58-1715-5fdd-b51b-7120c5de38ed/0b9e6e58-1715-5fdd-b51b-7120c5de38ed_1600.jpg",
+            "webp_bytes": 286014,
+            "jpeg_bytes": 367088
+          },
+          "2400": {
+            "width": 1597,
+            "height": 2400,
+            "webp": "variants/0b9e6e58-1715-5fdd-b51b-7120c5de38ed/0b9e6e58-1715-5fdd-b51b-7120c5de38ed_2400.webp",
+            "jpeg": "variants/0b9e6e58-1715-5fdd-b51b-7120c5de38ed/0b9e6e58-1715-5fdd-b51b-7120c5de38ed_2400.jpg",
+            "webp_bytes": 547136,
+            "jpeg_bytes": 717976
+          }
+        }
+      },
+      "lqip_chars": 207
+    },
+    {
+      "id": "5875c4c4-1993-5e13-836c-8159bb9d9ca8",
+      "title": "11月 · 天坛公园 光影的分割线，也成为了画面语意的分割线",
+      "album": "2023 · 11月",
+      "group": "2023/月度随笔",
+      "status": "approved",
+      "category": "Landscape",
+      "season": "Autumn",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "11月"
+      ],
+      "width": 3228,
+      "height": 5972,
+      "captured_at": "2023-11-19T15:27:27",
+      "mime_type": "image/jpeg",
+      "file_size": 10267444,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/11月/DSC_0720.jpg",
+      "source_sha256": "582abe83d12e20656afff1c34e5a5ae56b256144a071b568238f17018c788a06",
+      "gps_in_source": false,
+      "target_filename": "DSC_0720.jpg",
+      "files": {
+        "original": "originals/5875c4c4-1993-5e13-836c-8159bb9d9ca8.jpg",
+        "thumbnail": "thumbnails/5875c4c4-1993-5e13-836c-8159bb9d9ca8_thumb.jpg",
+        "compressed": "compressed/5875c4c4-1993-5e13-836c-8159bb9d9ca8_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 173,
+            "height": 320,
+            "webp": "variants/5875c4c4-1993-5e13-836c-8159bb9d9ca8/5875c4c4-1993-5e13-836c-8159bb9d9ca8_320.webp",
+            "jpeg": "variants/5875c4c4-1993-5e13-836c-8159bb9d9ca8/5875c4c4-1993-5e13-836c-8159bb9d9ca8_320.jpg",
+            "webp_bytes": 10386,
+            "jpeg_bytes": 12456
+          },
+          "640": {
+            "width": 346,
+            "height": 640,
+            "webp": "variants/5875c4c4-1993-5e13-836c-8159bb9d9ca8/5875c4c4-1993-5e13-836c-8159bb9d9ca8_640.webp",
+            "jpeg": "variants/5875c4c4-1993-5e13-836c-8159bb9d9ca8/5875c4c4-1993-5e13-836c-8159bb9d9ca8_640.jpg",
+            "webp_bytes": 34680,
+            "jpeg_bytes": 42452
+          },
+          "1080": {
+            "width": 584,
+            "height": 1080,
+            "webp": "variants/5875c4c4-1993-5e13-836c-8159bb9d9ca8/5875c4c4-1993-5e13-836c-8159bb9d9ca8_1080.webp",
+            "jpeg": "variants/5875c4c4-1993-5e13-836c-8159bb9d9ca8/5875c4c4-1993-5e13-836c-8159bb9d9ca8_1080.jpg",
+            "webp_bytes": 84774,
+            "jpeg_bytes": 107218
+          },
+          "1600": {
+            "width": 865,
+            "height": 1600,
+            "webp": "variants/5875c4c4-1993-5e13-836c-8159bb9d9ca8/5875c4c4-1993-5e13-836c-8159bb9d9ca8_1600.webp",
+            "jpeg": "variants/5875c4c4-1993-5e13-836c-8159bb9d9ca8/5875c4c4-1993-5e13-836c-8159bb9d9ca8_1600.jpg",
+            "webp_bytes": 166868,
+            "jpeg_bytes": 214891
+          },
+          "2400": {
+            "width": 1297,
+            "height": 2400,
+            "webp": "variants/5875c4c4-1993-5e13-836c-8159bb9d9ca8/5875c4c4-1993-5e13-836c-8159bb9d9ca8_2400.webp",
+            "jpeg": "variants/5875c4c4-1993-5e13-836c-8159bb9d9ca8/5875c4c4-1993-5e13-836c-8159bb9d9ca8_2400.jpg",
+            "webp_bytes": 316968,
+            "jpeg_bytes": 432813
+          }
+        }
+      },
+      "lqip_chars": 207
+    },
+    {
+      "id": "3bd72d68-0c4e-5909-9878-4d5615f361b9",
+      "title": "12月 · 富士卷+富士冲扫 非常幽默自行车慢骑比赛",
+      "album": "2023 · 12月",
+      "group": "2023/月度随笔",
+      "status": "approved",
+      "category": "Activity",
+      "season": "Winter",
+      "campus": null,
+      "photo_type": null,
+      "tags": [
+        "2023年度总结",
+        "12月"
+      ],
+      "width": 2924,
+      "height": 4444,
+      "captured_at": null,
+      "mime_type": "image/jpeg",
+      "file_size": 12577139,
+      "source": "/mnt/publicaccess/wppbackup/2023-end of year remix (2)/12月/000054.jpg",
+      "source_sha256": "b6cdda0f6325a6d61b7ae7fff64404949dd98408477ac4905d9533cb13daa130",
+      "gps_in_source": false,
+      "target_filename": "000054.jpg",
+      "files": {
+        "original": "originals/3bd72d68-0c4e-5909-9878-4d5615f361b9.jpg",
+        "thumbnail": "thumbnails/3bd72d68-0c4e-5909-9878-4d5615f361b9_thumb.jpg",
+        "compressed": "compressed/3bd72d68-0c4e-5909-9878-4d5615f361b9_compressed.jpg",
+        "variants": {
+          "320": {
+            "width": 210,
+            "height": 320,
+            "webp": "variants/3bd72d68-0c4e-5909-9878-4d5615f361b9/3bd72d68-0c4e-5909-9878-4d5615f361b9_320.webp",
+            "jpeg": "variants/3bd72d68-0c4e-5909-9878-4d5615f361b9/3bd72d68-0c4e-5909-9878-4d5615f361b9_320.jpg",
+            "webp_bytes": 12508,
+            "jpeg_bytes": 16461
+          },
+          "640": {
+            "width": 421,
+            "height": 640,
+            "webp": "variants/3bd72d68-0c4e-5909-9878-4d5615f361b9/3bd72d68-0c4e-5909-9878-4d5615f361b9_640.webp",
+            "jpeg": "variants/3bd72d68-0c4e-5909-9878-4d5615f361b9/3bd72d68-0c4e-5909-9878-4d5615f361b9_640.jpg",
+            "webp_bytes": 40094,
+            "jpeg_bytes": 52952
+          },
+          "1080": {
+            "width": 711,
+            "height": 1080,
+            "webp": "variants/3bd72d68-0c4e-5909-9878-4d5615f361b9/3bd72d68-0c4e-5909-9878-4d5615f361b9_1080.webp",
+            "jpeg": "variants/3bd72d68-0c4e-5909-9878-4d5615f361b9/3bd72d68-0c4e-5909-9878-4d5615f361b9_1080.jpg",
+            "webp_bytes": 125434,
+            "jpeg_bytes": 143569
+          },
+          "1600": {
+            "width": 1053,
+            "height": 1600,
+            "webp": "variants/3bd72d68-0c4e-5909-9878-4d5615f361b9/3bd72d68-0c4e-5909-9878-4d5615f361b9_1600.webp",
+            "jpeg": "variants/3bd72d68-0c4e-5909-9878-4d5615f361b9/3bd72d68-0c4e-5909-9878-4d5615f361b9_1600.jpg",
+            "webp_bytes": 294674,
+            "jpeg_bytes": 325838
+          },
+          "2400": {
+            "width": 1579,
+            "height": 2400,
+            "webp": "variants/3bd72d68-0c4e-5909-9878-4d5615f361b9/3bd72d68-0c4e-5909-9878-4d5615f361b9_2400.webp",
+            "jpeg": "variants/3bd72d68-0c4e-5909-9878-4d5615f361b9/3bd72d68-0c4e-5909-9878-4d5615f361b9_2400.jpg",
+            "webp_bytes": 695128,
+            "jpeg_bytes": 774434
+          }
+        }
+      },
+      "lqip_chars": 223
+    }
+  ],
+  "stats": {
+    "total": 63,
+    "approved": 57,
+    "pending": 6,
+    "total_bytes": 805774033,
+    "by_album": {
+      "2023 · 10月": 1,
+      "2023 · 11月": 1,
+      "2023 · 12月": 1,
+      "2023 · 1月": 1,
+      "2023 · 2月": 1,
+      "2023 · 3月": 1,
+      "2023 · 4月": 1,
+      "2023 · 5月": 1,
+      "2023 · 7月": 1,
+      "2023 · 8月": 1,
+      "2023 · 9月": 1,
+      "2023/年度精选": 5,
+      "2023/手机摄影": 4,
+      "2024 七之一：生活瞬间": 5,
+      "2024 七之七：北化与我": 5,
+      "2024 七之三：花开花飞春又来": 5,
+      "2024 七之二：可爱的东西": 5,
+      "2024 七之五：社畜群侠传": 4,
+      "2024 七之六：ta在丛中笑": 6,
+      "2024 七之四：The Decisive Moments": 5,
+      "2024 校园四季": 8
+    }
+  }
+}

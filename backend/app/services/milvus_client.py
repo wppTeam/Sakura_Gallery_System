@@ -306,3 +306,21 @@ def get_milvus_client() -> MilvusSearchClient:
     if _client is None:
         _client = MilvusSearchClient()
     return _client
+
+
+# ---- 可选依赖可用性探测（缺失时检索自动降级，不影响接口）----
+def milvus_unavailable_reason() -> str:
+    """返回缺失的可选依赖说明；空串表示 Milvus 客户端依赖可用。"""
+    import importlib.util
+
+    try:
+        if importlib.util.find_spec("pymilvus") is None:
+            return "missing dependencies: pymilvus"
+    except (ImportError, ValueError):
+        return "missing dependencies: pymilvus"
+    return ""
+
+
+def is_milvus_available() -> bool:
+    """pymilvus 是否已安装（不建立连接）。"""
+    return milvus_unavailable_reason() == ""

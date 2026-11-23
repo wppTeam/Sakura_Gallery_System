@@ -1,0 +1,9 @@
+# AI 能力（审核 / Agent 检索 / 打标）——**不需要额外依赖**
+#
+# 统一走 OpenAI 兼容 HTTP 接口（见 app/services/ai_client.py）：
+#   - 文本/推理：deepseek-v4.1-flash-1017
+#   - 视觉：qwen3-vl-plus
+# 依赖只有 requirements-base.txt 里的 httpx + pillow（图片等比缩放送 VLM）。
+# 因此外网服务默认不装 torch，也不装 Milvus / sentence-transformers。
+#
+# 可选：如果以后引入框架（如 pydantic-ai），在这里追加，保持写在 ai 层。

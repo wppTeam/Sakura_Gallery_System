@@ -1,0 +1,189 @@
+/**
+ * 作品详情页布局（页面级样式）
+ * 组件内部样式写在各自 SFC 的 <style scoped> 中，这里只负责页面骨架。
+ */
+
+.work-detail-page {
+  min-height: 60vh;
+  padding: 18px 0 72px;
+  background:
+    radial-gradient(1200px 420px at 12% -8%, rgba(232, 98, 140, 0.08), transparent 62%),
+    radial-gradient(900px 360px at 92% 4%, rgba(126, 141, 255, 0.06), transparent 60%);
+}
+
+.work-detail-shell {
+  width: min(var(--maxw, 1320px), 100%);
+  margin: 0 auto;
+  padding: 0 var(--margin, 24px);
+  box-sizing: border-box;
+}
+
+/* ── 面包屑 ─────────────────────────────────────────── */
+.detail-topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  min-height: 28px;
+}
+
+.detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px 6px 8px;
+  border: 1px solid var(--line, #f3dde5);
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  color: var(--muted, #63474f);
+  font-size: 12.5px;
+  cursor: pointer;
+  flex: none;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+
+.detail-back:hover {
+  color: var(--sakura-deep, #c93a63);
+  border-color: #f0bfce;
+}
+
+.detail-crumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12.5px;
+  color: #9a7f87;
+}
+
+.crumb-link {
+  color: #9a7f87;
+  text-decoration: none;
+  flex: none;
+}
+
+.crumb-link:hover {
+  color: var(--sakura-deep, #c93a63);
+}
+
+.crumb-sep {
+  color: #e3cdd5;
+  flex: none;
+}
+
+.crumb-current {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted, #63474f);
+}
+
+/* ── 主栅格 ─────────────────────────────────────────── */
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 28px;
+  align-items: start;
+}
+
+.detail-media {
+  position: sticky;
+  top: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.detail-media-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 6px;
+  font-size: 11.5px;
+  color: #a58a92;
+}
+
+.media-note {
+  line-height: 1.6;
+}
+
+.media-season {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--sakura-pale, #ffe9f0);
+  color: var(--sakura-deep, #c93a63);
+}
+
+.detail-side {
+  min-width: 0;
+}
+
+.detail-related {
+  margin-top: 40px;
+  padding-top: 28px;
+  border-top: 1px dashed var(--line, #f3dde5);
+}
+
+/* ── 平板 / 手机 ────────────────────────────────────── */
+@media (max-width: 1180px) {
+  .detail-grid {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 22px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .detail-media {
+    position: static;
+  }
+
+  .work-detail-page {
+    padding-bottom: 56px;
+  }
+
+  .detail-related {
+    margin-top: 30px;
+    padding-top: 22px;
+  }
+}
+
+@media (max-width: 768px) {
+  .work-detail-page {
+    padding: 10px 0 44px;
+  }
+
+  .work-detail-shell {
+    padding: 0 16px;
+  }
+
+  .detail-topbar {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .detail-crumb .crumb-link:first-child,
+  .detail-crumb .crumb-sep:first-of-type {
+    display: none;
+  }
+
+  .detail-media-foot {
+    padding: 0 2px;
+  }
+
+  .media-note {
+    display: none;
+  }
+
+  .media-season {
+    margin-left: auto;
+  }
+}

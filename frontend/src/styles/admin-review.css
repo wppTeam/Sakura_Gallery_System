@@ -1,0 +1,303 @@
+/* 管理端 AI 审核队列页面样式（仅本页，不改 tokens.css） */
+
+.review-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1560px;
+  margin: 0 auto;
+  padding-bottom: 40px;
+}
+
+.review-page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.review-page-title-wrap {
+  min-width: 0;
+}
+
+.review-eyebrow {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  color: var(--sakura-deep, #c93a63);
+}
+
+.review-page-title {
+  margin: 0;
+  font-family: var(--font, 'Noto Sans SC');
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 700;
+  line-height: 1.24;
+  letter-spacing: 0.01em;
+  color: var(--ink, #4a2b35);
+}
+
+.review-page-desc {
+  margin: 6px 0 0;
+  max-width: 42em;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--muted, #63474f);
+}
+
+.review-page-desc strong {
+  color: var(--sakura-deep, #c93a63);
+  font-weight: 700;
+}
+
+.review-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: none;
+}
+
+.auto-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--muted, #63474f);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ── 工作区：左队列 / 右详情 ─────────────────────────────── */
+
+.review-workspace {
+  display: grid;
+  grid-template-columns: 372px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.queue-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  border: 1px solid var(--line, #f3dde5);
+  border-radius: var(--r-card, 20px);
+  background: var(--surface, #fff);
+  box-shadow: var(--shadow-soft, 0 6px 24px rgba(201, 58, 99, 0.1));
+}
+
+.queue-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.queue-panel-title {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink, #4a2b35);
+}
+
+.queue-panel-sub {
+  margin: 3px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--faint, #97808a);
+}
+
+.queue-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 11px 0 10px;
+}
+
+.filter-select {
+  width: 124px;
+  flex: none;
+}
+
+.pending-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted, #63474f);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.queue-alert {
+  margin-bottom: 8px;
+}
+
+.pending-note {
+  margin: 0 0 8px;
+  padding: 6px 9px;
+  border-radius: var(--r-sm, 10px);
+  background: var(--sakura-pale, #ffe9f0);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--sakura-deep, #c93a63);
+}
+
+.queue-panel .queue-items {
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.queue-panel .queue-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.queue-panel .queue-items::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--line-strong, #ecc9d6);
+}
+
+.queue-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+/* ── 详情列 / 移动端抽屉 ────────────────────────────────── */
+
+.review-detail-col {
+  position: sticky;
+  top: 8px;
+  align-self: start;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong, #ecc9d6) transparent;
+}
+
+.review-detail-col::-webkit-scrollbar {
+  width: 6px;
+}
+
+.review-detail-col::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--line-strong, #ecc9d6);
+}
+
+.review-detail-col.is-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-drawer, 80);
+  max-height: none;
+  padding: 12px 14px calc(20px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--ground, #fff6f9);
+  animation: drawer-in 240ms var(--ease-out, ease) both;
+}
+
+.review-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-drawer, 80) - 1);
+  background: rgba(74, 43, 53, 0.42);
+  animation: fade-in 200ms ease both;
+}
+
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── 页面级可访问性 ─────────────────────────────────────── */
+
+.review-page :where(button, a, [role='button'], [tabindex='0']):focus-visible {
+  outline: 3px solid var(--sakura, #e8628c);
+  outline-offset: 2px;
+}
+
+/* ── 断点 ──────────────────────────────────────────────── */
+
+@media (max-width: 1180px) {
+  .review-workspace {
+    grid-template-columns: 340px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .review-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .review-detail-col {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .queue-panel .queue-items {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .review-page-head {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  .review-page {
+    gap: 12px;
+    padding-bottom: 24px;
+  }
+
+  .review-page-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .queue-panel {
+    padding: 12px;
+    border-radius: var(--r-md, 14px);
+  }
+
+  .queue-filters {
+    gap: 6px;
+  }
+
+  .filter-select {
+    width: calc(50% - 3px);
+  }
+
+  .pending-toggle {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .review-detail-col.is-drawer,
+  .review-drawer-backdrop {
+    animation: none;
+  }
+}

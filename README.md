@@ -1,47 +1,174 @@
+<div align="center">
+
+<img src="design/brand/og-share.png" alt="视觉百花 Sakura Gallery · 北化学生自己的开源创作资源共享平台" width="100%">
+
 # 视觉百花 · Sakura Gallery
 
 **北化学生自己的开源创作资源共享平台。**
 
-校园的一年，由十二番花信与八处景名索引。每张作品保留拍摄者署名与授权协议，
-照片按原始构图呈现，不裁切。
+校园的一年，由十二番花信与八处景名索引。<br>
+摄影、AI 生成图像与模板素材，共用同一套发布、检索、互动与授权机制。
 
-> 前身是内部校园媒体资产管理系统「视觉北化 / Visual BUCT」。
-> 现重定位为面向学生**自助发布**的开放平台：从"审核前置的资产库"变成"自由投稿的创作社区"。
+<br>
 
----
+![Vue 3](https://img.shields.io/badge/Vue-3.5-42b883?style=flat-square&logo=vuedotjs&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.10+-009688?style=flat-square&logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-production-336791?style=flat-square&logo=postgresql&logoColor=white)
+![Status](https://img.shields.io/badge/status-v1.0_in_development-c93a63?style=flat-square)
 
-## 这是什么
+<br>
 
-不是一个图库，是**创作资源共享站**。三类内容共用一套发布、检索、互动与授权机制：
+[产品一览](#产品一览) · [核心机制](#核心机制) · [技术架构](#技术架构) · [快速开始](#快速开始) · [路线图](#路线图) · [开发指南](AGENTS.md)
 
-| 类型 | 内容 | 状态 |
-|------|------|------|
-| **摄影** | 校园摄影作品，按季节 / 花信 / 校区 / 景名索引 | 后端已有，公共端重建中 |
-| **AIGC** | AI 生成图像，带法定显式与隐式标识，可公开提示词与参数 | 规划中（M2） |
-| **模板** | PPT 等模板素材，自动预览、字体清单与风险标注 | 规划中（M6） |
-
-### 与旧版的区别：自由度
-
-- **三级发布**：原创内容免审即发；进精选才需评审；涉可识别人物与疑似侵权强制前审
-- **Agent 辅助审核**：规则前置过滤 + VLM 快筛 + 推理模型复核难例，人做终判
-- 用户自助建专辑、自定义标签、装修个人主页，**不需要管理员批准**
-- 开放 API、可自部署
+</div>
 
 ---
 
-## 现状（诚实说明）
+> **不是图库，是创作资源的共享与再创作基地。**
+>
+> 前身是审核前置的校园媒体资产管理系统「视觉北化 / Visual BUCT」：
+> 作品为宣传任务服务，投稿要排队等管理员，原图被裁成统一比例，公开页面上作者露出的是学号。
+> 这一版把「先审后发」改成「作者自助发布」，把「统一裁切」改成「保留原始构图」，
+> 把「资产入库」改成「署名与授权随作品走」。
 
-- **后端**：FastAPI + SQLAlchemy + PostgreSQL，已具备上传、AI 打标、审核、taxonomy 多维分类、
-  语义检索、RBAC、审计日志、通知、收藏。仍是单类型（摄影）模型。
-- **公共端新设计**：目前是 `design/` 下的**静态原型**，已通过 1440 / 768 / 390 三宽度实测门禁。
-  尚未落进 `frontend/src`。
-- **重构进行中**：统一 `works` 基表 + kind 判别、资产管线、隐私白名单修复见路线图 M0。
+## 为什么是「视觉百花」
 
-打开 **[design/index.html](design/index.html)** 可直接看到新公共端设计（纯静态，无需构建）。
+北化的校园叙事本来就在，我们只是把它做成了产品结构——
 
----
+- **宿舍以花命名**：樱花苑、玉兰苑、紫竹苑、杏坛苑，「百花」有实指，不是修辞
+- **一春十二番花信**：迎春、玉兰、杏、连翘、桃、樱花、二月兰、郁金香、海棠、紫花地丁、牡丹、芍药
+- **景观名录里有北化八景**：化彩三台、馆声凫影、镜湖书柳、小荷听书、花海晴光、平湖跃金、花海聆淙、烟雨玉屏
+- **一年有四季色域**：春粉、夏绿、秋橘、冬蓝，整块色域只承载大字，正文一律深墨
+
+所以探索页的顶端是「此刻」——按节气算出现在是什么季节、下一番花信何时开；
+照片按**原始宽高比**排进瀑布流，不裁切、不拉伸；
+每张作品都带着作者署名与授权协议。校园的时间与地点，就是平台的信息架构。
+
+## 与旧版相比，变了什么
+
+| 维度 | 旧版资产库 | 视觉百花 |
+|---|---|---|
+| 发布 | 先审后发，等管理员 | **三级发布**：原创免审即发，推荐位需评审，高风险强制前审 |
+| 构图 | 统一裁成 3:2 / 2:3 | **原图不裁切**，瀑布流按真实比例排列 |
+| 作者 | 学号 + 真名对外可见 | **用户名 + 署名 + 授权协议**，学号永不公开 |
+| 类型 | 单一摄影 | `works` 基表 + `kind`：摄影 / AIGC / 模板共用一套机制 |
+| 审核 | 人工逐张 | **Agent 辅助**：规则前置 + VLM 快筛 + 推理复核，人做终判 |
+| 合规 | 事后补 | **内建**：AIGC 法定标识、隐私白名单、字体风险标注 |
+| 部署 | 单机手工部署 | 开放 API、可自部署，向「`docker compose up` 一键起」收拢 |
+
+## 产品一览
+
+> 以下为公共端设计原型 [`design/index.html`](design/index.html) 的真实截图（浏览器直接打开即可交互，纯静态）。
+> 原型中的照片为 Wikimedia Commons 开放授权占位素材，接入真实投稿后替换。
+
+<img src="docs/assets/readme/explore-1440.webp" alt="探索页：此刻节气、十二番花信、真实比例瀑布流" width="100%">
+
+<p align="center"><sub><b>探索页</b> · 「此刻」按节气定位 · 十二番花信做浏览轴 · 按真实宽高比排瀑布流</sub></p>
+
+| 四季色域 | 北化八景 |
+|:---:|:---:|
+| <img src="docs/assets/readme/seasons-1440.webp" alt="四季页：春的樱花色域与花信索引" width="100%"> | <img src="docs/assets/readme/views-1440.webp" alt="八景页：北化八景策展轴与投稿入口" width="100%"> |
+| 春 / 夏 / 秋 / 冬 四套淡色域，一季一索引 | 八景取自真实景观名录，每景可由学生持续投稿 |
+
+<p align="center">
+<img src="docs/assets/readme/explore-390.webp" width="300" alt="手机端探索页">
+<br>
+<sub><b>390px 手机端</b> · 同一套信息架构重排 · 桌面 / 平板 / 手机三宽度门禁实测 0 FAIL / 0 WARN</sub>
+</p>
+
+## 三类内容
+
+不是三个产品，是同一套「作品」机制的三个分型：
+
+| 类型 | `kind` | 内容 | 优先级 |
+|---|---|---|---|
+| **摄影** | `photo` | 校园摄影作品，按季节 / 花信 / 校区 / 八景索引 | 主 |
+| **AIGC** | `aigc` | AI 生成图像，带法定显式与隐式标识，可公开提示词与参数 | 主 |
+| **模板** | `template` | PPT 等模板素材，自动预览、字体清单与授权风险标注 | 次 |
+
+统一的 `works` 基表 + `kind` 判别 + 分类型元数据表。
+一个作品从上传、审核、检索到详情页的体验一致，但摄影的 EXIF、AIGC 的提示词、模板的字体清单各自有自己的位置。
+
+## 核心机制
+
+### 三级发布：自由度与底线同时存在
+
+| 级别 | 含义 | 处理 |
+|---|---|---|
+| **L0** | 原创摄影、合规 AIGC、字体风险已标注的模板 | **免审即发**，直接进最新流 |
+| **L1** | 进首页精选 / 八景专辑 / 搜索加权 | 需人工或社区评审 |
+| **L2** | 涉可识别人物、疑似侵权或深伪 | **强制前审**，未通过不进公开流 |
+
+用户自助建专辑、自定义标签、装修个人主页，**不需要管理员批准**。
+
+### Agent 审核：把重复判断交给机器，把终判留给人
+
+审核链路分三层，模型与延迟均为实测值（设计已定稿，M3 落地）：
+
+1. **规则前置**（不花模型钱）——GPS 存在性、感知哈希查重、AIGC 元数据探测、
+   PPTX 字体清单抽取、文件类型与体积校验
+2. **快筛 VLM** —— `qwen3-vl-plus`，实测 **1.9s / 57 输出 tokens**，输出结构化判定：
+   `has_identifiable_person / likely_aigc / sensitive / copyright_risk / suggested_tier / reason`
+3. **推理复核** —— `deepseek-v4.1-flash`，实测 **4.7s / 590 输出 tokens**，
+   只处理快筛判为 L2 或置信度低的样本，不跑全量
+
+后台常驻 worker 消费审核队列；人工队列展示 agent 判定、依据与原图，**人做最终决定**。
+成本有日预算护栏，超预算自动降级为纯规则 + 人工，不阻塞发布。
+
+### AIGC 合规四件套：缺一不可放行
+
+依《人工智能生成合成内容标识办法》（2025-09-01 施行），AI 生成内容必须：
+
+1. **上传时强制声明**——不声明不能进 `aigc` 分型；摄影流里探测到 AIGC 元数据会提示改投
+2. **展示时显式标识**——列表角标 + 详情页说明，文案明确「AI 生成」
+3. **下载时写入隐式标识**——文件元数据（XMP / EXIF）带标识字段，写入结果入库
+4. **图生图 / 换脸类额外限制**——强制前审，不适用 L0 免审
+
+### 作者、隐私与授权
+
+- **公开响应白名单**：不含学号、真实姓名、完整 EXIF；公开身份只用 `username` / `display_name`
+- **GPS 入库即剥离**：公开变体不携带定位信息
+- **原图只读**：保留原始构图，禁止裁切；变体长边 320 / 640 / 1080 / 1600 / 2400，WebP 主用 + JPEG 兜底
+- **授权随作品走**：投稿时选定授权协议，详情页展示并可复制引用署名
+- **字体风险明示**：模板抽取字体清单并标注风险等级，**不硬拦不拒收**，把判断交给下载者
+
+## 技术架构
+
+```mermaid
+flowchart TB
+    U[浏览器 / 手机] --> N[Nginx 反向代理]
+
+    subgraph APP[应用]
+        FE[Vue 3 公共端]
+        AD[admin 后台 · Naive UI]
+        API[FastAPI · /api/v1]
+    end
+
+    N --> FE
+    N --> AD
+    N --> API
+
+    API --> DB[(PostgreSQL)]
+    API --> S3[(MinIO / S3 对象存储)]
+    API -.可选.-> R[(Redis + Celery)]
+    API -.可选.-> V[(Milvus + bge-small-zh-v1.5)]
+    API --> AI[AI 渠道<br/>VLM 审核 · 打标 · 查询改写 · 生图]
+```
+
+| 层 | 选型与职责 |
+|---|---|
+| 前端 | Vue 3.5 + Vite 7 + TypeScript + Naive UI + Tailwind 4；admin 后台沿用 Naive UI |
+| 后端 | FastAPI + SQLAlchemy 2 + Alembic 迁移；RBAC、审计日志、通知、收藏已具备 |
+| 数据 | PostgreSQL（生产），本地开发默认 SQLite；`pg_trgm` + `tsvector` 做跨类型全文检索 |
+| 资产 | MinIO / S3 对象存储；图片变体预生成，Nginx 反代或预签名 URL 直出，不经 Python 流式转发 |
+| 可选增强 | Redis + Celery（默认 BackgroundTasks）；Milvus 语义检索缺失时优雅降级 |
+| AI | 阿里云百炼直连（生图异步任务）+ NewAPI 代理（快模型）；审核 VLM 与推理模型双渠道互备 |
+| 交付 | Nginx + systemd；GitHub Actions 自动部署；目标是 `docker compose up` 一键起（M7） |
 
 ## 快速开始
+
+<details>
+<summary><b>展开：本地把项目跑起来</b>（约 5 分钟）</summary>
 
 ### 后端
 
@@ -53,7 +180,8 @@ alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```
 
-创建管理员（口令从环境变量读，未提供则随机生成并打印一次）：
+本地默认使用 SQLite，无需先装 PostgreSQL。创建管理员（口令从环境变量读取，
+未提供则随机生成并打印一次；在**仓库根目录**执行，脚本会自行定位 `backend/`）：
 
 ```bash
 ADMIN_EMAIL=you@example.edu.cn ADMIN_PASSWORD='your-strong-password' \
@@ -70,107 +198,126 @@ npm run dev
 
 - 前端 http://localhost:5173
 - API 文档 http://localhost:8000/docs
+- 新版公共端设计原型：直接用浏览器打开 [`design/index.html`](design/index.html)（纯静态，无需构建）
+
+> 当前 `frontend/` 仍是旧版公共端 + admin；新版公共端在 `design/` 中作为原型维护，
+> 按路线图 M0–M1 落进工程。公共端重建期间，admin 后台保持可用。
 
 ### 配置
 
-复制 `backend/.env.example` 为 `backend/.env`，`deploy/.env.production.example` 为部署用模板。
+复制 `backend/.env.example` 为 `backend/.env`，部署用 `deploy/.env.production.example`。
 **真实凭据不提交仓库**，脚本通过环境变量读取：
 
 | 变量 | 用途 |
-|------|------|
-| `SECRET_KEY` | JWT 签名（生产必须自定义） |
-| `DATABASE_URL` | PostgreSQL 连接 |
+|---|---|
+| `SECRET_KEY` | JWT 签名（生产必须自定义，否则拒绝启动） |
+| `DATABASE_URL` | 数据库连接（本地默认 SQLite） |
 | `S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` | 对象存储 |
-| `DEPLOY_SERVER` / `DEPLOY_USER` / `DEPLOY_HOST` / `SUDO_PASS` | 部署脚本 |
-| `S3_SSH_FALLBACK_HOST` / `S3_SSH_FALLBACK_USER` | 本地开发绕过防火墙的可选兜底，生产不用 |
+| `DEPLOY_SERVER` / `DEPLOY_USER` / `DEPLOY_HOST` / `SUDO_PASS` | 部署脚本（本地未跟踪） |
 
----
+### 测试
+
+```bash
+cd backend && pytest
+```
+
+更多部署细节见 [`DEPLOY.md`](DEPLOY.md)，接口清单见 [`docs/API.md`](docs/API.md)，
+线上排障见 [`docs/SOP.md`](docs/SOP.md)。
+
+</details>
+
+## 项目状态（诚实版）
+
+产品方向已经定稿，工程在按里程碑推进。**路线图是目标，不是承诺**：
+
+| 部分 | 现在 |
+|---|---|
+| 公共端设计原型 | ✅ 已完成，1440 / 768 / 390 三宽度门禁 0 FAIL / 0 WARN |
+| 新版公共端工程 | 🚧 重建中：M1 落进 `frontend/src`，替换失效样式与瀑布流实现 |
+| 数据模型 | 🚧 M0：`works` 基表 + `kind` 判别 + 三张元数据表 |
+| 资产管线 | 🚧 M0：取消强制裁切、多尺寸变体、LQIP、CDN 化交付 |
+| 隐私修复 | 🚧 M0：公开响应改白名单，剔除学号 / 真实姓名 / 完整 EXIF |
+| 旧版单类型系统 | ✅ 摄影类型下可用，admin 后台保留 |
+| Agent 审核 | ◻️ M3：规则前置 + 快筛 + 复核 |
+| AIGC 专区 | ◻️ M2：法定标识链路 |
+| 模板专区 | ◻️ M6：S3 直传 + LibreOffice 预览 + 字体清单 |
+| 开源 v1.0 | ◻️ M7：凭据轮换、git 历史清洗、CI、LICENSE |
+
+已具备的后端能力：上传与批量导入、AI 打标、审核、taxonomy 多维分类、语义检索、
+RBAC、审计日志、站内通知、收藏、浏览统计。
+
+## 路线图
+
+八个里程碑，每项都有可验收判据，详见 **[`docs/ROADMAP.md`](docs/ROADMAP.md)**。
+
+| 里程碑 | 日期 | 主题 |
+|:---:|:---:|---|
+| **M0** | 11/24 – 11/30 | 地基：`works` + `kind` 数据模型、资产管线、隐私修复 |
+| **M1** | 12/01 – 12/07 | 品牌资产、公共端骨架、探索页真瀑布流 |
+| **M2** | 12/08 – 12/14 | AIGC 专区（法定标识链路） |
+| **M3** | 12/15 – 12/21 | Agent 审核（规则 + 快筛 + 复核） |
+| **M4** | 12/22 – 12/28 | 检索与 Agent 搜索 |
+| **M5** | 12/29 – 01/04 | 详情页、摄影师主页、社区互动 |
+| **M6** | 01/05 – 01/11 | 模板专区 |
+| **M7** | 01/12 – 01/18 | 开源发布 v1.0 |
+
+**关键路径**：M0 → M1 → M5。资产管线不先做完，真瀑布流没有素材可排；M2 与 M1 可并行，M4 与 M3 可并行。
 
 ## 设计系统
 
 樱花粉柔色系 + 二次元取向。全部对比度为脚本实测，非目测。
 
-```
+```text
 底 #fff6f9   卡面 #ffffff   墨 #4a2b35   次级 #63474f
-主色 #c93a63（按钮/链接 4.9:1）   标题粉 #e8628c（大字 3.2:1）
-四季淡底 春#ffd7e4 夏#d4f0e4 秋#ffdfd6 冬#d6e8f7（深墨字 9.5–10.3:1）
+主色 #c93a63（按钮 / 链接，4.9:1）   标题粉 #e8628c（大字 3.2:1）
+四季淡底 春 #ffd7e4  夏 #d4f0e4  秋 #ffdfd6  冬 #d6e8f7（深墨字 9.5–10.3:1）
+季相强调 春 #e36089  夏 #3b9c80  秋 #b5703c  冬 #5692c8
 ```
 
 - 标题字 **站酷庆科黄油体**（自托管，92 个 unicode-range 分片），正文 Noto Sans SC
-- 圆角：卡 20px / 照片 16px / 控件全圆角
-- **照片保留原始宽高比，禁止裁切**；瀑布流按真实比例做最短列分配
-- CJK 行宽用 `em` 不用 `ch`
+- 圆角：卡 20px / 照片 16px / 控件全圆角；柔影 `0 6px 24px rgba(201,58,99,.10)`
+- **CJK 行宽用 `em` 不用 `ch`**（`ch` 在中文下约半个汉字宽，会拆断词）
+- 品牌资产在 [`design/brand/`](design/brand/)：组合标、纯中文版、反色版、图形标、
+  「北化创作者」认证徽章、1200×630 社交分享图、favicon 全套（16/32/48 用实心简化版）
 
-详见 [design/DIRECTION.md](design/DIRECTION.md)。
-
-### 品牌资产
-
-`design/brand/` 提供组合标、纯中文版（顶栏用）、反色版（深色底用）、图形标、
-「北化创作者」认证徽章、1200×630 社交分享图，以及 favicon 全套
-（16/32/48 用实心简化版，180/192/512 用细节版）。均为透明 PNG。
-
----
-
-## 项目结构
-
-```
-backend/          FastAPI 应用
-  app/api/v1/     路由与端点
-  app/models/     SQLAlchemy 模型
-  app/services/   业务逻辑（存储、图像处理、AI、检索）
-  alembic/        数据库迁移
-frontend/         Vue 3 + Vite + TS + Naive UI + Tailwind 4
-design/           公共端设计原型与品牌资产
-  index.html      可交互原型
-  DIRECTION.md    设计方向、色板实测值、踩坑记录
-  brand/          标识与 favicon
-  assets/         art 插画 / photo 摄影素材 / ref 参考
-docs/             ROADMAP.md 分期时间表，API.md 等
-deploy/           部署脚本与配置模板（无凭据）
-scripts/          运维与初始化脚本
-```
-
----
-
-## 路线图
-
-八个里程碑，每项带可验收判据：**[docs/ROADMAP.md](docs/ROADMAP.md)**
-
-| | 主题 |
-|---|---|
-| M0 | 数据模型（works + kind）、资产管线、隐私修复 |
-| M1 | 品牌资产、公共端骨架、探索页 |
-| M2 | AIGC 专区（法定标识链路） |
-| M3 | Agent 审核（规则 + 快筛 + 复核） |
-| M4 | 检索与 Agent 搜索 |
-| M5 | 详情页、摄影师主页、社区互动 |
-| M6 | 模板专区 |
-| M7 | 开源发布 v1.0 |
-
-开发约定见 **[AGENTS.md](AGENTS.md)**。
-
----
+完整色板、字体与踩坑记录见 [`design/DIRECTION.md`](design/DIRECTION.md)。
 
 ## 合规
 
 - **AIGC 标识**：依《人工智能生成合成内容标识办法》（2025-09-01 施行），
-  AI 生成内容须带显式标识（角标与说明）与隐式标识（下载文件元数据）
+  AI 生成内容须带显式标识（角标与说明）与隐式标识（下载文件元数据），四件套缺一不可放行
 - **个人信息**：公开响应不含学号、真实姓名、完整 EXIF；GPS 入库即剥离；学号永不公开
-- **肖像权**：涉可识别人物需被摄者同意
-- **字体授权**：模板会抽取字体清单并标注风险等级，不硬拦；非商用**不豁免**著作权，
+- **肖像权**：涉可识别人物需被摄者同意，走 L2 强制前审
+- **字体授权**：非商用**不豁免**著作权，分发行为本身即需授权；策略是抽取清单、标注风险、详情页明示，
   推荐使用思源 / 霞鹜 / 站酷等开源免费商用字体
 
-## 安全
+## 安全说明
 
 **本仓库工作区已脱敏**，不含服务器地址、账号、口令或密钥。
 
-⚠️ **但 git 历史中仍存有早期提交的真实凭据**，且本仓库曾公开。
+⚠️ **但 git 历史中仍存有早期提交的真实凭据，且本仓库曾公开。**
 如果你 fork 或克隆过 2026-11 之前的版本，请视为凭据已泄露：
 **轮换是唯一有效补救**，清洗历史只是卫生。相关处置见路线图 M7。
 
 发现漏洞请勿公开提 Issue，先私下联系维护者。
 
----
+## 贡献
+
+欢迎贡献代码、设计、种子内容与审核经验。
+
+- Commit 标题用简短英文命令句概括改动（与现有历史一致），例如
+  `Return clear taxonomy node validation errors`；需要展开时写在正文
+- 开发约定、架构、合规细节统一见 **[`AGENTS.md`](AGENTS.md)**，不要在多个文档里复制规则
+- 提交前请确认：
+  - 不含任何凭据、服务器地址或账号
+  - 不在公开响应中暴露学号、真实姓名、完整 EXIF
+  - 不裁切用户原图构图
+  - AIGC 内容带显式与隐式标识
+
+## 许可证
+
+代码许可证待定（AGPL-3.0 或 MIT，见路线图 M7）。
+摄影与插画素材依各自作者所选协议，见 [`design/assets/credits.json`](design/assets/credits.json) 与页面署名。
 
 ## 第三方素材
 
@@ -178,24 +325,19 @@ scripts/          运维与初始化脚本
 作者与协议见 `design/assets/credits.json` 与原型页脚署名。
 它们**不是北化学生投稿**，是设计占位，接入真实作品后须替换。
 
-`design/assets/art/` 的插画为 AI 生成（阿里云百炼 qwen-image-3.0-pro），
-页面明确标注，不冒充摄影作品。首屏主视觉为项目自制。
+`design/assets/art/` 的插画为 AI 生成（阿里云百炼 `qwen-image-3.0-pro`），页面明确标注，不冒充摄影作品。
+首屏主视觉为项目自制。字体：站酷庆科黄油体与 Noto Sans SC，依 SIL Open Font License 使用。
 
-字体：站酷庆科黄油体与 Noto Sans SC 依 SIL Open Font License 使用。
+## English
 
----
+Sakura Gallery is a student-run, open-source creative resource platform for
+Beijing University of Chemical Technology (BUCT): campus photography, AI-generated
+images and slide templates in one publishing, discovery and licensing system.
+The campus year is indexed by twelve flower-signs and eight named campus views.
+Design principles: real aspect ratios (no cropping), author attribution,
+privacy whitelist, and legal AIGC labeling. Stack: Vue 3 · FastAPI · PostgreSQL.
 
-## 贡献
-
-欢迎贡献。Commit 标题用简短英文命令句概括改动（与现有历史一致），例如
-`Return clear taxonomy node validation errors`；需要展开时写在正文。
-
-提交前请确认：
-- 不含任何凭据、服务器地址或账号
-- 不在公开响应中暴露学号、真实姓名、完整 EXIF
-- 不裁切用户原图构图
-- AIGC 内容带显式与隐式标识
-
-## 许可
-
-代码许可证待定（见路线图 M7）。摄影与插画素材依各自作者所选协议，见上方署名。
+<div align="center">
+<br>
+<sub>视觉百花 · 为每一届入学的人，留下上一届看到的校园。</sub>
+</div>

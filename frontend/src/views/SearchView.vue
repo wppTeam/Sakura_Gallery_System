@@ -1,283 +1,658 @@
-<template>
-  <div class="search-view">
-    <!-- 搜索栏 -->
-    <div class="search-header">
-      <n-input
-        v-model:value="query"
-        placeholder="搜索照片... 例如：秋天的校园、星空夜景、银杏落叶"
-        size="large"
-        clearable
-        @update:value="onInput"
-      >
-        <template #prefix>
-          <n-icon :component="SearchOutline" />
-        </template>
-      </n-input>
-      <div class="search-meta" v-if="searched">
-        <n-text depth="3">
-          找到 {{ total }} 张照片，用时 {{ queryTime }}ms
-        </n-text>
-      </div>
-    </div>
-
-    <!-- 筛选器 -->
-    <div class="search-filters">
-      <n-space>
-        <n-select
-          v-model:value="filters.season"
-          :options="seasonOptions"
-          placeholder="季节"
-          clearable
-          style="width: 120px;"
-          @update:value="doSearch"
-        />
-        <n-select
-          v-model:value="filters.campus"
-          :options="campusOptions"
-          placeholder="校区"
-          clearable
-          style="width: 140px;"
-          @update:value="doSearch"
-        />
-      </n-space>
-    </div>
-
-    <!-- 加载中 -->
-    <div v-if="loading" class="search-loading">
-      <n-spin size="large" />
-      <n-text>搜索中...</n-text>
-    </div>
-
-    <!-- 空状态 -->
-    <n-empty v-else-if="searched && results.length === 0" description="没有找到匹配的照片" />
-
-    <!-- 搜索结果 -->
-    <div v-else-if="results.length > 0" class="search-results">
-      <div
-        v-for="result in results"
-        :key="result.id"
-        class="result-card"
-        @click="goToPhoto(result.id)"
-      >
-        <div class="result-image">
-          <img
-            :src="getPhotoUrl(result.id, 'thumbnail')"
-            :alt="result.filename"
-            loading="lazy"
-          />
-        </div>
-        <div class="result-info">
-          <div class="result-title">{{ result.filename }}</div>
-          <div class="result-tags">
-            <n-tag
-              v-for="tag in result.tags.slice(0, 5)"
-              :key="tag"
-              size="small"
-              :bordered="false"
-              type="info"
-            >
-              {{ tag }}
-            </n-tag>
-          </div>
-          <div class="result-classifications">
-            <n-text depth="3" style="font-size: 12px;">
-              <span v-if="taxonomyValueName(result.classifications.season)">{{ taxonomyValueName(result.classifications.season) }}</span>
-              <span v-if="taxonomyValueName(result.classifications.campus)"> · {{ taxonomyValueName(result.classifications.campus) }}</span>
-              <span v-if="taxonomyValueName(result.classifications.building) || taxonomyValueName(result.classifications.landmark)">
-                · {{ taxonomyValueName(result.classifications.building) || taxonomyValueName(result.classifications.landmark) }}
-              </span>
-            </n-text>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NInput, NIcon, NSelect, NTag, NSpin, NEmpty, NText } from 'naive-ui'
-import { SearchOutline } from '@vicons/ionicons5'
-import { getPublicPhotos } from '@/api/photo'
-import type { Photo } from '@/types/photo'
-import { taxonomyValueName } from '@/types/photo'
-import { getPhotoUrl } from '@/utils/format'
+import { NAlert, NIcon, NInput, useMessage } from 'naive-ui'
+import { onClickOutside, useDebounceFn } from '@vueuse/core'
+import {
+  ArrowUpOutline,
+  FlashOutline,
+  SearchOutline,
+  SparklesOutline,
+} from '@vicons/ionicons5'
+import {
+  getSearchFacets,
+  getSearchSuggestions,
+  searchWorks,
+  type AgentSearchResult,
+  type SearchFacets,
+  type SearchMode,
+  type SearchWork,
+} from '../api/search'
+import ClarifyCard from '../components/search/ClarifyCard.vue'
+import FacetChips from '../components/search/FacetChips.vue'
+import ResultMasonry from '../components/search/ResultMasonry.vue'
+import SearchEmptyState from '../components/search/SearchEmptyState.vue'
+import SearchStepsTimeline from '../components/search/SearchStepsTimeline.vue'
+import '../styles/search.css'
+
+const PAGE_SIZE = 24
+const IDLE_SUGGESTIONS = ['樱花大道的春天', '操场夜景', '图书馆里的人', '秋天的银杏']
+
+const MODE_LABELS: Record<string, string> = {
+  agent: 'Agent 智能检索',
+  fast: '快速检索',
+  keyword: '关键词检索',
+  vector: '语义检索',
+  hybrid: '混合检索',
+  lexical: '关键词检索',
+}
+
+const FALLBACK_LABELS: Record<string, string> = {
+  fast_mode: '当前为快速检索模式',
+  ai_disabled: 'Agent 模型未启用，已降级为关键词检索',
+  planner_failed: '意图解析失败，已降级为关键词检索',
+  agent_search_disabled: 'Agent 检索已关闭，已降级为关键词检索',
+  disabled: 'Agent 检索已关闭，已降级为关键词检索',
+}
+
+interface RouteState {
+  q: string
+  mode: SearchMode
+  season: string
+  category: string
+  campus: string
+}
 
 const route = useRoute()
 const router = useRouter()
+const message = useMessage()
 
-const query = ref((route.query.q as string) || '')
-const loading = ref(false)
-const searched = ref(false)
-const results = ref<Photo[]>([])
+const queryInput = ref('')
+const q = ref('')
+const mode = ref<SearchMode>('agent')
+const season = ref('')
+const category = ref('')
+const campus = ref('')
+
+const works = ref<SearchWork[]>([])
 const total = ref(0)
-const queryTime = ref(0)
+const result = ref<AgentSearchResult | null>(null)
+const loading = ref(false)
+const loadingMore = ref(false)
+const error = ref('')
+const errorKind = ref<'error' | 'timeout'>('error')
+const searched = ref(false)
+const retrying = ref(false)
 
-const filters = reactive({
-  season: (route.query.season as string) || null,
-  campus: (route.query.campus as string) || null,
+const facets = ref<SearchFacets>({ season: [], category: [], tag: [], campus: [] })
+const facetsLoading = ref(false)
+
+const fallbackDismissed = ref(false)
+const suggestions = ref<string[]>([])
+const suggestionsOpen = ref(false)
+const activeSuggestion = ref(-1)
+const searchBox = ref<HTMLElement | null>(null)
+const showBackToTop = ref(false)
+
+let searchSeq = 0
+let suggestSeq = 0
+let appliedKey = ''
+// 由 URL / facet 程序化写入输入框时，不自动弹出联想面板
+let programmaticQuery = false
+
+onClickOutside(searchBox, () => closeSuggestions())
+
+const hasActiveFilters = computed(() => Boolean(season.value || category.value || campus.value))
+const hasFacets = computed(
+  () =>
+    facets.value.season.length > 0 ||
+    facets.value.category.length > 0 ||
+    facets.value.campus.length > 0,
+)
+const hasMore = computed(() => works.value.length > 0 && works.value.length < total.value)
+
+const totalText = computed(() => {
+  if (loading.value && !works.value.length) return '正在检索…'
+  if (!total.value) return `${works.value.length} 个结果`
+  if (total.value > works.value.length) return `共 ${total.value} 个结果`
+  return `${total.value} 个结果`
 })
 
-const seasonOptions = [
-  { label: '春季', value: '春季' },
-  { label: '夏季', value: '夏季' },
-  { label: '秋季', value: '秋季' },
-  { label: '冬季', value: '冬季' },
-]
+const currentModeLabel = computed(() => {
+  const searchMode = result.value?.searchMode || mode.value
+  return MODE_LABELS[searchMode] || '检索'
+})
 
-const campusOptions = [
-  { label: '昌平校区', value: '昌平校区' },
-  { label: '朝阳校区', value: '朝阳校区' },
-  { label: '海淀校区', value: '海淀校区' },
-]
+const fallbackNotice = computed(() => {
+  const reason = result.value?.fallbackReason
+  if (!reason) return ''
+  return FALLBACK_LABELS[reason] || `检索已降级（${reason}）`
+})
 
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
+const fallbackTone = computed<'info' | 'warning'>(() =>
+  result.value?.searchMode === 'fast' || result.value?.fallbackReason === 'fast_mode' ? 'info' : 'warning',
+)
 
-function onInput(val: string) {
-  if (debounceTimer) clearTimeout(debounceTimer)
-  if (!val.trim()) {
-    results.value = []
-    searched.value = false
-    total.value = 0
+// ────────────────────────────────────────────────────────────
+// URL 同步
+// ────────────────────────────────────────────────────────────
+
+function stringQuery(key: string): string {
+  const value = route.query[key]
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function currentState(): RouteState {
+  return {
+    q: q.value,
+    mode: mode.value,
+    season: season.value,
+    category: category.value,
+    campus: campus.value,
+  }
+}
+
+function pushUrl() {
+  const state = currentState()
+  appliedKey = JSON.stringify(state)
+  const query: Record<string, string> = {}
+  if (state.q) query.q = state.q
+  if (state.mode === 'fast') query.mode = 'fast'
+  if (state.season) query.season = state.season
+  if (state.category) query.category = state.category
+  if (state.campus) query.campus = state.campus
+  void router.replace({ path: '/search', query })
+}
+
+function applyRoute(force = false) {
+  const state: RouteState = {
+    q: stringQuery('q'),
+    mode: stringQuery('mode') === 'fast' ? 'fast' : 'agent',
+    season: stringQuery('season'),
+    category: stringQuery('category'),
+    campus: stringQuery('campus'),
+  }
+  const key = JSON.stringify(state)
+  if (!force && key === appliedKey) return
+  appliedKey = key
+
+  q.value = state.q
+  programmaticQuery = true
+  queryInput.value = state.q
+  void nextTick(() => {
+    programmaticQuery = false
+  })
+  mode.value = state.mode
+  season.value = state.season
+  category.value = state.category
+  campus.value = state.campus
+
+  if (state.q) {
+    void performSearch()
+  } else {
+    resetToIdle()
+  }
+}
+
+watch(
+  () => route.query,
+  () => applyRoute(),
+  { deep: true },
+)
+
+// ────────────────────────────────────────────────────────────
+// 检索
+// ────────────────────────────────────────────────────────────
+
+function facetParams() {
+  return {
+    season: season.value || null,
+    category: category.value || null,
+    campus: campus.value || null,
+  }
+}
+
+function hasFacetItems(value: SearchFacets): boolean {
+  return value.season.length > 0 || value.category.length > 0 || value.campus.length > 0 || value.tag.length > 0
+}
+
+function describeError(raw: unknown): { message: string; kind: 'error' | 'timeout' } {
+  const record = (raw ?? {}) as Record<string, unknown>
+  const code = String(record.code ?? '')
+  const response = record.response as Record<string, unknown> | undefined
+  const status = Number(record.status ?? response?.status ?? 0)
+  const message = String(record.message ?? '')
+
+  if (code === 'ECONNABORTED' || code === 'ETIMEDOUT' || /timeout/i.test(message)) {
+    return { message: '本次检索耗时过长。可以稍后重试，或切换到「快速检索」先看结果。', kind: 'timeout' }
+  }
+  if (!status || code === 'ERR_NETWORK') {
+    return { message: '网络连接失败，请检查网络后重试。', kind: 'error' }
+  }
+  if (status === 429) {
+    return { message: '检索请求太频繁了，请稍等片刻再试。', kind: 'error' }
+  }
+  if (status >= 500) {
+    return { message: `检索服务暂时不可用（${status}），请稍后重试。`, kind: 'error' }
+  }
+  if (status === 400) {
+    return { message: '检索条件有误，请调整关键词后重试。', kind: 'error' }
+  }
+  return { message: '检索失败，请稍后重试。', kind: 'error' }
+}
+
+async function performSearch() {
+  const query = q.value.trim()
+  if (!query) {
+    resetToIdle()
     return
   }
-  debounceTimer = setTimeout(() => doSearch(), 300)
-}
-
-async function doSearch() {
-  const q = query.value.trim()
-  if (!q) return
-
+  const seq = ++searchSeq
   loading.value = true
+  loadingMore.value = false
+  error.value = ''
+  fallbackDismissed.value = false
+  works.value = []
+  total.value = 0
+  result.value = null
   searched.value = true
-
-  // Update URL
-  router.replace({
-    query: {
-      q,
-      ...(filters.season ? { season: filters.season } : {}),
-      ...(filters.campus ? { campus: filters.campus } : {}),
-    },
-  })
+  closeSuggestions()
 
   try {
-    const startedAt = performance.now()
-    const resp = await getPublicPhotos({
-      search: q,
-      smart: true,
-      limit: 30,
-      ...(filters.season ? { season: filters.season } : {}),
-      ...(filters.campus ? { campus: filters.campus } : {}),
+    const response = await searchWorks({
+      q: query,
+      mode: mode.value,
+      limit: PAGE_SIZE,
+      offset: 0,
+      ...facetParams(),
     })
-    results.value = resp.items
-    total.value = resp.total
-    queryTime.value = Math.round(performance.now() - startedAt)
-  } catch (err: any) {
-    console.error('Search failed:', err)
-    results.value = []
-    total.value = 0
+    if (seq !== searchSeq) return
+    result.value = response
+    works.value = response.works
+    total.value = response.total
+    if (hasFacetItems(response.facets)) facets.value = response.facets
+  } catch (raw) {
+    if (seq !== searchSeq) return
+    const described = describeError(raw)
+    error.value = described.message
+    errorKind.value = described.kind
   } finally {
-    loading.value = false
+    if (seq === searchSeq) {
+      loading.value = false
+      retrying.value = false
+    }
   }
 }
 
-function goToPhoto(photoId: string) {
-  router.push({ name: 'PhotoDetail', params: { id: photoId } })
+function resetToIdle() {
+  searchSeq += 1
+  loading.value = false
+  loadingMore.value = false
+  retrying.value = false
+  works.value = []
+  total.value = 0
+  result.value = null
+  error.value = ''
+  searched.value = false
+  void loadFacets()
+}
+
+async function loadMore() {
+  if (loading.value || loadingMore.value || !hasMore.value) return
+  const seq = searchSeq
+  loadingMore.value = true
+  try {
+    const response = await searchWorks({
+      q: q.value,
+      mode: mode.value,
+      limit: PAGE_SIZE,
+      offset: works.value.length,
+      ...facetParams(),
+    })
+    if (seq !== searchSeq) return
+    const seen = new Set(works.value.map((work) => work.id))
+    works.value = [...works.value, ...response.works.filter((work) => !seen.has(work.id))]
+    total.value = Math.max(total.value, response.total)
+  } catch (raw) {
+    if (seq !== searchSeq) return
+    const described = describeError(raw)
+    message.error(described.message)
+  } finally {
+    if (seq === searchSeq) loadingMore.value = false
+  }
+}
+
+function retry() {
+  retrying.value = true
+  void performSearch()
+}
+
+async function loadFacets() {
+  facetsLoading.value = true
+  try {
+    const data = await getSearchFacets({ q: q.value || undefined })
+    if (hasFacetItems(data)) facets.value = data
+  } catch {
+    // facet 只是辅助筛选，失败时静默降级为不显示
+  } finally {
+    facetsLoading.value = false
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// 交互
+// ────────────────────────────────────────────────────────────
+
+function submitSearch(raw?: string) {
+  const next = (raw ?? queryInput.value).trim()
+  queryInput.value = next
+  q.value = next
+  if (!next) {
+    pushUrl()
+    resetToIdle()
+    return
+  }
+  pushUrl()
+  void performSearch()
+}
+
+function setMode(next: SearchMode) {
+  if (mode.value === next) return
+  mode.value = next
+  pushUrl()
+  if (q.value) void performSearch()
+}
+
+function setFacet(key: 'season' | 'category' | 'campus', value: string) {
+  const current = key === 'season' ? season.value : key === 'category' ? category.value : campus.value
+  const next = current === value ? '' : value
+  if (!q.value) {
+    if (!next) return
+    q.value = next
+    programmaticQuery = true
+    queryInput.value = next
+    void nextTick(() => {
+      programmaticQuery = false
+    })
+  }
+  if (key === 'season') season.value = next
+  else if (key === 'category') category.value = next
+  else campus.value = next
+  pushUrl()
+  void performSearch()
+}
+
+function clearFilters() {
+  season.value = ''
+  category.value = ''
+  campus.value = ''
+  pushUrl()
+  if (q.value) void performSearch()
+}
+
+function closeSuggestions() {
+  suggestionsOpen.value = false
+  activeSuggestion.value = -1
+}
+
+function onFocus() {
+  if (queryInput.value.trim() && suggestions.value.length) suggestionsOpen.value = true
+}
+
+function pickSuggestion(value: string) {
+  submitSearch(value)
+}
+
+function moveSuggestion(direction: 1 | -1) {
+  if (!suggestions.value.length) return
+  suggestionsOpen.value = true
+  const next = activeSuggestion.value + direction
+  if (next < 0) activeSuggestion.value = suggestions.value.length - 1
+  else if (next >= suggestions.value.length) activeSuggestion.value = -1
+  else activeSuggestion.value = next
+}
+
+function onInputEnter() {
+  if (suggestionsOpen.value && activeSuggestion.value >= 0 && suggestions.value[activeSuggestion.value]) {
+    pickSuggestion(suggestions.value[activeSuggestion.value])
+    return
+  }
+  submitSearch()
+}
+
+const fetchSuggestions = useDebounceFn(async (text: string) => {
+  const seq = ++suggestSeq
+  try {
+    const list = await getSearchSuggestions(text)
+    if (seq !== suggestSeq) return
+    suggestions.value = list.slice(0, 8)
+    activeSuggestion.value = -1
+  } catch {
+    if (seq === suggestSeq) suggestions.value = []
+  }
+}, 260)
+
+watch(queryInput, (value) => {
+  if (programmaticQuery) return
+  if (!value.trim()) {
+    suggestions.value = []
+    suggestionsOpen.value = false
+    return
+  }
+  suggestionsOpen.value = true
+  void fetchSuggestions(value)
+})
+
+// ────────────────────────────────────────────────────────────
+// 生命周期
+// ────────────────────────────────────────────────────────────
+
+function onScroll() {
+  showBackToTop.value = window.scrollY > window.innerHeight * 2
+}
+
+function backToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 onMounted(() => {
-  if (query.value.trim()) {
-    doSearch()
-  }
+  document.title = 'Agent 检索 · 视觉百花 Sakura Gallery'
+  applyRoute(true)
+  window.addEventListener('scroll', onScroll, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', onScroll)
+  document.title = '视觉百花 Sakura Gallery'
 })
 </script>
 
-<style scoped>
-.search-view {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 24px;
-}
+<template>
+  <div class="search-page">
+    <div class="search-shell">
+      <header class="search-hero">
+        <p class="search-eyebrow">
+          <n-icon :component="SparklesOutline" :size="13" />
+          Agent 检索 · 视觉百花
+        </p>
+        <h1 class="search-title">描述你想要的画面</h1>
+        <p class="search-lead">
+          一句话就够了。Agent 会拆解意图、多步检索，并解释这些作品为什么与你的描述相关。
+        </p>
 
-.search-header {
-  margin-bottom: 20px;
-}
+        <div ref="searchBox" class="search-box">
+          <form class="search-form" @submit.prevent="onInputEnter">
+            <n-input
+              v-model:value="queryInput"
+              class="search-input"
+              size="large"
+              round
+              clearable
+              placeholder="例如：春天的樱花树下，暖光人像"
+              aria-label="检索关键词"
+              @keydown.enter.prevent="onInputEnter"
+              @keydown.down.prevent="moveSuggestion(1)"
+              @keydown.up.prevent="moveSuggestion(-1)"
+              @keydown.esc="closeSuggestions"
+              @focus="onFocus"
+            >
+              <template #prefix>
+                <n-icon :component="SearchOutline" :size="18" />
+              </template>
+            </n-input>
+            <button type="submit" class="search-submit">检索</button>
+          </form>
 
-.search-meta {
-  margin-top: 8px;
-}
+          <ul
+            v-if="suggestionsOpen && suggestions.length"
+            class="search-suggest"
+            role="listbox"
+            aria-label="搜索建议"
+          >
+            <li v-for="(suggestion, index) in suggestions" :key="suggestion">
+              <button
+                type="button"
+                class="search-suggest__item"
+                :class="{ 'is-active': index === activeSuggestion }"
+                role="option"
+                :aria-selected="index === activeSuggestion"
+                @mousedown.prevent="pickSuggestion(suggestion)"
+              >
+                <n-icon :component="SearchOutline" :size="13" />
+                {{ suggestion }}
+              </button>
+            </li>
+          </ul>
+        </div>
 
-.search-filters {
-  margin-bottom: 20px;
-}
+        <div class="mode-switch" role="group" aria-label="检索模式">
+          <button
+            type="button"
+            class="mode-option"
+            :class="{ 'is-active': mode === 'agent' }"
+            :aria-pressed="mode === 'agent'"
+            @click="setMode('agent')"
+          >
+            <n-icon :component="SparklesOutline" :size="16" />
+            <span class="mode-option__text">
+              <strong>Agent 智能检索</strong>
+              <small>理解意图 · 多步检索 · 给出解释</small>
+            </span>
+          </button>
+          <button
+            type="button"
+            class="mode-option"
+            :class="{ 'is-active': mode === 'fast' }"
+            :aria-pressed="mode === 'fast'"
+            @click="setMode('fast')"
+          >
+            <n-icon :component="FlashOutline" :size="16" />
+            <span class="mode-option__text">
+              <strong>快速检索</strong>
+              <small>直接关键词 / 语义匹配，响应更快</small>
+            </span>
+          </button>
+        </div>
+      </header>
 
-.search-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 60px 0;
-}
+      <FacetChips
+        v-if="hasFacets"
+        :facets="facets"
+        :season="season"
+        :category="category"
+        :campus="campus"
+        :loading="facetsLoading"
+        @update:season="(value) => setFacet('season', value)"
+        @update:category="(value) => setFacet('category', value)"
+        @update:campus="(value) => setFacet('campus', value)"
+        @clear="clearFilters"
+      />
 
-.search-results {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
-}
+      <SearchStepsTimeline v-if="result && !loading" :result="result" />
 
-.result-card {
-  border-radius: 8px;
-  overflow: hidden;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
+      <ClarifyCard
+        v-if="result?.clarify && !loading"
+        :question="result.clarify"
+        :options="result.clarifyOptions"
+        :has-results="total > 0"
+        @pick="submitSearch"
+      />
 
-.result-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
+      <n-alert
+        v-if="fallbackNotice && !loading && !fallbackDismissed"
+        class="search-fallback"
+        :type="fallbackTone"
+        :bordered="false"
+        closable
+        @close="fallbackDismissed = true"
+      >
+        {{ fallbackNotice }}
+      </n-alert>
 
-.result-image {
-  position: relative;
-  aspect-ratio: 1 / 1;
-  overflow: hidden;
-}
+      <section class="search-results" aria-label="检索结果">
+        <div v-if="loading || (searched && works.length)" class="results-head">
+          <div class="results-summary" role="status">
+            <span class="results-count">{{ totalText }}</span>
+            <span v-if="result" class="results-meta">{{ currentModeLabel }} · 耗时 {{ Math.round(result.queryTimeMs) }} ms</span>
+          </div>
+          <button v-if="hasActiveFilters" type="button" class="results-clear" @click="clearFilters">
+            清除筛选
+          </button>
+        </div>
 
-.result-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+        <div v-if="loading" class="agent-loading">
+          <span class="agent-loading__dots" aria-hidden="true"><i /><i /><i /></span>
+          <span>Agent 正在拆解意图并检索，通常需要几秒…</span>
+        </div>
 
-.result-score {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-}
+        <SearchEmptyState
+          v-if="error && !loading"
+          :variant="errorKind"
+          :message="error"
+          :retrying="retrying"
+          @retry="retry"
+        />
 
-.result-info {
-  padding: 10px;
-}
+        <SearchEmptyState
+          v-else-if="!loading && searched && works.length === 0"
+          variant="empty"
+          :query="q"
+          :can-clear="hasActiveFilters"
+          :retrying="retrying"
+          @retry="retry"
+          @clear="clearFilters"
+        />
 
-.result-title {
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.35;
-  margin-bottom: 8px;
-  word-break: break-word;
-}
+        <SearchEmptyState
+          v-else-if="!loading && !searched"
+          variant="idle"
+          :suggestions="IDLE_SUGGESTIONS"
+          @pick="submitSearch"
+        />
 
-.result-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 6px;
-}
+        <ResultMasonry
+          v-if="loading || works.length"
+          :works="works"
+          :loading="loading"
+          :loading-more="loadingMore"
+          :skeleton-count="8"
+        />
 
-.result-classifications {
-  font-size: 12px;
-}
-</style>
+        <div v-if="works.length && !loading" class="results-foot">
+          <button
+            v-if="hasMore"
+            type="button"
+            class="load-more"
+            :disabled="loadingMore"
+            @click="loadMore"
+          >
+            {{ loadingMore ? '正在加载…' : '加载更多作品' }}
+          </button>
+          <p v-else class="results-end">已经到底啦 · 共 {{ works.length }} 个结果</p>
+        </div>
+      </section>
+    </div>
+
+    <Transition name="backtop">
+      <button
+        v-if="showBackToTop"
+        type="button"
+        class="back-to-top"
+        aria-label="回到顶部"
+        @click="backToTop"
+      >
+        <n-icon :component="ArrowUpOutline" :size="18" />
+      </button>
+    </Transition>
+  </div>
+</template>

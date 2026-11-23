@@ -10,7 +10,6 @@ Features:
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -143,3 +142,25 @@ def get_embedding_service() -> EmbeddingService:
     if _service is None:
         _service = EmbeddingService()
     return _service
+
+
+# ---- 可选依赖可用性探测（缺失时检索自动降级，不影响接口）----
+def embedding_unavailable_reason() -> str:
+    """返回缺失的可选依赖说明；空串表示向量编码可用。"""
+    import importlib.util
+
+    missing: list[str] = []
+    for module in ("sentence_transformers", "torch"):
+        try:
+            if importlib.util.find_spec(module) is None:
+                missing.append(module)
+        except (ImportError, ValueError):  # 例如父包缺失
+            missing.append(module)
+    if not missing:
+        return ""
+    return "missing dependencies: " + ", ".join(missing)
+
+
+def is_embedding_available() -> bool:
+    """torch + sentence_transformers 是否已安装（不加载模型）。"""
+    return embedding_unavailable_reason() == ""

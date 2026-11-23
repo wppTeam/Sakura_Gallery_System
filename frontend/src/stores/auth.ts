@@ -50,8 +50,13 @@ export const useAuthStore = defineStore('auth', () => {
     return user.value.role === role
   }
 
-  // 从 localStorage / sessionStorage 初始化
-  function initFromStorage() {
+  /**
+   * 初始化只执行一次（App.vue 与路由守卫都会调用），返回同一个 Promise，
+   * 让守卫可以 await 到「用户信息已回填」之后再判断角色权限。
+   */
+  let initPromise: Promise<void> | null = null
+
+  async function restoreSession(): Promise<void> {
     let storedToken = localStorage.getItem('auth_token')
     let storedRefreshToken = localStorage.getItem('refresh_token')
     // 兼容未勾选"记住我"时存储在 sessionStorage 的情况
@@ -59,21 +64,38 @@ export const useAuthStore = defineStore('auth', () => {
       storedToken = sessionStorage.getItem('auth_token')
       storedRefreshToken = sessionStorage.getItem('refresh_token')
     }
-    if (storedToken) {
-      token.value = storedToken
-      refreshTokenValue.value = storedRefreshToken
+    if (!storedToken) return
+
+    token.value = storedToken
+    refreshTokenValue.value = storedRefreshToken
+    try {
       // 尝试获取用户信息
-      fetchCurrentUser().catch(() => {
-        // Access Token 可能过期，尝试刷新
-        if (storedRefreshToken) {
-          refreshAccessToken().catch(() => {
-            logout()
-          })
-        } else {
+      await fetchCurrentUser()
+    } catch {
+      // Access Token 可能过期，尝试刷新
+      if (storedRefreshToken) {
+        try {
+          await refreshAccessToken()
+        } catch {
           logout()
         }
-      })
+      } else {
+        logout()
+      }
     }
+  }
+
+  // 从 localStorage / sessionStorage 初始化（幂等）
+  function initFromStorage(): Promise<void> {
+    if (!initPromise) initPromise = restoreSession()
+    return initPromise
+  }
+
+  /**
+   * 等待本地会话恢复完成；未初始化时主动触发。路由守卫在判断角色权限前必须 await。
+   */
+  function whenReady(): Promise<void> {
+    return initFromStorage()
   }
 
   // 用户登录（支持学号或邮箱）
@@ -142,6 +164,7 @@ export const useAuthStore = defineStore('auth', () => {
     canReview,
     hasRole,
     initFromStorage,
+    whenReady,
     login,
     logout,
     fetchCurrentUser,

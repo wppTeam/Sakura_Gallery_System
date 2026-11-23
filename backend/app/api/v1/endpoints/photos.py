@@ -5,7 +5,7 @@ import json
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
@@ -43,6 +43,7 @@ from app.services.image_processing import process_uploaded_image
 from app.services.runtime_settings import get_runtime_settings
 from app.services.search_interpreter import get_search_interpreter
 from app.services.storage import cleanup_staged_files, get_storage, stage_photo_upload
+from app.services.moderation_worker import enqueue_moderation
 from app.services.task_dispatcher import dispatch_ai_analysis_task
 from app.services.taxonomy import (
     delete_photo_classification,
@@ -147,13 +148,100 @@ def _parse_photo_author(description: str | None) -> str:
     return ""
 
 
+# 公开响应 EXIF 白名单：只保留拍摄参数；GPS、作者/版权、描述类个人信息一律不出
+_PUBLIC_EXIF_KEYS = frozenset({
+    "Make", "Model", "LensMake", "LensModel", "FNumber", "ExposureTime",
+    "ISOSpeedRatings", "PhotographicSensitivity", "FocalLength",
+    "FocalLengthIn35mmFilm", "DateTimeOriginal", "CreateDate", "ColorSpace",
+    "WhiteBalance", "Flash", "Orientation", "Software", "ImageWidth",
+    "ImageHeight", "ExposureProgram", "ExposureBiasValue", "MeteringMode",
+    "SceneCaptureType", "DigitalZoomRatio", "Contrast", "Saturation",
+    "Sharpness", "ExifVersion",
+})
+
+
+def _sanitize_public_exif(exif_data: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """公开 EXIF 白名单过滤：剔除 GPS、真实姓名（Artist/Copyright）、UserComment 等。"""
+    if not isinstance(exif_data, dict):
+        return None
+    safe: Dict[str, Any] = {}
+    for key, value in exif_data.items():
+        if key not in _PUBLIC_EXIF_KEYS or value in (None, "", [], {}):
+            continue
+        if isinstance(value, (str, int, float, bool)):
+            safe[str(key)] = value
+        elif isinstance(value, list) and len(value) <= 16 and all(
+            isinstance(item, (str, int, float, bool)) for item in value
+        ):
+            safe[str(key)] = value
+    return safe or None
+
+
+def _internal_exif(photo: Photo, key: str) -> Optional[str]:
+    """读取入库时写在 exif_data 里的内部展示字段（下划线前缀，不进公开 EXIF）。"""
+    exif = photo.exif_data if isinstance(photo.exif_data, dict) else None
+    if not exif:
+        return None
+    value = exif.get(key)
+    return value if isinstance(value, str) and value else None
+
+
+def _photo_common_dict(photo: Photo) -> dict:
+    """显式字段白名单（禁止 {**photo.__dict__}，避免泄漏内部/个人信息）。"""
+    return {
+        "id": photo.id,
+        "filename": photo.filename,
+        "title": photo.title or _parse_photo_title(photo.description),
+        "author": photo.author or _parse_photo_author(photo.description),
+        "description": photo.description,
+        "uploader_id": photo.uploader_id,
+        "original_path": photo.original_path,
+        "processed_path": photo.processed_path,
+        "thumb_path": photo.thumb_path,
+        "compressed_path": photo.compressed_path,
+        "width": photo.width,
+        "height": photo.height,
+        "file_size": photo.file_size,
+        "mime_type": photo.mime_type,
+        "season": photo.season,
+        "category": photo.category,
+        "campus": photo.campus,
+        "captured_at": photo.captured_at,
+        "status": photo.status,
+        "processing_status": photo.processing_status,
+        "created_at": photo.created_at,
+        "updated_at": photo.updated_at,
+        # 首屏占位（内部存于 exif_data["_lqip"]，不随公开 EXIF 白名单泄漏）
+        "lqip": _internal_exif(photo, "_lqip"),
+        "lqip_color": _internal_exif(photo, "_lqip_color"),
+        "blurhash": _internal_exif(photo, "_blurhash"),
+    }
+
+
 async def serialize_photo(db: AsyncSession, photo: Photo) -> PhotoResponse:
+    """公开安全序列化：白名单字段 + EXIF 子集；不返回学号/真实姓名/GPS。"""
     tags = await photo_crud.get_photo_tags(db, photo.id)
     free_tags = _photo_free_tags(tags)
-    photo_dict = {**photo.__dict__}
-    photo_dict.pop("_sa_instance_state", None)
-    photo_dict["title"] = photo.title or _parse_photo_title(photo.description)
-    photo_dict["author"] = photo.author or _parse_photo_author(photo.description)
+    photo_dict = _photo_common_dict(photo)
+    photo_dict["exif_data"] = _sanitize_public_exif(photo.exif_data)
+    photo_dict["tags"] = free_tags
+    photo_dict["free_tags"] = free_tags
+    photo_dict["classifications"] = serialize_classifications(photo)
+    photo_dict["uploader_name"] = None
+    photo_dict["uploader_student_id"] = None
+    return PhotoResponse(**photo_dict)
+
+
+async def serialize_photos(db: AsyncSession, photos: List[Photo]) -> List[PhotoResponse]:
+    return [await serialize_photo(db, photo) for photo in photos]
+
+
+async def serialize_photo_admin(db: AsyncSession, photo: Photo) -> PhotoResponse:
+    """管理端 / 本人鉴权端序列化：完整 EXIF 与上传者身份，仅用于非公开端点。"""
+    tags = await photo_crud.get_photo_tags(db, photo.id)
+    free_tags = _photo_free_tags(tags)
+    photo_dict = _photo_common_dict(photo)
+    photo_dict["exif_data"] = photo.exif_data
     photo_dict["tags"] = free_tags
     photo_dict["free_tags"] = free_tags
     photo_dict["classifications"] = serialize_classifications(photo)
@@ -163,8 +251,8 @@ async def serialize_photo(db: AsyncSession, photo: Photo) -> PhotoResponse:
     return PhotoResponse(**photo_dict)
 
 
-async def serialize_photos(db: AsyncSession, photos: List[Photo]) -> List[PhotoResponse]:
-    return [await serialize_photo(db, photo) for photo in photos]
+async def serialize_photos_admin(db: AsyncSession, photos: List[Photo]) -> List[PhotoResponse]:
+    return [await serialize_photo_admin(db, photo) for photo in photos]
 
 
 async def _assert_photo_access(
@@ -474,6 +562,13 @@ async def upload_photo(
             )
             dispatch_ai_analysis_task(background_tasks, task.id)
 
+        # AI 审核入队：后台执行，入队失败绝不影响上传成功
+        if settings.MODERATION_ENABLED:
+            try:
+                enqueue_moderation(background_tasks, photo.id)
+            except Exception:  # noqa: BLE001 - 审核属增强链路，不能回滚上传
+                pass
+
         return PhotoUploadResponse(
             id=photo.id,
             filename=photo.filename,
@@ -555,7 +650,7 @@ async def list_photos(
         total=total,
         page=skip // limit + 1 if limit > 0 else 1,
         page_size=limit,
-        items=await serialize_photos(db, photos),
+        items=await serialize_photos_admin(db, photos),
     )
 
 
@@ -587,7 +682,7 @@ async def list_my_submissions(
         total=total,
         page=skip // limit + 1 if limit > 0 else 1,
         page_size=limit,
-        items=await serialize_photos(db, photos),
+        items=await serialize_photos_admin(db, photos),
     )
 
 
@@ -602,7 +697,7 @@ async def get_photo(
         raise HTTPException(status_code=404, detail="Photo not found")
     if not is_reviewer(current_user) and photo.uploader_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to access this photo")
-    return await serialize_photo(db, photo)
+    return await serialize_photo_admin(db, photo)
 
 
 @router.patch("/{photo_id}", response_model=PhotoResponse)
@@ -632,7 +727,7 @@ async def update_photo(
         if taxonomy_updates:
             await set_photo_classifications(db, updated_photo, taxonomy_updates)
         await db.commit()
-    return await serialize_photo(db, updated_photo)
+    return await serialize_photo_admin(db, updated_photo)
 
 
 @router.delete("/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -682,7 +777,7 @@ async def approve_photo(
                                 related_id=photo_id)
     await db.commit()
     await db.refresh(photo)
-    return await serialize_photo(db, await photo_crud.get_photo_with_tags(db, photo_id))
+    return await serialize_photo_admin(db, await photo_crud.get_photo_with_tags(db, photo_id))
 
 
 @router.post("/{photo_id}/reject", response_model=PhotoResponse)
@@ -707,7 +802,7 @@ async def reject_photo(
                                 related_id=photo_id)
     await db.commit()
     await db.refresh(photo)
-    return await serialize_photo(db, await photo_crud.get_photo_with_tags(db, photo_id))
+    return await serialize_photo_admin(db, await photo_crud.get_photo_with_tags(db, photo_id))
 
 
 @router.post("/batch-approve")
@@ -794,7 +889,7 @@ async def add_photo_tags(
         tag = await tag_crud.get_or_create_tag(db, tag_name)
         tag_ids.append(tag.id)
     await photo_crud.add_tags_to_photo(db, photo_id, tag_ids)
-    return await serialize_photo(db, await photo_crud.get_photo_with_tags(db, photo_id))
+    return await serialize_photo_admin(db, await photo_crud.get_photo_with_tags(db, photo_id))
 
 
 @router.delete("/{photo_id}/tags/{tag_id}", response_model=PhotoResponse)
@@ -823,7 +918,7 @@ async def remove_photo_tag(
     if tag and tag.usage_count > 0:
         tag.usage_count -= 1
         await db.commit()
-    return await serialize_photo(db, await photo_crud.get_photo_with_tags(db, photo_id))
+    return await serialize_photo_admin(db, await photo_crud.get_photo_with_tags(db, photo_id))
 
 
 @router.put("/{photo_id}/classifications", response_model=PhotoResponse)
@@ -848,7 +943,7 @@ async def update_photo_classifications(
         raise HTTPException(status_code=400, detail=str(e))
 
     await db.commit()
-    return await serialize_photo(db, await photo_crud.get_photo_with_tags(db, photo_id))
+    return await serialize_photo_admin(db, await photo_crud.get_photo_with_tags(db, photo_id))
 
 
 @router.delete("/{photo_id}/classifications/{facet_key}", response_model=PhotoResponse)
@@ -869,7 +964,7 @@ async def remove_photo_classification(
 
     await delete_photo_classification(db, photo, facet_key)
     await db.commit()
-    return await serialize_photo(db, await photo_crud.get_photo_with_tags(db, photo_id))
+    return await serialize_photo_admin(db, await photo_crud.get_photo_with_tags(db, photo_id))
 
 
 @router.post("/{photo_id}/classifications", response_model=PhotoResponse)

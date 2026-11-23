@@ -3,6 +3,7 @@
     <n-message-provider>
       <n-dialog-provider>
         <n-notification-provider>
+          <ErrorHandlerBridge />
           <router-view />
         </n-notification-provider>
       </n-dialog-provider>
@@ -11,40 +12,35 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { darkTheme } from 'naive-ui'
+import { defineComponent, onMounted } from 'vue'
+import { darkTheme, useMessage } from 'naive-ui'
 import { useAuthStore } from './stores/auth'
 import { useAppStore } from './stores/app'
-import './assets/styles/main.css'
+import { setGlobalErrorHandler } from './api'
 
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
+/**
+ * 把 axios 的全局错误接到 naive-ui 的 message 上。
+ * 必须活在 n-message-provider 内部才能调用 useMessage，所以用无渲染子组件桥接。
+ * （此前 setGlobalErrorHandler 从未被调用——接口错误只进控制台，用户看不到。）
+ */
+const ErrorHandlerBridge = defineComponent({
+  name: 'ErrorHandlerBridge',
+  setup() {
+    const message = useMessage()
+    onMounted(() => {
+      setGlobalErrorHandler((text, type) => {
+        message[type](text, { duration: 3600, closable: true })
+      })
+    })
+    return () => null
+  },
+})
+
 onMounted(() => {
-  // 初始化应用状态
   appStore.init()
-  // 从存储恢复认证状态
   authStore.initFromStorage()
 })
 </script>
-
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-#app {
-  width: 100%;
-  min-height: 100vh;
-}
-</style>

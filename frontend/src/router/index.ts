@@ -1,5 +1,12 @@
 /**
- * Vue Router configuration - VCG Style Refactor
+ * 路由配置。
+ *
+ * 公开端：`/` 首页、`/explore` 探索、`/photo/:id` 详情、`/search` 搜索、`/login` 登录，
+ * 以及兜底的 404。这些页面即使未登录也必须可访问（此前 catch-all 缺少 meta 会被默认
+ * 拒绝规则重定向到登录页——这里用显式 `requiresAuth: false` 白名单修正）。
+ *
+ * 登录后的投稿 / 个人中心 / 标注 / 管理后台保持原有路径与路由名不变，admin 页面依赖
+ * 这些 name 做跳转，重写时不要改名。
  */
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
@@ -15,27 +22,40 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('../layouts/PublicLayout.vue'),
-    meta: { requiresAuth: false },
     children: [
       {
         path: '',
         name: 'Home',
         component: () => import('../views/HomeView.vue'),
+        meta: { requiresAuth: false },
       },
       {
+        path: 'explore',
+        name: 'Explore',
+        component: () => import('../views/ExploreView.vue'),
+        meta: { requiresAuth: false },
+      },
+      {
+        // 旧入口兼容：/gallery 整体交接给 /explore；带 search 的旧链接直接进搜索结果页
         path: 'gallery',
         name: 'Gallery',
-        component: () => import('../views/GalleryView.vue'),
+        redirect: (to) =>
+          to.query.search
+            ? { path: '/search', query: { q: String(to.query.search) } }
+            : { path: '/explore', query: to.query },
+        meta: { requiresAuth: false },
       },
       {
         path: 'photo/:id',
         name: 'PhotoDetail',
         component: () => import('../views/PhotoDetailView.vue'),
+        meta: { requiresAuth: false },
       },
       {
         path: 'search',
         name: 'Search',
         component: () => import('../views/SearchView.vue'),
+        meta: { requiresAuth: false },
       },
     ],
   },
@@ -135,6 +155,7 @@ const routes: RouteRecordRaw[] = [
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('../views/NotFound.vue'),
+    meta: { requiresAuth: false },
   },
 ]
 
@@ -142,40 +163,41 @@ const router = createRouter({
   history: createWebHistory(),
   routes,
   scrollBehavior(to, _from, savedPosition) {
-    if (savedPosition && to.name !== 'PhotoDetail') return savedPosition
-    if (to.name === 'PhotoDetail') return { top: 0 }
+    if (savedPosition) return savedPosition
+    // 站内锚点（四季 / 八景 / 最新作品）滚动时给 sticky 顶栏留出空间
+    if (to.hash) return { el: to.hash, top: 84 }
     return { top: 0 }
   },
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore()
-  const requiresAuth = to.meta.requiresAuth !== false
+  // 硬刷新/直接打开受保护路由时，本地 token 已存在但用户信息仍在异步回填。
+  // 必须先等会话恢复完成，否则 isAdmin/isAuditor 会误判为 false 而把人踢走。
+  await authStore.whenReady()
+
+  // 只有显式声明 requiresAuth: false 的页面才允许匿名访问，其余默认需要登录
+  const isPublic = to.meta.requiresAuth === false
   const requiresAdmin = to.meta.requiresAdmin === true
   const requiresAuditor = to.meta.requiresAuditor === true
   const requiresTagger = to.meta.requiresTagger === true
 
-  if (requiresAuth && !authStore.isAuthenticated) {
-    next({ path: '/login', query: { redirect: to.fullPath } })
-    return
+  if (!isPublic && !authStore.isAuthenticated) {
+    return { path: '/login', query: { redirect: to.fullPath } }
   }
   if (requiresAdmin && !authStore.isAdmin) {
-    next(authStore.isAuditor ? '/admin/dashboard' : '/')
-    return
+    return authStore.isAuditor ? '/admin/dashboard' : '/'
   }
   if (requiresAuditor && !authStore.isAuditor) {
-    next('/')
-    return
+    return '/'
   }
   if (requiresTagger && !authStore.isTagger) {
-    next('/')
-    return
+    return '/'
   }
   if (to.path === '/login' && authStore.isAuthenticated) {
-    next('/')
-    return
+    return '/'
   }
-  next()
+  return true
 })
 
 export default router

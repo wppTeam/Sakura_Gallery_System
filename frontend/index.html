@@ -2,12 +2,68 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>视觉北化 - Visual BUCT</title>
+    <title>视觉百花 · 北化学生自建开源创作平台</title>
+    <meta
+      name="description"
+      content="视觉百花是北化学生自己的开源图像共享平台。校园的一年由十二番花信与八处景名索引，每张作品保留拍摄者署名与授权协议。"
+    />
+    <meta name="theme-color" content="#fff6f9" />
+    <meta name="color-scheme" content="light" />
+    <link rel="icon" type="image/x-icon" href="/brand/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/icon-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/brand/icon-48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/brand/icon-180.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="视觉百花" />
+    <meta property="og:title" content="视觉百花 · 北化学生自建开源创作平台" />
+    <meta
+      property="og:description"
+      content="北化学生自己的开源创作资源共享平台。校园摄影、AI 生成图像与模板，保留作者署名与授权协议。"
+    />
+    <meta property="og:image" content="/brand/og-share.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- 自托管站酷庆科黄油体：只预载首屏 hero「视觉百花」所在的 3 个 unicode-range 分片 -->
+    <link
+      rel="preload"
+      href="/fonts/zcool/zcool-86.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/zcool/zcool-88.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/zcool/zcool-89.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <style>
+      /* 应用样式就绪前的底色，避免白闪 */
+      html {
+        background: #fff6f9;
+        color-scheme: light;
+      }
+      body {
+        margin: 0;
+      }
+    </style>
   </head>
   <body>
     <div id="app"></div>
+    <noscript>视觉百花需要启用 JavaScript 才能浏览。</noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

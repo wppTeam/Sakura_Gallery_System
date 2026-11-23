@@ -64,6 +64,10 @@ class PhotoResponse(PhotoInDB):
     """Photo response schema"""
     uploader_name: Optional[str] = None
     uploader_student_id: Optional[str] = None
+    # 展示用占位图：20px WebP data-URI（首屏消除加载跳动），blurhash 预留
+    lqip: Optional[str] = None
+    lqip_color: Optional[str] = None
+    blurhash: Optional[str] = None
     tags: List[str] = Field(default_factory=list, description="Associated tags")
     free_tags: List[str] = Field(default_factory=list, description="User-visible free tags")
     classifications: Dict[str, TaxonomyValueResponse] | Dict[str, Dict[str, Any] | list[Dict[str, Any]]] = Field(

@@ -1,0 +1,106 @@
+/* ============================================================
+   视觉百花 · 动效层
+   原则：只用 transform / opacity；默认克制；尊重 reduced-motion。
+   ============================================================ */
+
+@keyframes ph-pulse {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes petal-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -12vh, 0) rotate(0deg);
+  }
+  8% {
+    opacity: var(--petal-opacity, 0.55);
+  }
+  90% {
+    opacity: var(--petal-opacity, 0.55);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--drift, 40px), 106vh, 0)
+      rotate(var(--spin, 300deg));
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- 滚动显现：由 useReveal / IntersectionObserver 加 .is-in ---------- */
+.reveal {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+    transition: opacity var(--dur-reveal) var(--ease-out),
+      transform var(--dur-reveal) var(--ease-out);
+    transition-delay: calc(min(var(--reveal-i, 0), 5) * 40ms);
+  }
+
+  .reveal.is-in {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .fade-up {
+    animation: fade-up var(--dur-slow) var(--ease-out) both;
+  }
+
+  .fade-in {
+    animation: fade-in var(--dur, 240ms) var(--ease-soft) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .petals {
+    display: none !important;
+  }
+}
