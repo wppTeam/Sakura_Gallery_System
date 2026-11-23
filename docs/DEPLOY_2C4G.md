@@ -649,16 +649,20 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod dow
 | 编排语法与插值 | `docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod.example config` | ✅ 通过（exit 0，无 warning） |
 | `.env.prod` 注入解析（含 `ALLOWED_ORIGINS` JSON） | 以上命令 + 临时 `.env.prod` | ✅ 注释/引号按预期解析，`ALLOWED_ORIGINS` 为合法 JSON 数组 |
 | nginx 配置语法 | `docker run --rm -v "$PWD/deploy/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.27-alpine nginx -t` | ✅ `test is successful` |
-| 后端镜像构建 | `docker build -f deploy/Dockerfile.backend -t sakura-backend:test backend/`（本机加 `--build-arg PIP_INDEX_URL=<镜像源>`） | ✅ 成功后端镜像 446MB（python:3.12-slim 基础） |
-| 前端镜像构建 | `docker build -f deploy/Dockerfile.frontend -t sakura-frontend:test .`（本机加 `--build-arg NPM_REGISTRY=https://registry.npmmirror.com`） | ✅ 成功前端镜像 84.3MB（含 dist + nginx 配置） |
-| 镜像内 alembic 配置 | `docker run --rm --entrypoint alembic sakura-backend:test heads` | ✅ `f0a1b2c3d4e5 (head)` |
+| 后端镜像构建 | `docker build -f deploy/Dockerfile.backend -t sakura-backend:test backend/`（本机加 `--build-arg PIP_INDEX_URL=<镜像源>`） | ✅ 成功后端镜像 440MB（python:3.12-slim 基础；当前代码重建后） |
+| 前端镜像构建 | `docker build -f deploy/Dockerfile.frontend -t sakura-frontend:test .`（本机加 `--build-arg NPM_REGISTRY=https://registry.npmmirror.com`） | ✅ 成功前端镜像 84.4MB（含 dist + nginx 配置） |
+| 镜像内 alembic 配置 | `docker run --rm --entrypoint alembic sakura-backend:test heads` | ✅ `b1c2d3e4f5a6 (head)`（AIGC 标识迁移后） |
 | entrypoint 语法 | `bash -n deploy/entrypoint.sh` | ✅ 通过 |
 | Dockerfile heredoc 与 `deploy/entrypoint.sh` 一致性 | 脚本比对两段内容 | ✅ 逐字节一致 |
 | **端到端联通**（临时 PG16 + backend + nginx，一次性随机密钥，全部容器测试后删除） | 起 `postgres:16-alpine` → backend 容器（entrypoint 等 PG → `alembic upgrade head`）→ 前端 nginx 容器 `:18080` | ✅ 迁移链 `f1a2b3c4d5e6 → f0a1b2c3d4e5` 全部执行、日志「数据库迁移完成（head）」；`workers=2` 启动；backend 容器内 `/health` → `{"status":"healthy"}`（约 8s 就绪）；非 root `uid=10001(sakura)`；`/app/uploads` 可写 |
 | 经 nginx 的 E2E | `curl http://127.0.0.1:18080/...` | ✅ `/healthz`→`ok`；`/`→200 `text/html` + `Cache-Control: no-cache` + 安全头；SPA 深路由 `/some/deep/route`→200 index.html；`/api/v1/search/suggest?q=樱花`→200 JSON（变量 `proxy_pass` + resolver 生效）；`/api/v1/auth/login` GET→405（反代到后端）；`/brand/logo.png`→`Cache-Control: public, max-age=31536000, immutable` |
+| 经 nginx 的 E2E（完整链路） | `.tmp/verify_compose.py` 打 `http://127.0.0.1:18080` | ✅ `/healthz`→200；`/`→200 `no-cache`；`/explore` SPA fallback→200；`/api/v1/photos/public`→200；`/api/v1/search/suggest`→200；`POST /api/v1/auth/register`→201、`POST /api/v1/auth/login`（**用户名登录**）→200；`POST /api/v1/photos/upload`（1200×800）→201 + `variants=['1080','320','640']`；`GET /image/variant/640?format=webp`→200 `image/webp` + `Cache-Control: public, max-age=31536000, immutable`；`GET /api/v1/search?q=…&mode=fast`→200；匿名 `GET /api/v1/admin/moderation/queue`→401 |
+| 容器内存实测（空库、无流量） | `docker stats --no-stream` | ✅ nginx 10.3MB/64MB、backend 247.4MB/768MB、postgres 58.6MB/1GB；镜像前端 84.4MB、后端 440MB；容器内 `alembic current` = `b1c2d3e4f5a6 (head)`，public schema 24 张表 |
 
-> 未验证项（需真实域名/公网/对象存储）：TLS 证书签发与自动续期、HTTPS 跳转、真实上传/审核链路、S3/R2 预签名跳转、
-> 备份恢复演练、`hey` 压测、真实 2c4g 机器上的 `docker stats` 内存曲线。首次上线请按 §4.6 逐项复验。
+> 本轮已在开发机用**完整三服务 compose 栈**（随机一次性密钥，验证后 `down -v` 删除）跑通
+> 「注册/用户名登录 → 上传 → 生成变体 → 经 nginx 取图（不可变缓存头）」全链路，并记录了空载内存占用。
+> 仍未验证（需真实域名/公网/对象存储/压力）：TLS 证书签发与自动续期、HTTPS 跳转、S3/R2 预签名跳转、
+> 备份恢复演练、`hey` 压测、真实 2c4g 机器上的 `docker stats` 内存曲线、并发上传时的内存峰值。首次上线请按 §4.6 逐项复验。
 
 ### 13.1 构建注意事项（本机实测踩到的问题，上机前先看）
 
