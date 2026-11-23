@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     # 2c4g 上每上传一次会多 10 次编码，但换来首屏按屏宽取图的带宽节省；
     # 若机器更小或吞吐优先，可置 false 退化为 thumbnail+compressed 两档。
     UPLOAD_GENERATE_VARIANTS: bool = True
+    # 每个进程同时处理的上传数量上限（进程内信号量，默认 1）。
+    # 24MP 原图单次处理峰值 RSS 约 +190MB，2c4g 上并发大图会把容器顶到 OOM；
+    # 2 个 uvicorn worker × 1 = 最多 2 张图同时处理，其余在事件循环里排队。
+    # 小图为主的站点可调到 2；内存 ≥ 8G 可调到 4。
+    UPLOAD_PROCESS_CONCURRENCY: int = 1
     MAX_UPLOAD_SIZE: int = 20971520  # 20MB
     S3_ENDPOINT: str | None = None
     S3_BUCKET: str | None = None

@@ -1,6 +1,7 @@
 """
 Photo API endpoints.
 """
+import asyncio
 import json
 import logging
 import re
@@ -46,6 +47,7 @@ from app.services.runtime_settings import get_runtime_settings
 from app.services.search_interpreter import get_search_interpreter
 from app.services.storage import cleanup_staged_files, get_storage, stage_photo_upload
 from starlette.concurrency import run_in_threadpool
+
 from app.services.moderation_worker import enqueue_moderation
 from app.services.task_dispatcher import dispatch_ai_analysis_task
 from app.services.taxonomy import (
@@ -59,6 +61,22 @@ from app.services.audit import log_audit
 from app.services.notification import notify_user as send_notification
 
 settings = get_settings()
+
+
+# 进程内上传处理信号量：每 worker 同时只处理 N 张原图（见 settings.UPLOAD_PROCESS_CONCURRENCY）。
+# 懒创建是为了绑定当前事件循环（TestClient/uvicorn 都会调用）。
+_upload_semaphores: Dict[int, asyncio.Semaphore] = {}
+
+
+def _get_upload_semaphore() -> asyncio.Semaphore:
+    # 按事件循环隔离：uvicorn 只有一条循环，但测试里每个 TestClient 会建新循环，
+    # 复用同一个 Semaphore 会报 "bound to a different event loop"。
+    loop = asyncio.get_running_loop()
+    sem = _upload_semaphores.get(id(loop))
+    if sem is None:
+        sem = asyncio.Semaphore(max(1, settings.UPLOAD_PROCESS_CONCURRENCY))
+        _upload_semaphores[id(loop)] = sem
+    return sem
 
 # 《人工智能生成合成内容标识办法》要求：AIGC 投稿必须显式声明并展示角标；
 # 图生图/换脸类还需额外确认被摄者同意，且一律进 L2 前审。
@@ -722,13 +740,14 @@ async def upload_photo(
         staged_variants_dir = None
         if settings.UPLOAD_GENERATE_VARIANTS:
             staged_variants_dir = str(Path(staged_original_path).parent / "variants")
-        processing_result = await run_in_threadpool(
-            process_uploaded_image,
-            staged_original_path,
-            photo_uuid,
-            output_dir=str(Path(staged_original_path).parent),
-            variants_dir=staged_variants_dir,
-        )
+        async with _get_upload_semaphore():
+            processing_result = await run_in_threadpool(
+                process_uploaded_image,
+                staged_original_path,
+                photo_uuid,
+                output_dir=str(Path(staged_original_path).parent),
+                variants_dir=staged_variants_dir,
+            )
         staged_thumb_path = processing_result.get("thumb_path")
         staged_compressed_path = processing_result.get("compressed_path")
         # S3 写入是网络阻塞调用（boto3），同样不能占住事件循环。

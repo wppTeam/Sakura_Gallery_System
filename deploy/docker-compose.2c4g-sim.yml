@@ -1,0 +1,29 @@
+# =============================================================================
+# 2C4G 模拟覆盖文件（仅本地验证用，勿用于生产）
+# -----------------------------------------------------------------------------
+# 用 cgroup 把本地 compose 栈压到「2 vCPU / 内存上限约 3.5GB」，用来近似
+# 目标公网小机器（2 核 4G）的容量，测读路径吞吐、延迟分位数与内存峰值。
+#
+# 用法（在仓库根）：
+#   docker compose -f deploy/docker-compose.prod.yml \
+#     -f deploy/docker-compose.2c4g-sim.yml --env-file deploy/.env.prod up -d --build
+#   backend/.venv/bin/python scripts/loadtest.py --base-url http://127.0.0.1:18080 \
+#     --scenario read -c 16 -d 20
+#
+# CPU 份额默认按「后端吃满为主」分配：backend 1.5 + PG 0.4 + nginx 0.1 = 2.0。
+# 想看「nginx 微缓存命中为主」的读场景，把后端份额让给 nginx：
+#   SIM_BACKEND_CPUS=1.2 SIM_NGINX_CPUS=0.4 docker compose ... up -d --force-recreate
+#
+# 说明：真实 2c4g 上三个容器共享 2 核，没有按容器固定份额；这里是为了可复现地
+# 分别测「后端型负载」与「静态/缓存型负载」的容量，数字按对应份额解读。
+#
+# mem_limit 沿用 prod 文件里的 env 变量（PG_MEM_LIMIT/BACKEND_MEM_LIMIT/
+# NGINX_MEM_LIMIT），在 deploy/.env.prod 里调即可；不要低于启动必需。
+# =============================================================================
+services:
+  postgres:
+    cpus: "${SIM_PG_CPUS:-0.4}"
+  backend:
+    cpus: "${SIM_BACKEND_CPUS:-1.5}"
+  nginx:
+    cpus: "${SIM_NGINX_CPUS:-0.1}"

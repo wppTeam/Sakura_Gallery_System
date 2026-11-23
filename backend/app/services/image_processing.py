@@ -18,6 +18,7 @@ AGENTS.md §6（必须遵守）:
 from __future__ import annotations
 
 import base64
+import contextlib
 import io
 import os
 from datetime import datetime
@@ -136,6 +137,20 @@ _RATIONAL_EXIF_KEYS = frozenset({
     "ShutterSpeedValue",
     "DigitalZoomRatio",
 })
+
+
+def _release_memory() -> None:
+    """把 Pillow 大图解码占过的堆页还给操作系统（glibc malloc_trim）。
+
+    24MP 原图解码后 glibc 会把 arena 留在进程里，RSS 可能长期停在数百 MB；
+    2c4g 上再叠加并发上传就容易被 cgroup OOM kill。每次处理完主动 trim，
+    RSS 能回落到接近处理前水平（非 glibc 平台静默跳过）。
+    """
+    # 非 glibc 平台（musl 等）没有 malloc_trim，释放失败不影响主流程
+    with contextlib.suppress(Exception):  # pragma: no cover - 依赖平台 libc
+        import ctypes
+
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
 
 
 def _json_safe(value: Any) -> Any:
@@ -552,5 +567,7 @@ def process_uploaded_image(
         if strict:
             raise
         print(f"Error processing image: {exc}")
+    finally:
+        _release_memory()
 
     return results

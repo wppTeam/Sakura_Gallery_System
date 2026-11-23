@@ -233,6 +233,13 @@ backend/.venv/bin/python scripts/shot.py <url> <out.png> --width 1440 --full --w
 - 数据库：连接池参数走 `DB_POOL_SIZE` / `DB_POOL_MAX_OVERFLOW` / `DB_POOL_RECYCLE`，
   `uvicorn --workers 2` 时真实连接数 = workers ×（pool_size + max_overflow）。
 - 媒体：图片走长缓存 + 预签名跳转，不要新增加「Python 读文件再流式返回」的接口。
+- 上传：图片处理受 `UPLOAD_PROCESS_CONCURRENCY`（每 worker 默认 1）信号量约束；
+  24MP 单张峰值 RSS ≈ +190MB，`processing_result` 返回后由 `malloc_trim` 归还内存。
+  不要去掉信号量或改成无界并发，否则 4G 机器上会被 cgroup OOM kill。
+- nginx：`/api/v1/photos/public`（30s）与 `/api/v1/search`（10s）有匿名只读微缓存，
+  响应带 `X-Cache-Status`；**不要**把带 Authorization 的私有接口加进缓存。
+- 容量基线（cgroup 2 vCPU 模拟，见 `docs/DEPLOY_2C4G.md` §14）：
+  混合读 49 req/s（无缓存）→ 301 req/s（开微缓存）；3 张 24MP 并发上传峰值 472MB。
 
 ## 10. AI 渠道（实测结论，不含 key）
 

@@ -118,6 +118,9 @@ services:
       UVICORN_LIMIT_MAX_REQUESTS: "${UVICORN_LIMIT_MAX_REQUESTS:-10000}"
       # 只信任本编排内 nginx 的转发；--proxy-headers 需要它才能取到真实协议/IP
       FORWARDED_ALLOW_IPS: "${FORWARDED_ALLOW_IPS:-*}"
+      # glibc 默认按 CPU 数开 arena，图片解码的多线程分配会留下大量
+      # 不可归还的碎片；2 个 arena 足够 2 vCPU 场景，能把 RSS 峰值压下来。
+      MALLOC_ARENA_MAX: "2"
     volumes:
       - uploads:/app/uploads
     depends_on:
@@ -137,8 +140,10 @@ services:
       retries: 3
       # 首次启动要等 PG + 跑完迁移，给足 90s；之后每 30s 探一次
       start_period: 90s
-    # 2 worker 实测 240–360MB，768m 上限留出图片处理峰值；swap 兜底防瞬时 OOM
-    mem_limit: ${BACKEND_MEM_LIMIT:-768m}
+    # 2 worker 空载实测 220–260MB；24MP 上传处理单张峰值 +190MB 左右。
+    # 768m 在 3 张并发大图时会紧（实测 3 并发 RSS 802MB），默认提到 1024m，
+    # 再配合 UPLOAD_PROCESS_CONCURRENCY=1 把并发压到 2 张。
+    mem_limit: ${BACKEND_MEM_LIMIT:-1024m}
     stop_grace_period: 30s
     security_opt:
       - no-new-privileges:true

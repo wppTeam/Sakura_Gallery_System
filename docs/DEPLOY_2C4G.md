@@ -2,7 +2,7 @@
 
 > 适用机型：**2 vCPU / 4 GB 内存 / 40 GB+ 磁盘** 的单台公网 Linux 服务器（Ubuntu 22.04/24.04、Debian 12 均可）。
 > 目标：`docker compose up -d --build` 一条命令拉起「PostgreSQL 16 + FastAPI 后端 + nginx 前端」，
-> 不依赖 MinIO / Redis / Celery / Milvus，内存峰值控制在 2.2–2.6 GB + swap 兜底。
+> 不依赖 MinIO / Redis / Celery / Milvus，实测运行态 1.0–1.3 GB、峰值 1.6–2.2 GB（§14），swap 兜底。
 >
 > **本文件与 deploy/ 下所有模板均不含任何真实凭据、服务器 IP 或密钥。**
 > 真实值只写在 `deploy/.env.prod`（已被 `deploy/.gitignore` 忽略，权限 600）。
@@ -266,10 +266,10 @@ sakura exec postgres psql -U sakura -d sakura_gallery \
 | 组件 | 常驻 | 峰值 | compose `mem_limit` | 说明 |
 |------|------|------|---------------------|------|
 | OS + Docker daemon + sshd | 300–450 MB | 500 MB | — | 最小化系统，未跑其他服务 |
-| PostgreSQL 16（shared_buffers 512MB，max_conn 80） | 750–900 MB | 1.1 GB | **1024m** | shared_buffers 512 + 连接/排序/OS 页缓存 |
-| backend（uvicorn --workers 2） | 240–360 MB | 500 MB | **768m** | 图片解码（Pillow）是内存峰值来源；`--limit-max-requests` 定期回收 |
-| nginx（静态 + 反代） | 15–40 MB | 60 MB | **64m** | |
-| **小计（运行态）** | **1.3–1.8 GB** | **2.2–2.6 GB** | | 4GB 机器余 1.4–1.8GB 给页缓存 |
+| PostgreSQL 16（shared_buffers 512MB，max_conn 80） | 750–900 MB | 1.1 GB | **1024m** | shared_buffers 512 + 连接/排序/OS 页缓存；64 张种子数据实测仅 145–150 MB，数据量上来后趋向 600–750 MB |
+| backend（uvicorn --workers 2） | **215–260 MB**（实测） | **472 MB**（3 张 24MP 并发上传实测；含信号量限流） | **1024m** | 图片解码是峰值来源；已加 `UPLOAD_PROCESS_CONCURRENCY=1` + `malloc_trim` + `MALLOC_ARENA_MAX=2` 把峰值从 803–903MB/常驻 900MB 压到 472MB/261MB |
+| nginx（静态 + 反代） | **11 MB**（实测） | 60 MB | **128m** | 含匿名只读微缓存（占用在 `/var/cache/nginx`，计入该上限） |
+| **小计（运行态）** | **1.0–1.3 GB** | **1.6–2.2 GB** | | 4GB 机器余 2GB 左右给页缓存；细节见 §14 |
 | swap | — | 按需 | — | **至少 2GB、推荐 4GB**（构建期与峰值兜底） |
 | 构建期（`docker build`） | 1.5–2.5 GB 瞬时 | — | — | 后端 pip/前端 vite 编译；建议先 `sakura stop` 再构建，或依赖 swap |
 
@@ -280,7 +280,7 @@ sakura exec postgres psql -U sakura -d sakura_gallery \
 | PG `mem_limit` | 512m | **1024m** | `shared_buffers=512MB` 时 PG 常驻 750–900MB，512m 会被 cgroup OOM kill（页面直接变慢/重启循环） |
 | PG `maintenance_work_mem` | 256MB | 128MB | 2c4g 上 VACUUM/建索引峰值太高；128MB 对本站规模足够 |
 | PG `max_connections` | 60 | 80 | 后端 pool_size=10 + max_overflow=20 × 2 worker = 最多 60，再加 alembic/psql/监控留 20 余量 |
-| backend `mem_limit` | 768m | 768m | 与任务书一致，swap 兜底 |
+| backend `mem_limit` | 768m | **1024m** | 3 张 24MP 并发上传实测 RSS 802MB，768m 会被 OOM kill；配合 `UPLOAD_PROCESS_CONCURRENCY=1` 后峰值 472MB |
 
 内存相关运维命令：
 
@@ -666,8 +666,10 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod dow
 
 > 本轮已在开发机用**完整三服务 compose 栈**（随机一次性密钥，验证后 `down -v` 删除）跑通
 > 「注册/用户名登录 → 上传 → 生成变体 → 经 nginx 取图（不可变缓存头）」全链路，并记录了空载内存占用。
-> 仍未验证（需真实域名/公网/对象存储/压力）：TLS 证书签发与自动续期、HTTPS 跳转、S3/R2 预签名跳转、
-> 备份恢复演练、`hey` 压测、真实 2c4g 机器上的 `docker stats` 内存曲线、并发上传时的内存峰值。首次上线请按 §4.6 逐项复验。
+> 容量与内存峰值已在 **cgroup 限制为 2 vCPU 的模拟环境**下压测过（见 §14：混合读 49 req/s 无缓存、
+> 301 req/s 开微缓存；3 张 24MP 并发上传峰值 472MB、静置回落到 261MB）。
+> 仍未验证（需真实域名/公网/对象存储/真机）：TLS 证书签发与自动续期、HTTPS 跳转、S3/R2 预签名跳转、
+> 备份恢复演练、真机 `docker stats` 内存曲线与公网带宽影响。首次上线请按 §4.6 逐项复验。
 
 ### 13.1 构建注意事项（本机实测踩到的问题，上机前先看）
 
@@ -695,6 +697,70 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod dow
 5. 以上构建/联调用的都是一次性容器与随机测试密钥，未写入仓库；测试容器与网络均已在结束后删除。
 
 ---
+
+## 14. 本地受限环境压测（模拟 2C4G）
+
+目标机没到手之前，先用 cgroup 把本地栈压到「2 vCPU / 约 3.5GB」，测出换机后的容量
+与内存曲线，避免上线才发现瓶颈。工具都入库了，随时可复跑：
+
+```bash
+# 1) 起受限栈（postgres+backend+nginx，内存上限来自 .env.prod）
+docker compose -f deploy/docker-compose.prod.yml \
+  -f deploy/docker-compose.2c4g-sim.yml --env-file deploy/.env.prod up -d --build
+
+# 2) 压测（只用 httpx，无需安装 hey/wrk）
+backend/.venv/bin/python scripts/loadtest.py --base-url http://127.0.0.1:18080 \
+  --scenario read -c 16 -d 20
+```
+
+> 压测期间要给 nginx 去掉按 IP 限流（`limit_req`/`limit_conn`），否则单机压测会先撞
+> 429，测到的是限流而不是容量。生产配置里的限流保留不动，按真实客户端 IP 生效。
+
+### 14.1 结果（开发机 12 核宿主 + cgroup 限制，数据为 64 张种子图）
+
+CPU 份额按 `SIM_BACKEND_CPUS` / `SIM_NGINX_CPUS` / `SIM_PG_CPUS` 分配（默认 1.5 / 0.1 / 0.4）。
+
+| 场景 | 配置 | 吞吐 | p50 | p95 | 说明 |
+|---|---|---|---|---|---|
+| 列表 `/photos/public` | 后端主导（1.5 核） | **57 req/s** | 263ms | 494ms | backend CPU 顶满；PG 同时到 0.4 核 |
+| 缩略图 | 后端主导 | 264 req/s | 56ms | 128ms | 实测受 nginx 0.1 核份额限制，真机会更高 |
+| 检索 `mode=fast` | 后端主导 | 13–22 req/s | 320–600ms | 1.1s | 最贵的读接口（两次 SQL + Python 打分/序列化） |
+| 混合读（列表+检索+缩略图） | 后端主导 | 49 req/s | 296ms | 702ms | 无缓存基线 |
+| 混合读（同上） | **nginx 微缓存 0.4 核** | **301 req/s** | 61ms | 302ms | 开了 §14.2 的微缓存，6 倍提升 |
+
+内存（`docker stats`，backend 单 worker 进程组）：
+
+| 状态 | RSS |
+|---|---|
+| backend 空闲（刚启动） | 215 MB |
+| 3 张 24MP（3915×5884）并发上传峰值 | **472 MB**（修复前 803–903 MB） |
+| 上传结束后静置 | 261 MB（修复前长期停在 ~900 MB） |
+| postgres（64 张数据） | 145–150 MB（shared_buffers 冷；真实数据会涨到 ~600–750 MB） |
+| nginx | 11 MB |
+
+### 14.2 本轮据此落地的优化
+
+1. **nginx 匿名只读微缓存**（`deploy/nginx.prod.conf`）：
+   `/api/v1/photos/public` 缓存 30s、`/api/v1/search` 缓存 10s，`X-Cache-Status` 可观测；
+   带 Authorization 的私有接口不进缓存。代价是审核通过/下架最多延迟一个 TTL，可接受。
+2. **上传处理并发信号量**（`UPLOAD_PROCESS_CONCURRENCY`，默认 1/worker）：
+   24MP 单张处理峰值约 +190MB，768m 内存上限下 3 张并发会被 OOM kill；
+   信号量把并发压到 2 张（2 worker），其余在事件循环排队，代价是上传耗时略增。
+3. **`malloc_trim` + `MALLOC_ARENA_MAX=2`**：Pillow 大图解码后 glibc 不还内存，
+   RSS 会长期停在数百 MB；每次处理完主动 trim 后回落到 ~261MB。
+4. **`BACKEND_MEM_LIMIT` 默认 768m → 1024m**：给 2 张并发大图留出峰值余量。
+
+### 14.3 结论与上线建议
+
+- 2C4G 对校园规模（日活数百、并发读 < 50）**够用**，瓶颈是 CPU 而不是内存；
+  稳态内存约 1.0–1.3GB（含 OS），距 4G 有明显余量。
+- 读多写少是这类站点的常态，**微缓存是 2c4g 上性价比最高的一刀**（6 倍读容量）。
+- 上传是唯一会顶到内存上限的路径：保持 `UPLOAD_PROCESS_CONCURRENCY=1`，
+  `client_max_body_size` 与 `MAX_UPLOAD_SIZE` 保持一致（25m/20MB），别放大图并发。
+- 真机到手后用同样脚本复测一次：`--scenario read` 看 RPS、`docker stats` 看峰值；
+  若 p95 变差，先看 PG 的 `shared_buffers` 是否被 cgroup 限制住、再看 nginx 的 gzip CPU。
+- 已知未覆盖：HTTPS/TLS、对象存储预签名、AVIF/WebP 全量编码的 CPU（本轮采样已含 5 档变体）、
+  并发审核（AI 调用是外部延迟，不占本机 CPU）。
 
 ## 附录：与旧方案的对照（避免混用）
 

@@ -235,3 +235,20 @@ def test_login_with_unknown_identifier_fails(variants_client):
     )
     assert response.status_code == 401
     assert "用户名" in response.json()["detail"]
+
+
+def test_upload_semaphore_per_loop() -> None:
+    """上传处理信号量按事件循环隔离、取 settings 的并发上限。"""
+    import asyncio
+
+    from app.api.v1.endpoints import photos as photos_module
+
+    async def check() -> None:
+        sem_one = photos_module._get_upload_semaphore()
+        sem_two = photos_module._get_upload_semaphore()
+        assert sem_one is sem_two
+        assert sem_one._value == max(1, photos_module.settings.UPLOAD_PROCESS_CONCURRENCY)
+
+    asyncio.run(check())
+    # 新事件循环拿到新的信号量（不会复用已绑定的旧实例）
+    asyncio.run(check())
