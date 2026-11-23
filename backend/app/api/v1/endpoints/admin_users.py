@@ -62,6 +62,14 @@ async def create_user(
             detail="该邮箱已被注册"
         )
 
+    if user_data.username:
+        existing_username = await user_crud.get_user_by_username(db, user_data.username.strip())
+        if existing_username:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="该用户名已被占用"
+            )
+
     new_user = await user_crud.create_user_by_admin(db, user_data)
     await log_audit(db, user_id=current_user.id, action="user.create",
                     resource_type="user", resource_id=new_user.id,

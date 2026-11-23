@@ -1,4 +1,5 @@
 import logging
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -258,6 +259,17 @@ async def register(
             status_code=status.HTTP_409_CONFLICT,
             detail="该学号已被注册"
         )
+
+    # 公开用户名（可选）：唯一、归一化后入库，登录与公开页都用它
+    if user_data.username:
+        username = user_data.username.strip()
+        if len(username) < 3 or len(username) > 32:
+            raise HTTPException(status_code=422, detail="用户名长度需在 3–32 个字符之间")
+        if not re.fullmatch(r"[A-Za-z0-9_.\-]+", username):
+            raise HTTPException(status_code=422, detail="用户名只能包含字母、数字、下划线、点和短横线")
+        user_data = user_data.model_copy(update={"username": username})
+        if await user_crud.get_user_by_username(db, username):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="该用户名已被占用")
 
     # 如果提供了邮箱，检查邮箱是否已存在
     if user_data.email:

@@ -64,6 +64,8 @@ async def create_user(db: AsyncSession, user: UserCreate, role: str = "user") ->
         email=user.email,
         hashed_password=hashed_password,
         full_name=user.full_name,
+        username=user.username,
+        display_name=user.display_name,
         role=role,
     )
     db.add(db_user)
@@ -83,6 +85,8 @@ async def create_user_by_admin(db: AsyncSession, user_data: UserCreateByAdmin) -
         email=user_data.email,
         hashed_password=hashed_password,
         full_name=user_data.full_name,
+        username=user_data.username,
+        display_name=user_data.display_name,
         role=user_data.role.value,  # 从枚举获取字符串值
         student_id=user_data.student_id,  # 学号
     )
