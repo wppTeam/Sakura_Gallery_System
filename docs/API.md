@@ -127,79 +127,109 @@ GET /api/v1/photos/{photo_id}/image/thumbnail
 GET /api/v1/photos/{photo_id}/image/original
 ```
 
+### 获取压缩图 / 响应式变体
+
+```http
+GET /api/v1/photos/{photo_id}/image/compressed
+GET /api/v1/photos/{photo_id}/image/variant/{size}?format=webp|jpeg
+```
+
+`size` ∈ `320 / 640 / 1080 / 1600 / 2400`（只生成 ≤ 原图长边的档位，绝不放大）。
+公开详情响应的 `variants` 字段直接给出各档 URL（含 width/height），前端据此生成
+`<picture>` + `srcset`。缺档或老作品无变体时，该端点按
+`thumbnail → compressed → original` 兜底返回 200，不会 404。
+
+响应头：`Cache-Control: public, max-age=31536000, immutable`；
+本地模式 `FileResponse`，S3 模式 307 预签名跳转，均不经 Python 转发字节。
+
 ### 上传照片
 
 ```http
 POST /api/v1/photos/upload
 Authorization: Bearer {token}
 Content-Type: multipart/form-data
-
-file: [图片文件]
 ```
+
+**表单字段**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `file` | file | ✅ | JPEG / PNG / WebP / GIF，≤ `MAX_UPLOAD_SIZE` |
+| `title` | string | ❌ | 标题 |
+| `description` | string | ❌ | 描述 |
+| `aigc_declared` | bool | ✅ | **是否包含 AI 生成合成内容**（法定强制声明）。缺失返回 400 |
+| `aigc_model` / `aigc_provider` | string | ❌ | 生成模型 / 渠道 |
+| `aigc_prompt` | string | ❌ | 提示词（≤2000 字） |
+| `aigc_prompt_public` | bool | ❌ | 是否公开提示词（默认 false） |
+| `aigc_source_work_id` | uuid | ❌ | 图生图来源作品 |
+| `aigc_face_swap` | bool | ❌ | 换脸 / 人脸替换类 |
+| `consent_confirmed` | bool | ❌ | 图生图 / 换脸必须为 true，否则 400 |
+| `enable_ai` | bool | ❌ | 是否触发 AI 打标（默认由运行时配置决定） |
+
+上传成功后服务端：生成 320/640/1080/1600/2400 五档 WebP+JPEG 变体与 LQIP、
+剥离 GPS、写 `photos.is_aigc/aigc_label/aigc_meta`、异步入审核队列（不阻塞响应）。
+响应体 `PhotoUploadResponse` 含 `id`、`status`、`is_aigc`、`aigc_label`。
 
 ---
 
 ## 🔍 搜索
 
-### 向量语义搜索 ⭐ 新功能
+### Agent 图片检索
 
 ```http
-GET /api/v1/search
+GET /api/v1/search?q={query}&mode=agent|fast
 ```
 
 **查询参数**：
 
-| 参数 | 类型 | 必填 | 说明 | 示例 |
-|------|------|------|------|------|
-| `q` | string | ✅ | 搜索查询（自然语言） | `秋天的校园` |
-| `limit` | int | ❌ | 返回数量（1-100） | `20` |
-| `season` | string | ❌ | 季节过滤 | `秋季` |
-| `campus` | string | ❌ | 校区过滤 | `昌平校区` |
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `q` | string | 自然语言查询，如「校园里春季开的花」 |
+| `mode` | string | `agent`（默认，意图分解 + 解释）或 `fast`（纯词法，21–50ms） |
+| `limit` / `offset` | int | 分页，limit ≤ 100 |
+| `season` / `category` / `campus` / `tag` | string | 结构化过滤 |
 
-**响应**：
+**响应**（节选）：
+
 ```json
 {
   "results": [
     {
-      "photo_id": "d348b9f6-2203-5fcd-a6ca-de3cefb0c006",
-      "score": 0.856,
-      "tags": ["校名石碑", "草坪", "晚霞", "天空", "建筑"],
-      "classifications": {
-        "season": "秋季",
-        "campus": "昌平校区",
-        "landmark": "其它",
-        "gallery_series": "昌平校区摄影大赛",
-        "photo_type": "风光类"
-      }
+      "photo_id": "b25aee5d-...",
+      "kind": "aigc",
+      "score": 0.83,
+      "title": "樱花小径 · AI 生成演示",
+      "thumb_url": "/api/v1/photos/b25aee5d-.../image/thumbnail",
+      "width": 1664, "height": 928, "aspect_ratio": 1.793,
+      "is_aigc": true, "aigc_label": "AI 生成",
+      "matched_fields": ["title"]
     }
   ],
-  "total": 3,
-  "query_time_ms": 251.76
+  "total": 12,
+  "query_time_ms": 2216,
+  "search_mode": "agent",
+  "intent": { "query": "校园里春季开的花", "keywords": ["花", "春季"], "filters": {...} },
+  "steps": [ { "tool": "lexical", "result_count": 12, "latency_ms": 96, "status": "ok" } ],
+  "clarify": false,
+  "explanation": "找到 12 个结果……",
+  "trace_id": "..."
 }
 ```
 
-**搜索示例**：
+- 实现：PG `pg_trgm` + `tsvector('simple')` + 汉字二元组（无需 jieba/torch）；
+  planner 与 explainer 各 1 次 `chat_json`，解释超 `AGENT_SEARCH_LATENCY_BUDGET_MS` 时跳过并回退确定性文案。
+- 任何模型异常都降级为 `mode=fast` 语义，不返回 5xx。
 
-```bash
-# 自然语言搜索
-curl -G "http://localhost:8000/api/v1/search" \
-  --data-urlencode "q=秋天的校园" \
-  --data-urlencode "limit=10"
+**辅助端点**：
 
-# 带过滤条件
-curl -G "http://localhost:8000/api/v1/search" \
-  --data-urlencode "q=建筑" \
-  --data-urlencode "season=秋季" \
-  --data-urlencode "campus=昌平校区"
+```http
+GET /api/v1/search/facets?q={query}        # 季节/类别/校区/标签计数
+GET /api/v1/search/suggest?q={query}       # 搜索建议（taxonomy 名称）
+GET /api/v1/search/traces/{trace_id}       # 仅 admin：单次 Agent 检索的完整 trace
 ```
 
-**特点**：
-- 基于向量相似度（bge-small-zh-v1.5 模型）
-- 支持自然语言查询
-- 返回相关度分数（0-1）
-- 平均响应时间 ~200ms
-
----
+**审核 API**（admin + auditor）见 [`docs/AI_PLATFORM.md`](./AI_PLATFORM.md)：
+`/api/v1/admin/moderation/{queue,stats,{photo_id}}` 与 `POST .../run`、`POST .../decision`。
 
 ## 🏷️ 标签管理
 
