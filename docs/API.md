@@ -172,6 +172,44 @@ Content-Type: multipart/form-data
 
 ---
 
+## 📚 策展专题
+
+把同一主题 / 同一年度相册的作品组织成「专题」，公共端首页横滑卡与专题详情页消费。
+
+### 专题列表（公开）
+
+```http
+GET /api/v1/collections/public?limit=12&offset=0
+```
+
+只返回 `status=published` 且 `visibility=public` 的专题，按 `sort_order` 升序。
+`photo_count` 只统计 `approved` 作品；`cover` 是专题内排序最前的公开作品（完整
+`PhotoResponse`，含 `variants`/`lqip`，无作品时为 `null`）。`limit` 上限 50。
+
+### 专题详情（公开）
+
+```http
+GET /api/v1/collections/{slug}
+```
+
+返回叙事元信息 + `photos[]`（按 `position`，只含 approved）+ `prev_slug` / `next_slug`
+（按 `sort_order` 相邻）。未发布或不存在返回 404「专题不存在或未发布」。
+
+### 作品所属专题
+
+```http
+GET /api/v1/photos/{photo_id}/collections
+```
+
+返回 `{ items: [{ slug, title, kind }] }`，作品详情页「收录于」chips 用；
+未收录返回空数组。
+
+现有演示数据：12 个专题（「2024 · 七乐章」32 张、七个乐章单章 3–5 张、
+「校园四季」8、「2023 · 年度精选」5、「2023 · 月度随笔」11、「2023 · 手机摄影」4），
+由 `scripts/seed_collections.py` 幂等生成。
+
+---
+
 ## 🔍 搜索
 
 ### Agent 图片检索

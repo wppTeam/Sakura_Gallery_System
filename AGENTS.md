@@ -97,6 +97,15 @@ template_meta work_id, file_key, format, slides, ratio, fonts[],
 （渠道解析、预算闸门、重试、JSON 修复、用量与成本落 `ai_usage_events`）。
 架构、配置项与降级矩阵见 [`docs/AI_PLATFORM.md`](docs/AI_PLATFORM.md)。
 
+**策展专题（collections，已落地）**：`collections` + `collection_photos` 两张表
+（`backend/app/models/collection.py`），把年度相册 / 八景 / 四季组织成可浏览的专题，
+对应本文件「用户自助建专辑不需要管理员批准」的落地形式。公开接口：
+`GET /api/v1/collections/public`、`GET /api/v1/collections/{slug}`、
+`GET /api/v1/photos/{photo_id}/collections`（详情页「收录于」）。
+约定：专题只展示 `status=approved` 的作品；`photo_count` 与实际可见条目一致；
+封面**不裁切**（前端 `object-fit: contain`）；专题内顺序用 `position` 显式维护，
+不要依赖创建时间。种子数据用 `scripts/seed_collections.py`（幂等，按 slug upsert）。
+
 ## 5. 合规约定（不可省）
 
 - **AIGC 标识是法定要求**（《人工智能生成合成内容标识办法》，2025-09-01 施行）：

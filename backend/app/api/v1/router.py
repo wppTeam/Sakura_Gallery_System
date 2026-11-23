@@ -4,10 +4,25 @@ API v1 router aggregation
 API v1 版本路由聚合，注册所有端点模块。
 """
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, photos, tags, import_photos, stats, taxonomy, notifications, profile, favorites
-from app.api.v1.endpoints import tagging_tasks
-from app.api.v1.endpoints import admin_users, admin_config, admin_permissions, admin_audit
-from app.api.v1.endpoints import search
+
+from app.api.v1.endpoints import (
+    admin_audit,
+    admin_config,
+    admin_permissions,
+    admin_users,
+    auth,
+    collections,
+    favorites,
+    import_photos,
+    notifications,
+    photos,
+    profile,
+    search,
+    stats,
+    tagging_tasks,
+    tags,
+    taxonomy,
+)
 from app.api.v1.endpoints import moderation as moderation_api
 
 api_router = APIRouter()
@@ -30,6 +45,10 @@ api_router.include_router(admin_config.router, prefix="/admin", tags=["系统设
 api_router.include_router(admin_permissions.router, prefix="/admin", tags=["授权管理"])
 api_router.include_router(admin_audit.router, prefix="/admin", tags=["审计日志"])
 api_router.include_router(moderation_api.router, prefix="/admin", tags=["AI 审核"])
+
+# Collections（策展专题，公开）
+api_router.include_router(collections.router, prefix="/collections", tags=["Collections"])
+api_router.include_router(collections.photo_router, prefix="/photos", tags=["Collections"])
 
 # Search endpoint (public, no auth required)
 api_router.include_router(search.router, prefix="", tags=["Search"])

@@ -16,6 +16,7 @@ from app.models.notification import Notification
 from app.models.favorite import Favorite
 from app.models.ai_usage import AIUsageEvent
 from app.models.moderation import ModerationReview
+from app.models.collection import Collection, CollectionPhoto
 from app.models.search_trace import AgentSearchTrace
 
 __all__ = [
