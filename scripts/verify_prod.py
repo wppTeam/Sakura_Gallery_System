@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """服务器上跑的生产链路自检（仅标准库）：python3 verify_prod.py [BASE]"""
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -60,27 +61,27 @@ print(f"      collections total={c.get('total')} first={(c.get('items') or [{}])
 get("/api/v1/admin/moderation/queue", 401)
 get("/api/v1/photos/favorites/my", 401)
 
-# 6. 登录（演示审核员）——口令不打印
-creds_path = "/home/wppjkw/sakura-gallery/backend/.seed-demo-credentials.json"
-try:
-    with open(creds_path, encoding="utf-8") as f:
-        creds = json.load(f)
-    password = creds["password"]
+# 6. 登录 + 鉴权后台（生产环境演示账号通常已停用）
+#    凭据从环境变量读，避免把口令写进脚本/仓库：
+#      VERIFY_IDENTIFIER=jackwpp VERIFY_PASSWORD=... python3 scripts/verify_prod.py URL
+identifier = os.environ.get("VERIFY_IDENTIFIER")
+password = os.environ.get("VERIFY_PASSWORD")
+if identifier and password:
     req = urllib.request.Request(
         BASE + "/api/v1/auth/login",
-        data=json.dumps({"identifier": "seed-auditor", "password": password}).encode(),
+        data=json.dumps({"identifier": identifier, "password": password}).encode(),
         headers={"content-type": "application/json"},
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
             tok = json.loads(r.read())["access_token"]
-        print("[OK ] login seed-auditor -> token ok")
+        print("[OK ] login -> token ok")
         get("/api/v1/admin/moderation/queue?limit=3", 200, headers={"authorization": f"Bearer {tok}"})
     except urllib.error.HTTPError as e:
         fails.append(f"login -> {e.code}")
         print(f"[FAIL] login -> {e.code}")
-except FileNotFoundError:
-    print("      (no seed credentials file, skip login)")
+else:
+    print("      (未设置 VERIFY_IDENTIFIER / VERIFY_PASSWORD，跳过登录检查)")
 
 print()
 if fails:

@@ -920,6 +920,18 @@ S3_PRESIGN_EXPIRE_SECONDS=600
   是 `bucket.cos...`（virtual-style），跟随后 200 且 `Content-Type` 正确；
   AIGC 作品 `/download` 仍返回 `X-AIGC-Implicit-Label: xmp` 且字节里能搜到 `sakura:IsAIGC`。
 
+### 15.2 端到端写入验证（2026-11-24 实测）
+
+在服务器上以管理员身份真实上传一张 1200×800 JPEG（开启 AI 审核）：
+
+- 上传 201；COS 里出现 9 个对象（originals / thumbnails / compressed / variants × 320..2400）
+- 媒体端点 307 → `smartphoto-1328781951.cos.ap-beijing.myqcloud.com` → 200，`image/webp` / `image/jpeg`
+- durable queue 内嵌 worker 约 4s 完成审核：`status=completed / tier=L1 / cost=$0.00064`
+- 同一次快筛的 auto_tagging 已落库：`caption/tags/facets` 与 `rules.auto_tagging.applied=true`
+- 验证后已删除该测试作品（DB 行 + COS 9 个对象），库里恢复 64 张
+
+结论：**上传 → 变体生成 → COS 落盘 → 审核/打标 → 预签名出图**全链路在云主机上跑通。
+
 ### 15.2 Cloudflare Tunnel 接入（token 已装、DNS 待配）
 
 tunnel token 写进服务器 `.env.prod` 的 `TUNNEL_TOKEN=`，再：
