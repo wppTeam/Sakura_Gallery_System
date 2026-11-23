@@ -112,7 +112,9 @@
 3. **推理复核** —— `deepseek-v4.1-flash`，实测 **4.7s / 590 输出 tokens**，
    只处理快筛判为 L2 或置信度低的样本，不跑全量
 
-后台常驻 worker 消费审核队列；人工队列展示 agent 判定、依据与原图，**人做最终决定**。
+审核任务**入队即落库**（durable queue），API 进程内嵌 worker 每 5s 兜底轮询，
+PG `FOR UPDATE SKIP LOCKED` 保证多 worker 不重复领取、滚动重启不丢任务；
+人工队列展示 agent 判定、依据与原图，**人做最终决定**。
 成本有日预算护栏，超预算自动降级为纯规则 + 人工，不阻塞发布。
 
 ### AIGC 合规四件套：缺一不可放行
@@ -239,7 +241,7 @@ cd backend && pytest
 | 资产管线 | ✅ 取消强制裁切、**上传即生成 5 档响应式变体**（WebP+JPEG，`/image/variant/{size}`）、LQIP、GPS 剥离、媒体长缓存/预签名 |
 | 隐私修复 | ✅ 公开响应白名单化（学号 / 真实姓名 / 完整 EXIF 不再公开） |
 | 账号 | ✅ 登录支持学号 / 邮箱 / **username**；公开身份仅 username + display_name |
-| Agent 审核 | ✅ 规则前置 + VLM 快筛 + 难例复核 + 自动放行 + 人工队列 API |
+| Agent 审核 | ✅ 规则前置 + VLM 快筛 + 难例复核 + 自动放行 + 人工队列 API；队列持久化（重启不丢、SKIP LOCKED 防重复领取） |
 | Agent 检索 | ✅ pg_trgm + tsvector + 汉字二元组，意图分解 / 多 facet / 解释 / 澄清追问答 |
 | AIGC 法定标识 | ✅ 上传强制声明 + 显式角标/详情 + 下载 XMP 隐式标识 + 图生图/换脸限制（M2 四件套） |
 | 2c4g 部署包 | ✅ compose / Dockerfile / nginx / env 模板 / 迁移入口 / 备份脚本；**本地三服务栈已跑通注册→上传→变体→取图全链路**（真实服务器待上机） |

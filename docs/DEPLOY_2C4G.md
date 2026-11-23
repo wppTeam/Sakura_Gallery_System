@@ -621,6 +621,11 @@ curl -I http://127.0.0.1/api/v1/photos/1/image/thumbnail
 8. **限流参数为经验值**：`api_general 30r/s` 等按「校园 NAT 共享出口」保守估计；实际按 §10.4 调整。
 9. **构建期内存峰值**高于运行期：2c4g 必须带 swap（§3.1），否则首次构建可能被 OOM。
 10. **未做的自动化**：无 CI 自动构建/推送镜像、无监控告警、无 CDN 回源配置——建议后续加 uptime 探活（定时 `curl /healthz` + 告警）与日志采集。
+11. **审核队列不引入额外常驻服务**：`MODERATION_QUEUE_MODE=durable` 时任务先落 `moderation_reviews`，
+    API 进程内嵌 worker 每 5s 轮询（`MODERATION_WORKER_POLL_SECONDS`），PG 的 `FOR UPDATE SKIP LOCKED`
+    保证 2 个 uvicorn worker 不会重复领取、滚动重启也不丢任务；`running` 超过 900s 自动回收重跑。
+    因此**不需要** Redis/Celery 或独立 worker 容器，内存预算不变。积压排查可直接
+    `curl -X POST /api/v1/admin/moderation/drain -H "Authorization: Bearer <auditor token>"` 手动消费。
 
 ---
 

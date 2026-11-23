@@ -69,6 +69,12 @@ async def chat_json(db, *, operation, user, system=None, model=None,
 ### 3.2 状态与自动放行
 
 - `ModerationReview.status`：`queued → running → completed|failed`；`tier` 为最终档位。
+- **durable queue**：`enqueue_moderation()` 先把 queued 行 commit 到 `moderation_reviews`，
+  再尽力用 BackgroundTasks 立即跑（低延迟快路径）。API 进程内嵌 worker 每
+  `MODERATION_WORKER_POLL_SECONDS=5s` 秒领取一批（`MODERATION_WORKER_BATCH=3`），
+  PG 上 `SELECT … FOR UPDATE SKIP LOCKED` 保证多进程不重复领取；
+  `running` 超过 `MODERATION_WORKER_STALE_SECONDS=900` 自动回收为 queued 重跑。
+  因此进程重启、部署滚动更新都不会丢待审任务，也不需要 Redis/Celery 常驻服务。
 - 自动放行条件：规则无 block + 合并后 tier=L0 + 快筛置信度 ≥ `MODERATION_AUTO_APPROVE_CONFIDENCE=0.8`
   + `MODERATION_AUTO_APPROVE_L0=True` → `photo.status=approved` 并写 `published_at`。
 - 其余情况 photo 保持 `pending` 并进入人工队列；`final_decision` 由人工 `approve|reject|hold` 写入。
@@ -85,6 +91,7 @@ async def chat_json(db, *, operation, user, system=None, model=None,
 | POST | `/{photo_id}/run` | 重跑审核，202，返回 review |
 | POST | `/{photo_id}/decision` | body `{decision: approve\|reject\|hold, reason?, final_tier?}`；写 AuditLog + Notification；重复决策 409；hold 保持 pending |
 | GET | `/stats?days=` | 各 tier/status 数量、平均延迟、token、成本、当日调用与预算 |
+| POST | `/drain?limit=` | 手动消费一批 queued 记录（运维排障；平时内嵌 worker 自动轮询） |
 
 队列契约（前端使用）：
 
@@ -235,9 +242,26 @@ curl -H "Authorization: Bearer $TOKEN" \
   'http://127.0.0.1:8001/api/v1/admin/moderation/queue?limit=5'
 ```
 
-后台执行：本地默认 `TASK_QUEUE_BACKEND=background`（FastAPI BackgroundTasks）。
-2c4g 生产建议由独立 worker 进程消费（`scripts/worker.py` 或 Celery，见
-`docs/research/2026-11-23-small-vps-deploy.md`），避免拖慢上传请求所在进程。
+后台执行：入队即落库（durable queue），随后 BackgroundTasks 快路径立即跑，
+API 进程内嵌 worker 每 5s 兜底轮询。**不需要** Redis/Celery 或独立 worker 容器；
+2c4g 上多 uvicorn worker 由 PG `FOR UPDATE SKIP LOCKED` 保证不重复领取。
+
+**durable queue 重启恢复实测（2026-11-23，真实 PG）**：
+
+1. 停掉 8001；
+2. 直接向 `moderation_reviews` 插入一条 `status='queued'` 的记录（模拟崩溃前已入队、快路径丢失）；
+3. 重启 uvicorn → worker 日志出现 `SELECT … FOR UPDATE SKIP LOCKED`，约 6s 后该记录
+   `status=completed`，真实走完 qwen3-vl-plus 快筛（2860ms / 1483+111 tokens / $0.000364），
+   并在 `ai_usage_events` 落一行；
+4. `POST /api/v1/admin/moderation/drain?limit=2`（auditor token）返回 `{"ok":true,"processed":0}`
+   —— 队列已被 worker 自动清空，符合预期。
+
+验证方法：`docker exec sakura-dev-pg psql -U sakura -d sakura_gallery -c "select id,status,tier,latency_ms from moderation_reviews order by created_at desc limit 5"`
+
+**上传链路（durable enqueue）实测**：`POST /api/v1/photos/upload`（900×600 JPEG）返回 201 后，
+`moderation_reviews` 立即可见 `queued`；约 2s 变 `running`、4s 变 `completed|L0`
+（qwen3-vl-plus 2620ms / $0.000342），photo 随之自动 `approved`——说明「先落库、再快路径 / worker 兜底」
+在真实上传路径上生效。
 
 ## 9. 已知限制与后续
 
@@ -253,6 +277,11 @@ curl -H "Authorization: Bearer $TOKEN" \
    （见 `docs/research/2026-11-23-agentic-image-search.md`）。
 5. 前端审核队列的批量通过、Agent 意见与人工终判分层已交付（`frontend/src/views/admin/PhotoReview.vue`），
    批量通过暂只对 L0 高置信度样本开放；更细的操作体验仍可继续打磨。
+6. **审核队列重试边界**：worker 领取后按 `MODERATION_RETRY` 重试，仍失败则 `status=failed`、
+   photo 保持 pending 等人工，不会无限重试烧钱；AI 渠道完全不可用时照片会停在待人工队列
+   （前端展示 AI 失败原因），恢复渠道后可在管理端逐张 `POST /{photo_id}/run` 重跑。
+   手动清积压用 `POST /moderation/drain`；若长期关闭内嵌 worker（`MODERATION_WORKER_EMBEDDED=false`），
+   必须自备消费进程，否则 queued 记录会一直堆积（不会丢，但不会自动前进）。
 
 ## 10. 2c4g 性能与部署约束
 

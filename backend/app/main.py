@@ -3,6 +3,7 @@ FastAPI 应用主入口。
 
 包含安全启动校验、全局异常处理、请求日志中间件等。
 """
+import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -93,10 +94,31 @@ openapi_tags = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期：启动时自动建表"""
+    """应用生命周期：启动时建表 + 启动内嵌审核队列 worker。"""
     await init_db()
     logger.info("数据库表已同步")
-    yield
+
+    worker_task = None
+    if settings.MODERATION_ENABLED and settings.MODERATION_WORKER_EMBEDDED:
+        from app.services.moderation_worker import start_embedded_worker
+
+        worker_task = start_embedded_worker()
+        if worker_task is not None:
+            logger.info(
+                "审核队列 worker 已启动（poll=%.1fs, batch=%s）",
+                settings.MODERATION_WORKER_POLL_SECONDS,
+                settings.MODERATION_WORKER_BATCH,
+            )
+    try:
+        yield
+    finally:
+        if worker_task is not None:
+            worker_task.cancel()
+            try:
+                await worker_task
+            except asyncio.CancelledError:
+                pass
+            logger.info("审核队列 worker 已停止")
 
 
 app = FastAPI(

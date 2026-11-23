@@ -805,12 +805,12 @@ async def upload_photo(
             )
             dispatch_ai_analysis_task(background_tasks, task.id)
 
-        # AI 审核入队：后台执行，入队失败绝不影响上传成功
+        # AI 审核入队：先持久化 queued 记录（重启不丢），再尽力立即执行
         if settings.MODERATION_ENABLED:
             try:
-                enqueue_moderation(background_tasks, photo.id)
+                await enqueue_moderation(db, background_tasks, photo.id)
             except Exception:  # noqa: BLE001 - 审核属增强链路，不能回滚上传
-                pass
+                logger.warning("moderation enqueue failed: photo=%s", photo.id, exc_info=True)
 
         return PhotoUploadResponse(
             id=photo.id,

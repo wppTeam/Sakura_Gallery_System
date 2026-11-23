@@ -111,6 +111,15 @@ class Settings(BaseSettings):
     MODERATION_RETRY: int = 2
     # 近重复检测的 dhash 汉明距离阈值（越大越宽松）
     MODERATION_DUPLICATE_HAMMING: int = 5
+    # ---- 审核队列持久化与内嵌 worker ----
+    # 入队即落库（moderation_reviews.status=queued），重启/崩溃不丢任务；
+    # fancy 快路径仍用 BackgroundTasks 立即跑，worker 作为兜底
+    MODERATION_QUEUE_MODE: str = "durable"  # durable | inline
+    MODERATION_WORKER_EMBEDDED: bool = True  # 在 API 进程内跑队列消费循环
+    MODERATION_WORKER_POLL_SECONDS: float = 5.0
+    MODERATION_WORKER_BATCH: int = 3
+    # running 超过该时长视为 worker 中途崩溃，回收为 queued 重试
+    MODERATION_WORKER_STALE_SECONDS: int = 900
 
     # ---- Agent 驱动的图片检索（agent search）----
     AGENT_SEARCH_ENABLED: bool = True

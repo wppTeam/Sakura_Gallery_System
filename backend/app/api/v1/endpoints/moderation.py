@@ -37,7 +37,11 @@ from app.models.photo import Photo
 from app.models.user import User
 from app.services.audit import log_audit
 from app.services.moderation import VALID_TIERS
-from app.services.moderation_worker import enqueue_moderation, get_latest_review
+from app.services.moderation_worker import (
+    enqueue_moderation,
+    get_latest_review,
+    process_pending_reviews,
+)
 from app.services.notification import notify_user
 
 router = APIRouter(prefix="/moderation", tags=["AI 审核"])
@@ -125,6 +129,12 @@ class ModerationDecisionRequest(BaseModel):
     decision: DecisionLiteral
     reason: Optional[str] = Field(None, max_length=1000, description="人工判定理由（写入审计日志）")
     final_tier: Optional[TierLiteral] = Field(None, description="人工确认的发布级别")
+
+
+class ModerationDrainResponse(BaseModel):
+    ok: bool = True
+    processed: int
+    message: str = "已消费审核队列中的待办"
 
 
 class ModerationStatsResponse(BaseModel):
@@ -291,6 +301,23 @@ async def get_moderation_queue(
     )
 
 
+@router.post(
+    "/drain",
+    response_model=ModerationDrainResponse,
+    summary="手动消费审核队列",
+    description=(
+        "立即领取并处理一批 queued 审核记录（内嵌 worker 平时已自动轮询）。"
+        "用于运维排障：重启后确认积压已清空，或在关闭内嵌 worker 时手动推进。"
+    ),
+)
+async def drain_moderation_queue(
+    limit: int = Query(5, ge=1, le=50, description="本次最多处理的条数"),
+    _current_user: User = Depends(get_current_auditor_user),
+):
+    processed = await process_pending_reviews(limit=limit)
+    return ModerationDrainResponse(processed=processed)
+
+
 @router.get("/stats", response_model=ModerationStatsResponse, summary="审核统计")
 async def get_moderation_stats(
     days: int = Query(7, ge=1, le=90),
@@ -430,8 +457,8 @@ async def run_moderation_for_photo(
     await db.commit()
     await db.refresh(review)
 
-    enqueued = enqueue_moderation(
-        background_tasks, photo_id, force=True, review_id=review.id
+    enqueued = await enqueue_moderation(
+        db, background_tasks, photo_id, force=True, review_id=review.id
     )
     if not enqueued:
         raise HTTPException(status_code=503, detail="审核任务入队失败，请稍后重试")

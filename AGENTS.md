@@ -85,10 +85,15 @@ template_meta work_id, file_key, format, slides, ratio, fonts[],
    `MODERATION_ESCALATION_MAX_TOKENS=3072`（给小会被思维链吃光而截断）。
 4. **自动放行**：L0 且置信度 ≥ `MODERATION_AUTO_APPROVE_CONFIDENCE` 时自动 approved；其余进人工队列。
 5. **永不阻塞上传**：任何异常都降级为 `review.status=failed`、photo 保持 pending，绝不让上传 500。
+6. **队列持久化（durable queue）**：入队先写 `moderation_reviews(status=queued)` 再尽力立即执行，
+   进程重启/崩溃不丢任务；API 进程内嵌 worker（`MODERATION_WORKER_EMBEDDED`）每
+   `MODERATION_WORKER_POLL_SECONDS` 秒领取 queued 记录，PG 用 `FOR UPDATE SKIP LOCKED`
+   保证多 uvicorn worker 不重复领取；`running` 超过 `MODERATION_WORKER_STALE_SECONDS`
+   视为崩溃自动回收重跑。手动推进：`POST /moderation/drain`。
 
 审核 API（`/api/v1/admin`，admin+auditor）：`GET /moderation/queue`、`GET /moderation/{photo_id}`、
 `POST /moderation/{photo_id}/run`、`POST /moderation/{photo_id}/decision`（approve/reject/hold，写 AuditLog + Notification）、
-`GET /moderation/stats`。所有模型调用统一走 `backend/app/services/ai_client.py` 的 `chat_json()`
+`GET /moderation/stats`、`POST /moderation/drain`（运维手动消费队列）。所有模型调用统一走 `backend/app/services/ai_client.py` 的 `chat_json()`
 （渠道解析、预算闸门、重试、JSON 修复、用量与成本落 `ai_usage_events`）。
 架构、配置项与降级矩阵见 [`docs/AI_PLATFORM.md`](docs/AI_PLATFORM.md)。
 
