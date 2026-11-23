@@ -27,7 +27,7 @@ from app.prompts.moderation import (
     get_escalation_prompt,
     get_prefilter_prompt,
 )
-from app.services import moderation_rules
+from app.services import auto_tagging, moderation_rules
 from app.services.ai_client import (
     AIJSONResult,
     chat_json,
@@ -115,12 +115,12 @@ class _UsageMeter:
     """累计一次审核中所有 AI 调用的用量（review 上只留最后一次模型与总量）。"""
 
     __slots__ = (
-        "provider",
-        "model_id",
-        "latency_ms",
-        "prompt_tokens",
         "completion_tokens",
         "cost_usd",
+        "latency_ms",
+        "model_id",
+        "prompt_tokens",
+        "provider",
     )
 
     def __init__(self) -> None:
@@ -155,9 +155,16 @@ class _UsageMeter:
 # ---------------------------------------------------------------------------
 
 def normalize_prefilter(data: dict[str, Any] | None) -> dict[str, Any]:
-    """把 VLM 返回的任意 JSON 收敛成稳定结构。"""
+    """把 VLM 返回的任意 JSON 收敛成稳定结构。
+
+    除审核判定外，同时保留打标建议（``caption`` / ``tags`` / ``facets``）——
+    这三项由 ``auto_tagging`` 落库，属于同一次模型调用的附加产出。
+    """
     data = data or {}
     suggested_tier = _as_tier(data.get("suggested_tier")) or "L1"
+    suggestions = auto_tagging.normalize_suggestions(
+        data, max_tags=int(getattr(settings, "AUTO_TAGGING_MAX_TAGS", 6) or 6)
+    )
     return {
         "has_identifiable_person": _as_bool(data.get("has_identifiable_person")),
         "likely_aigc": _as_bool(data.get("likely_aigc")),
@@ -168,6 +175,9 @@ def normalize_prefilter(data: dict[str, Any] | None) -> dict[str, Any]:
         "suggested_tier": suggested_tier,
         "confidence": _as_confidence(data.get("confidence")),
         "reason": _as_reason(data.get("reason")),
+        "caption": suggestions["caption"],
+        "tags": suggestions["tags"],
+        "facets": suggestions["facets"],
     }
 
 
@@ -305,6 +315,11 @@ async def _run_prefilter(
     """快筛 VLM。调用失败向上抛，由 ``moderate_photo`` 统一降级。"""
     image_base64, image_mime = await _load_image_for_ai(photo)
     prompt_rules = _prompt_rules(rule_result)
+    try:
+        taxonomy_catalog = await auto_tagging.build_taxonomy_catalog(db)
+    except Exception as exc:  # noqa: BLE001 - 分类目录失败不影响审核
+        logger.warning("taxonomy catalog build failed: %s", exc)
+        taxonomy_catalog = None
     user_prompt = get_prefilter_prompt(
         title=photo.title,
         description=photo.description,
@@ -312,6 +327,7 @@ async def _run_prefilter(
         season=photo.season,
         author=photo.author,
         rules=prompt_rules,
+        taxonomy_catalog=taxonomy_catalog,
     )
     result = await chat_json(
         db,
@@ -387,10 +403,10 @@ async def moderate_photo(
 
     try:
         rule_result = await moderation_rules.run_rules(db, photo)
-        review.rules = rule_result.to_dict()
+        rules_payload = rule_result.to_dict()
         if bool(getattr(photo, "is_aigc", False)):
             meta = photo.aigc_meta if isinstance(photo.aigc_meta, dict) else {}
-            review.rules["aigc_declaration"] = {
+            rules_payload["aigc_declaration"] = {
                 "declared": True,
                 "label": photo.aigc_label,
                 "model": meta.get("model"),
@@ -400,6 +416,7 @@ async def moderate_photo(
                 "consent_confirmed": bool(meta.get("consent_confirmed")),
                 "prompt_public": bool(meta.get("prompt_public")),
             }
+        review.rules = rules_payload
 
         # 第一层直接硬拦：不花模型钱
         if rule_result.blocked:
@@ -416,6 +433,19 @@ async def moderate_photo(
         prefilter, prefilter_result = await _run_prefilter(db, photo, rule_result)
         review.prefilter = prefilter
         usage.add(prefilter_result)
+
+        # 审核即打标：复用同一次快筛输出，不额外调用模型；失败不影响审核结论
+        if bool(getattr(settings, "MODERATION_AUTO_TAGGING", True)):
+            tagging_summary = await auto_tagging.apply_prefilter_tags(
+                db,
+                photo,
+                prefilter,
+                max_tags=int(getattr(settings, "AUTO_TAGGING_MAX_TAGS", 6) or 6),
+            )
+            if tagging_summary.get("applied") or tagging_summary.get("caption"):
+                rules_payload["auto_tagging"] = tagging_summary
+                review.rules = rules_payload
+
         tier = _merge_tier_from_prefilter(prefilter)
         tier = _apply_aigc_declaration_policy(photo, tier)
         review.suggested_tier = tier
@@ -449,7 +479,7 @@ async def moderate_photo(
 
         await db.flush()
         return review
-    except Exception as exc:  # noqa: BLE001 - AI 失败绝不阻塞上传，降级进人工
+    except Exception as exc:
         logger.warning("moderation failed for photo=%s", photo.id, exc_info=True)
         review.status = "failed"
         review.error = f"{exc.__class__.__name__}: {exc}"[:1000]
@@ -464,15 +494,15 @@ async def moderate_photo(
 
 
 __all__ = [
-    "PREFILTER_OPERATION",
     "ESCALATION_OPERATION",
-    "PREFILTER_TIMEOUT_SECONDS",
     "ESCALATION_TIMEOUT_SECONDS",
-    "VALID_TIERS",
+    "PREFILTER_OPERATION",
+    "PREFILTER_TIMEOUT_SECONDS",
     "TIER_RANK",
     "VALID_DECISIONS",
-    "normalize_prefilter",
-    "normalize_escalation",
+    "VALID_TIERS",
     "get_privacy_risk",
     "moderate_photo",
+    "normalize_escalation",
+    "normalize_prefilter",
 ]

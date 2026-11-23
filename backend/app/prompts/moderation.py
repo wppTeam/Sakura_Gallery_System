@@ -46,7 +46,8 @@ PREFILTER_SYSTEM = """\
 不要任何解释文字。无法确定时取保守值（建议级别往高一级、置信度给低值），不要编造。"""
 
 PREFILTER_USER_TEMPLATE = """\
-请审核这张即将发布的图片。
+请审核这张即将发布的图片，并顺带给出可复用的标签与分类建议（同一次调用完成，
+不要另起一轮；不要为了打标而编造画面里没有的内容）。
 
 ## 投稿信息
 - 标题：{title}
@@ -57,6 +58,9 @@ PREFILTER_USER_TEMPLATE = """\
 
 ## 规则层前置结论（不花模型钱的部分，供参考）
 {rules}
+
+## 平台分类目录（打标只能从这里选，或留 null；不要自造节点名）
+{taxonomy_catalog}
 
 ## 输出 JSON（严格按此结构，不要增删字段）
 
@@ -69,7 +73,19 @@ PREFILTER_USER_TEMPLATE = """\
   "text_in_image": false,
   "suggested_tier": "L0",
   "confidence": 0.9,
-  "reason": "一句话中文说明判断依据（不超过 80 字）"
+  "reason": "一句话中文说明判断依据（不超过 80 字）",
+  "caption": "一句话客观描述画面（不超过 40 字）",
+  "tags": ["樱花", "校园", "春天"],
+  "facets": {{
+    "season": "春季",
+    "campus": "昌平校区",
+    "photo_type": "自然生态",
+    "plant": null,
+    "natural_phenomenon": null,
+    "landscape": null,
+    "building": null,
+    "technique": null
+  }}
 }}
 
 字段约束：
@@ -79,7 +95,12 @@ PREFILTER_USER_TEMPLATE = """\
   - L1 = 需要进精选 / 搜索加权，或有轻微风险（后期合成、疑似 AIGC 但无证据）
   - L2 = 可识别人物、敏感内容、版权风险高、疑似深伪换脸（强制前审）
 - confidence：0 到 1 之间的小数，表示你对 suggested_tier 的把握；不确定就低于 0.6
-- reason：中文，不超过 80 字"""
+- reason：中文，不超过 80 字
+- caption：客观描述，不带评价与第一人称，不超过 40 字；看不清就给 null
+- tags：3–6 个中文标签，每个 ≤10 字，名词优先（地点/植物/天气/物件/氛围），
+  不要重复标题里已有的词，不要输出"摄影""照片"这类空标签
+- facets：只能填分类目录里出现过的名称；无法判断给 null。
+  season / campus / photo_type 尽量给；其余按画面证据给，宁缺勿错"""
 
 
 # ---------------------------------------------------------------------------
@@ -167,8 +188,13 @@ def get_prefilter_prompt(
     season: str | None = None,
     author: str | None = None,
     rules: Any = None,
+    taxonomy_catalog: str | None = None,
 ) -> str:
-    """构造快筛 VLM 的 user 消息。"""
+    """构造快筛 VLM 的 user 消息。
+
+    ``taxonomy_catalog`` 由 ``app.services.auto_tagging.build_taxonomy_catalog``
+    从数据库生成（带进程内缓存），让模型只从平台既有分类节点里选，降低解析成本。
+    """
     return PREFILTER_USER_TEMPLATE.format(
         title=_format_value(title),
         description=_format_value(description),
@@ -176,6 +202,7 @@ def get_prefilter_prompt(
         season=_format_value(season),
         author=_format_value(author),
         rules=_format_rules(rules),
+        taxonomy_catalog=taxonomy_catalog or "（分类目录不可用，全部 facets 给 null）",
     )
 
 
@@ -200,10 +227,10 @@ def get_escalation_prompt(
 
 
 __all__ = [
-    "PREFILTER_SYSTEM",
-    "PREFILTER_USER_TEMPLATE",
     "ESCALATION_SYSTEM",
     "ESCALATION_USER_TEMPLATE",
-    "get_prefilter_prompt",
+    "PREFILTER_SYSTEM",
+    "PREFILTER_USER_TEMPLATE",
     "get_escalation_prompt",
+    "get_prefilter_prompt",
 ]

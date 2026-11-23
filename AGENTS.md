@@ -90,6 +90,12 @@ template_meta work_id, file_key, format, slides, ratio, fonts[],
    `MODERATION_WORKER_POLL_SECONDS` 秒领取 queued 记录，PG 用 `FOR UPDATE SKIP LOCKED`
    保证多 uvicorn worker 不重复领取；`running` 超过 `MODERATION_WORKER_STALE_SECONDS`
    视为崩溃自动回收重跑。手动推进：`POST /moderation/drain`。
+7. **审核即打标（auto_tagging）**：同一次快筛调用顺带输出 `caption / tags / facets`，
+   直接落成 `photo_tags` 与 `photo_classifications`（`MODERATION_AUTO_TAGGING` 开关，
+   最多 `AUTO_TAGGING_MAX_TAGS` 个标签）。facets 只接受 taxonomy 里 active + selectable
+   的节点名（提示词已附分类目录），解析不到安静跳过；打标失败只记 warning，绝不影响
+   审核结论。实现见 `backend/app/services/auto_tagging.py`，存量回填用
+   `scripts/backfill_auto_tags.py`（`--dry-run/--limit/--force`）。
 
 审核 API（`/api/v1/admin`，admin+auditor）：`GET /moderation/queue`、`GET /moderation/{photo_id}`、
 `POST /moderation/{photo_id}/run`、`POST /moderation/{photo_id}/decision`（approve/reject/hold，写 AuditLog + Notification）、

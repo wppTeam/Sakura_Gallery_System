@@ -114,6 +114,9 @@ class Settings(BaseSettings):
     # 每日调用上限（0 = 不限；开发阶段用户明确说不限流）
     MODERATION_DAILY_CALL_BUDGET: int = 0
     MODERATION_RETRY: int = 2
+    # ---- 审核即打标（同一次快筛调用顺带落标签/分类，不额外花钱）----
+    MODERATION_AUTO_TAGGING: bool = True
+    AUTO_TAGGING_MAX_TAGS: int = 6
     # 近重复检测的 dhash 汉明距离阈值（越大越宽松）
     MODERATION_DUPLICATE_HAMMING: int = 5
     # ---- 审核队列持久化与内嵌 worker ----

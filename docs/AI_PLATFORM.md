@@ -131,6 +131,27 @@ async def chat_json(db, *, operation, user, system=None, model=None,
 结论：大多数 L0/L1 样本 1 次视觉调用（约 4s）；只对 L2/低置信付第二次推理调用。
 1000 张混合样本按 15% 走复核估算约 **2.1 元**（快筛 1.4 元 + 复核 0.6 元，估算值）。
 
+### 3.5 审核即打标（auto_tagging，2026-11-24）
+
+审核快筛的提示词里同时要求模型输出三个打标字段，**同一次视觉调用**顺带完成
+「标签 + 分类 + 一句话描述」，不额外花钱：
+
+| 字段 | 落库位置 | 说明 |
+|------|----------|------|
+| `tags` | `tags` + `photo_tags` | 3–6 个中文名词，去重/去噪（摄影、照片等黑名单），已有别名复用 |
+| `facets` | `photo_classifications` | 只允许 taxonomy 中 active + selectable 的节点名（季节/校区/题材/植物/自然现象/景观/楼宇/表现手法） |
+| `caption` | `photos.exif_data["_ai_caption"]` | 一句话客观描述，供详情页/检索摘要 |
+
+要点：
+
+- 提示词注入**分类目录**（`build_taxonomy_catalog()` 从 DB 生成，进程内缓存 10 分钟），
+  模型只从平台既有词表里选，避免自造词；
+- 落库带幂等：重复审核同一张图不会重复加标签，只有新建关联才加 `tags.usage_count`；
+- 打标失败只记 warning，审核结论照常返回；
+- 开关 `MODERATION_AUTO_TAGGING`（默认 true），标签上限 `AUTO_TAGGING_MAX_TAGS`（默认 6）；
+- 存量作品回填：`cd backend && .venv/bin/python ../scripts/backfill_auto_tags.py --dry-run`
+  （每次调用约 2k tokens / $0.0006，63 张约 ¥0.03）。
+
 ## 4. Agent 驱动检索
 
 ### 4.1 流程（`services/agent_search/`）
@@ -205,6 +226,8 @@ MODERATION_AUTO_APPROVE_CONFIDENCE=0.8
 MODERATION_ESCALATION_CONFIDENCE=0.6     # 低于该置信度才复核
 MODERATION_DAILY_CALL_BUDGET=0           # 0=不限；建议线上设上限做熔断
 MODERATION_DUPLICATE_HAMMING=5
+MODERATION_AUTO_TAGGING=true            # 审核即打标（同一次快筛输出标签/分类）
+AUTO_TAGGING_MAX_TAGS=6
 
 # 检索
 AGENT_SEARCH_ENABLED=true
