@@ -128,12 +128,19 @@ template_meta work_id, file_key, format, slides, ratio, fonts[],
 改为等比缩放且**不放大**（只缩长边），`process_uploaded_image` 保留旧签名兼容旧调用方。
 
 - 变体长边 `320 / 640 / 1080 / 1600 / 2400`，WebP 主用 + JPEG 兜底
-  （`generate_variants()`；种子数据已生成 63×5 档）
+  （`generate_variants()`；只取 ≤ 原图长边，绝不放大）
 - `create_thumbnail` 长边 640 JPEG、`create_compressed` 长边 1600 JPEG
 - LQIP：20px WebP data-URI 存 `photo.exif_data["_lqip"]`（颜色 `_lqip_color`），
   API 以 `lqip` / `lqip_color` 字段返回，内部键不进公开 EXIF
 - `sanitize_exif` 白名单只保留相机/镜头/拍摄时间/曝光/ISO/焦距/朝向
-- ⚠️ 真实上传流程目前只产出 thumb/compressed/LQIP，variants 目录尚未接入 storage（种子脚本已生成），上线前补
+- **上传即生成变体**（`UPLOAD_GENERATE_VARIANTS=true` 默认开）：`process_uploaded_image(variants_dir=...)`
+  产出 `variants/{uuid}_{size}.webp|.jpg`，storage 三后端同名落盘/上传；档位宽高存
+  `exif_data["_variants"]`（内部键），公开响应出 `variants` 字典：
+  `{"640": {"webp": "/api/v1/photos/{id}/image/variant/640?format=webp", "jpeg": "...", "width", "height"}}`
+- 媒体端点：`/api/v1/photos/{id}/image/{original|thumbnail|compressed}` 与
+  `/image/variant/{size}?format=webp|jpeg`；缺档或老作品无 meta 时按
+  thumbnail → compressed → original 兜底（不返回 404，前端不断链）
+- 存量作品用 `scripts/backfill_variants.py`（幂等，可 `--dry-run`）补齐文件与 `_variants` 元信息
 - 图片不经 Python 流式转发：本地模式返回 `FileResponse`（sendfile/responses 层），
   S3 模式返回 **307 预签名跳转**（`STORAGE_BACKEND=s3`），由对象存储直出带宽
 - 在线预览响应头 `Cache-Control: public, max-age=31536000, immutable` + ETag/Last-Modified

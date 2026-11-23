@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, select
@@ -214,6 +214,38 @@ def _public_aigc_meta(photo: Photo) -> Optional[Dict[str, Any]]:
     return safe or None
 
 
+_VARIANT_SIZES = (320, 640, 1080, 1600, 2400)
+
+
+def _variant_meta(photo: Photo) -> Dict[str, Any]:
+    """读取入库时写入 exif_data["_variants"] 的档位元信息（内部键，不进公开 EXIF）。"""
+    exif = photo.exif_data if isinstance(photo.exif_data, dict) else None
+    meta = exif.get("_variants") if exif else None
+    return meta if isinstance(meta, dict) else {}
+
+
+def _public_variants(photo: Photo) -> Optional[Dict[str, Dict[str, Any]]]:
+    """响应式图各档 URL（同源相对路径，前端 <picture>/srcset 直接可用）。
+
+    只出真实存在的档位（上传时记录在 exif_data["_variants"]），老照片没有该
+    元信息则返回 None，前端退回 thumbnail/compressed 单图，行为不变。
+    """
+    meta = _variant_meta(photo)
+    if not meta:
+        return None
+    out: Dict[str, Dict[str, Any]] = {}
+    for size in sorted(meta, key=lambda key: int(key) if str(key).isdigit() else 0):
+        info = meta[size] if isinstance(meta[size], dict) else {}
+        url_base = f"/api/v1/photos/{photo.id}/image/variant/{size}"
+        out[str(size)] = {
+            "webp": f"{url_base}?format=webp",
+            "jpeg": f"{url_base}?format=jpeg",
+            "width": info.get("width"),
+            "height": info.get("height"),
+        }
+    return out or None
+
+
 def _photo_common_dict(photo: Photo) -> dict:
     """显式字段白名单（禁止 {**photo.__dict__}，避免泄漏内部/个人信息）。"""
     return {
@@ -243,6 +275,8 @@ def _photo_common_dict(photo: Photo) -> dict:
         "lqip": _internal_exif(photo, "_lqip"),
         "lqip_color": _internal_exif(photo, "_lqip_color"),
         "blurhash": _internal_exif(photo, "_blurhash"),
+        # 响应式图变体（上传时同步生成 5 档；老图为 None）
+        "variants": _public_variants(photo),
         # AIGC 法定标识：显式角标所需字段（隐式 XMP 标识在 /download 写入）
         "is_aigc": bool(photo.is_aigc),
         "kind": "aigc" if photo.is_aigc else "photo",
@@ -483,6 +517,38 @@ async def get_photo_compressed(
     return get_storage().build_media_response(path)
 
 
+@router.get("/{photo_id}/image/variant/{size}")
+async def get_photo_variant(
+    photo_id: str,
+    size: str,
+    fmt: str = Query("webp", alias="format", pattern="^(webp|jpeg|jpg)$"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user_for_media),
+    portrait_visibility: str = Depends(get_portrait_visibility),
+):
+    """响应式图：按档位返回 WebP（主用）或 JPEG（兜底）。
+
+    档位不存在时（老图未生成变体）退回 thumbnail → compressed → 原图，
+    保证前端 <picture> 永远拿得到一张图，且仍走 storage 的长缓存/预签名策略。
+    """
+    photo = await photo_crud.get_photo(db, photo_id)
+    if photo is None:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    await _assert_photo_access(db, photo, current_user, portrait_visibility)
+
+    storage = get_storage()
+    meta = _variant_meta(photo)
+    if size.isdigit() and size in meta:
+        ext = "webp" if fmt == "webp" else "jpg"
+        return storage.build_media_response(f"variants/{photo.id}_{size}.{ext}")
+
+    # 老图兜底链：保证 200，不 404 打断页面渲染
+    for fallback in (photo.thumb_path, photo.compressed_path, photo.original_path):
+        if fallback:
+            return storage.build_media_response(fallback)
+    raise HTTPException(status_code=404, detail="Media file not found")
+
+
 async def _aigc_download_response(db: AsyncSession, photo: Photo) -> Response:
     """AIGC 作品下载：把隐式标识（XMP）写进返回的文件字节。
 
@@ -653,11 +719,15 @@ async def upload_photo(
         # Pillow 解码 + 5 档 WebP/JPEG 变体 + LQIP 是纯 CPU 密集的同步调用，
         # 直接在 async 端点里跑会堵住整个事件循环（2c4g 上 workers=2，两个并发
         # 上传就能让全站 API 卡住数秒）。丢到线程池，事件循环继续服务其它请求。
+        staged_variants_dir = None
+        if settings.UPLOAD_GENERATE_VARIANTS:
+            staged_variants_dir = str(Path(staged_original_path).parent / "variants")
         processing_result = await run_in_threadpool(
             process_uploaded_image,
             staged_original_path,
             photo_uuid,
             output_dir=str(Path(staged_original_path).parent),
+            variants_dir=staged_variants_dir,
         )
         staged_thumb_path = processing_result.get("thumb_path")
         staged_compressed_path = processing_result.get("compressed_path")
@@ -668,7 +738,17 @@ async def upload_photo(
             staged_original_path,
             staged_thumb_path,
             staged_compressed_path,
+            processing_result.get("variants") or {},
         )
+
+        # 档位元信息（宽高/是否存在）记在 exif_data["_variants"]，公开响应只出 URL。
+        stored_exif = dict(processing_result.get("exif_data") or {})
+        variant_meta: Dict[str, Dict[str, Any]] = {
+            str(size): {"width": info.get("width"), "height": info.get("height")}
+            for size, info in (stored_media.variants or {}).items()
+        }
+        if variant_meta:
+            stored_exif["_variants"] = variant_meta
 
         processing_status = "pending" if enable_ai and runtime_settings.ai_enabled else "manual"
         photo = await photo_crud.create_photo(
@@ -685,7 +765,7 @@ async def upload_photo(
                 "height": processing_result.get("height"),
                 "file_size": stored_media.file_size,
                 "mime_type": processing_result.get("mime_type") or file.content_type,
-                "exif_data": processing_result.get("exif_data", {}),
+                "exif_data": stored_exif,
                 "captured_at": processing_result.get("captured_at"),
                 "description": description,
                 "season": season,

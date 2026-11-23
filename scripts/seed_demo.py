@@ -732,7 +732,8 @@ def process_one(
 ) -> ProcessedPhoto:
     started = time.time()
     photo_uuid = candidate.photo_id
-    variants_dir = None if skip_variants else uploads_dir / "variants" / photo_uuid
+    # 与真实上传流程统一：变体平铺在 uploads/variants/{uuid}_{size}.{webp,jpg}
+    variants_dir = None if skip_variants else uploads_dir / "variants"
     stage_dir = Path(tempfile.mkdtemp(prefix="buct-seed-stage-"))
     try:
         staged_original = stage_dir / candidate.source.name
@@ -778,6 +779,12 @@ def process_one(
             }
 
         exif_data = dict(result.get("exif_data") or {})
+        if relative_variants:
+            # 档位元信息（公开响应据此生成各档 URL），与上传流程同一约定
+            exif_data["_variants"] = {
+                str(size): {"width": info["width"], "height": info["height"]}
+                for size, info in relative_variants.items()
+            }
         lqip = exif_data.get("_lqip") or ""
         if not lqip.startswith("data:image/webp;base64,"):
             raise RuntimeError("LQIP 未生成")

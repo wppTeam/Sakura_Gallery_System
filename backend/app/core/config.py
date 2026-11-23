@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     # 文件存储配置
     STORAGE_BACKEND: Literal["local", "s3"] = "local"
     UPLOAD_DIR: str = "./uploads"
+    # 上传时同步生成 320/640/1080/1600/2400 响应式变体（WebP+JPEG）。
+    # 2c4g 上每上传一次会多 10 次编码，但换来首屏按屏宽取图的带宽节省；
+    # 若机器更小或吞吐优先，可置 false 退化为 thumbnail+compressed 两档。
+    UPLOAD_GENERATE_VARIANTS: bool = True
     MAX_UPLOAD_SIZE: int = 20971520  # 20MB
     S3_ENDPOINT: str | None = None
     S3_BUCKET: str | None = None

@@ -31,6 +31,16 @@ async def get_user_by_student_id(db: AsyncSession, student_id: str) -> Optional[
     return result.scalar_one_or_none()
 
 
+async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User]:
+    """
+    通过公开用户名查询用户（登录支持学号/邮箱/用户名三种标识）。
+    """
+    if not username:
+        return None
+    result = await db.execute(select(User).filter(User.username == username))
+    return result.scalar_one_or_none()
+
+
 async def get_user_by_id(db: AsyncSession, user_id: str) -> Optional[User]:
     """
     Get user by ID

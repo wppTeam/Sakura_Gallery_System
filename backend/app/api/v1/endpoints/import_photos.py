@@ -3,12 +3,14 @@
 """
 import os
 import shutil
-from typing import Optional
+from pathlib import Path
+from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 import logging
 
+from app.core.config import get_settings
 from app.core.deps import get_db, get_current_admin_user
 from app.models.user import User
 from app.services.import_service import scan_and_parse_json_files, import_service, sanitize_exif_data
@@ -131,7 +133,19 @@ async def import_photos(
             logger.info(f"复制图片: {image_path} -> {original_dest}")
             
             # 处理图片 (生成缩略图/变体, 提取 EXIF)：CPU 密集，丢线程池避免堵事件循环
-            processing_result = await run_in_threadpool(process_uploaded_image, original_dest, photo_uuid)
+            variants_dir = None
+            if get_settings().UPLOAD_GENERATE_VARIANTS:
+                variants_dir = str(Path(originals_dir).parent / "variants")
+            processing_result = await run_in_threadpool(
+                process_uploaded_image,
+                original_dest,
+                photo_uuid,
+                variants_dir=variants_dir,
+            )
+            variant_meta: Dict[str, Dict[str, Any]] = {
+                str(size): {"width": info.get("width"), "height": info.get("height")}
+                for size, info in (processing_result.get("variants") or {}).items()
+            }
             
             # 获取文件大小
             file_size = os.path.getsize(original_dest)
@@ -145,6 +159,9 @@ async def import_photos(
             exif_data.update(processing_result.get('exif_data', {}))
             # 清理EXIF数据，确保可JSON序列化
             exif_data = sanitize_exif_data(exif_data)
+            # 响应式图档位元信息（内部键，公开响应只出 URL）
+            if variant_meta:
+                exif_data["_variants"] = variant_meta
             
             # 创建照片记录 - 使用相对路径存储 original_path
             new_photo_data = {

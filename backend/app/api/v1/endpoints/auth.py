@@ -34,15 +34,18 @@ async def login(
     支持学号或邮箱登录，返回 Access Token、Refresh Token 和用户信息。
     """
     # 先查找用户（不校验密码）以支持失败计数
-    from app.crud.user import get_user_by_email, get_user_by_student_id
+    # 支持三种登录标识：邮箱 / 学号 / 公开用户名（users.username）
+    from app.crud.user import get_user_by_email, get_user_by_student_id, get_user_by_username
     user = await get_user_by_email(db, credentials.identifier)
     if not user:
         user = await get_user_by_student_id(db, credentials.identifier)
+    if not user:
+        user = await get_user_by_username(db, credentials.identifier)
 
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="学号/邮箱或密码错误",
+            detail="学号/邮箱/用户名或密码错误",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

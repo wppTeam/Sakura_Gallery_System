@@ -44,6 +44,9 @@ class UserBase(BaseModel):
     student_id: str  # 学号/工号，核心身份标识，必填
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
+    # 公开身份：公开页只展示这两个字段，学号/真名永不对外（AGENTS.md §5）
+    username: Optional[str] = None
+    display_name: Optional[str] = None
 
 
 class UserCreate(UserBase):

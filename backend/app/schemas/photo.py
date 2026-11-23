@@ -74,6 +74,8 @@ class PhotoResponse(PhotoInDB):
     lqip: Optional[str] = None
     lqip_color: Optional[str] = None
     blurhash: Optional[str] = None
+    # 响应式图变体：{ "320": {"webp": url, "jpeg": url, "width": 320, "height": 213}, ... }
+    variants: Optional[Dict[str, Dict[str, Any]]] = None
     tags: List[str] = Field(default_factory=list, description="Associated tags")
     free_tags: List[str] = Field(default_factory=list, description="User-visible free tags")
     classifications: Dict[str, TaxonomyValueResponse] | Dict[str, Dict[str, Any] | list[Dict[str, Any]]] = Field(

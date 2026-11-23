@@ -7,9 +7,9 @@ import shutil
 import tempfile
 import uuid
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Any, Dict, Iterator, Optional
 
 from fastapi import UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, Response
@@ -32,6 +32,30 @@ class PersistedMedia:
     thumb_path: Optional[str]
     compressed_path: Optional[str]
     file_size: Optional[int]
+    # 响应式变体：{ "320": {"webp": "variants/{id}_320.webp",
+    #                      "jpeg": "variants/{id}_320.jpg",
+    #                      "width": 320, "height": 213}, ... }
+    variants: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+
+
+_MEDIA_TYPE_BY_SUFFIX = {
+    ".webp": "image/webp",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".avif": "image/avif",
+    ".pdf": "application/pdf",
+}
+
+
+def _media_type_for(path: str) -> Optional[str]:
+    """显式给 FileResponse 定 Content-Type。
+
+    某些 Python 环境的 mimetypes 表里没有 webp（会回落 octet-stream），
+    浏览器拿到 octet-stream 会下载而不是渲染，这里按扩展名显式兜底。
+    """
+    return _MEDIA_TYPE_BY_SUFFIX.get(Path(path).suffix.lower())
 
 
 def generate_unique_filename(original_filename: str) -> tuple[str, str]:
@@ -82,6 +106,7 @@ class StorageBackend:
         staged_original_path: str,
         staged_thumbnail_path: Optional[str],
         staged_compressed_path: Optional[str] = None,
+        staged_variants: Optional[Dict[int, Dict[str, Any]]] = None,
     ) -> PersistedMedia:
         raise NotImplementedError
 
@@ -108,9 +133,11 @@ class LocalStorageBackend(StorageBackend):
         self.originals_dir = upload_dir / "originals"
         self.thumbnails_dir = upload_dir / "thumbnails"
         self.compressed_dir = upload_dir / "compressed"
+        self.variants_dir = upload_dir / "variants"
         self.originals_dir.mkdir(parents=True, exist_ok=True)
         self.thumbnails_dir.mkdir(parents=True, exist_ok=True)
         self.compressed_dir.mkdir(parents=True, exist_ok=True)
+        self.variants_dir.mkdir(parents=True, exist_ok=True)
 
     def _normalize(self, path: str) -> str:
         clean = path.replace("\\", "/")
@@ -130,6 +157,7 @@ class LocalStorageBackend(StorageBackend):
         staged_original_path: str,
         staged_thumbnail_path: Optional[str],
         staged_compressed_path: Optional[str] = None,
+        staged_variants: Optional[Dict[int, Dict[str, Any]]] = None,
     ) -> PersistedMedia:
         extension = Path(staged_original_path).suffix.lower()
         original_relative = f"originals/{photo_uuid}{extension}"
@@ -151,11 +179,30 @@ class LocalStorageBackend(StorageBackend):
             compressed_target.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(staged_compressed_path, compressed_target)
 
+        variants: Dict[str, Dict[str, Any]] = {}
+        if staged_variants:
+            self.variants_dir.mkdir(parents=True, exist_ok=True)
+            for size, info in sorted(staged_variants.items()):
+                entry: Dict[str, Any] = {"width": info.get("width"), "height": info.get("height")}
+                for fmt in ("webp", "jpeg"):
+                    staged_path = info.get(fmt)
+                    if not staged_path or not os.path.exists(staged_path):
+                        continue
+                    suffix = "webp" if fmt == "webp" else "jpg"
+                    relative = f"variants/{photo_uuid}_{size}.{suffix}"
+                    target = Path(settings.UPLOAD_DIR) / relative
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.move(staged_path, target)
+                    entry[fmt] = relative
+                if entry.get("webp") or entry.get("jpeg"):
+                    variants[str(size)] = entry
+
         return PersistedMedia(
             original_path=original_relative,
             thumb_path=thumb_relative,
             compressed_path=compressed_relative,
             file_size=original_target.stat().st_size if original_target.exists() else None,
+            variants=variants,
         )
 
     def delete_file(self, file_path: Optional[str]) -> bool:
@@ -179,11 +226,13 @@ class LocalStorageBackend(StorageBackend):
         if not os.path.exists(target):
             from fastapi import HTTPException
             raise HTTPException(status_code=404, detail=f"Media file not found: {file_path}")
+        media_type = _media_type_for(target)
         if download_name:
             # 下载语义：必须带 Content-Disposition，且别让中间层缓存成在线预览。
             return FileResponse(
                 target,
                 filename=download_name,
+                media_type=media_type,
                 headers={"Cache-Control": "private, max-age=0, must-revalidate"},
             )
         # 在线预览（缩略图/压缩图/原图）：图片 URL 与 photo id + 变体档位绑定，
@@ -191,6 +240,7 @@ class LocalStorageBackend(StorageBackend):
         # Starlette FileResponse 自带 ETag / Last-Modified，nginx 也能直接 304。
         return FileResponse(
             target,
+            media_type=media_type,
             headers={"Cache-Control": "public, max-age=31536000, immutable"},
         )
 
@@ -274,6 +324,7 @@ class S3StorageBackend(StorageBackend):
         staged_original_path: str,
         staged_thumbnail_path: Optional[str],
         staged_compressed_path: Optional[str] = None,
+        staged_variants: Optional[Dict[int, Dict[str, Any]]] = None,
     ) -> PersistedMedia:
         extension = Path(staged_original_path).suffix.lower()
         original_key = f"originals/{photo_uuid}{extension}"
@@ -301,8 +352,32 @@ class S3StorageBackend(StorageBackend):
             except Exception:
                 self._mc_pipe(staged_compressed_path, compressed_key)
 
+        variants: Dict[str, Dict[str, Any]] = {}
+        if staged_variants:
+            for variant_size, info in sorted(staged_variants.items()):
+                entry: Dict[str, Any] = {"width": info.get("width"), "height": info.get("height")}
+                for fmt in ("webp", "jpeg"):
+                    staged_path = info.get(fmt)
+                    if not staged_path or not os.path.exists(staged_path):
+                        continue
+                    suffix = "webp" if fmt == "webp" else "jpg"
+                    variant_key = f"variants/{photo_uuid}_{variant_size}.{suffix}"
+                    try:
+                        self.client.upload_file(staged_path, self.bucket, variant_key)
+                    except Exception:
+                        self._mc_pipe(staged_path, variant_key)
+                    entry[fmt] = variant_key
+                if entry.get("webp") or entry.get("jpeg"):
+                    variants[str(variant_size)] = entry
+
         size = os.path.getsize(staged_original_path) if os.path.exists(staged_original_path) else None
-        return PersistedMedia(original_path=original_key, thumb_path=thumb_key, compressed_path=compressed_key, file_size=size)
+        return PersistedMedia(
+            original_path=original_key,
+            thumb_path=thumb_key,
+            compressed_path=compressed_key,
+            file_size=size,
+            variants=variants,
+        )
 
     def delete_file(self, file_path: Optional[str]) -> bool:
         if not file_path:
