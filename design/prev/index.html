@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>探索 · 视觉百花 Sakura Gallery</title>
+<meta name="description" content="视觉百花：北化学生自己的开源图像共享平台。按十二花信与北化八景浏览校园摄影，每张作品保留作者署名与授权协议。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="sakura.css">
+</head>
+<body>
+
+<header class="topbar" id="topbar">
+  <div class="shell topbar-inner">
+    <a class="mark" href="index.html" aria-label="视觉百花 首页">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+        <g fill="#f2b33d">
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(72 10 10)"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(144 10 10)"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(216 10 10)"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(288 10 10)"/>
+        </g>
+        <circle cx="10" cy="10" r="2.1" fill="#000"/>
+      </svg>
+      视觉百花
+    </a>
+    <nav class="nav" aria-label="主导航">
+      <a href="index.html" aria-current="page">探索</a>
+      <a href="index.html#views">八景</a>
+      <a href="upload.html">投稿</a>
+      <a href="index.html#close">关于</a>
+    </nav>
+    <div class="topbar-right">
+      <form class="search" role="search" onsubmit="return false">
+        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="6" cy="6" r="4.25"/><path d="M9.2 9.2 12.5 12.5"/>
+        </svg>
+        <input type="search" placeholder="搜索花信、景名或作者" aria-label="搜索作品">
+      </form>
+      <button class="btn btn-quiet menu-btn" type="button" aria-label="打开菜单">菜单</button>
+      <a class="btn btn-primary" href="photo.html">投稿</a>
+    </div>
+  </div>
+</header>
+
+<main class="shell canvas">
+
+  <div class="title-row">
+    <div>
+      <h1>探索</h1>
+      <p class="finding" id="finding"></p>
+    </div>
+    <a class="btn" href="photo.html">上传作品</a>
+  </div>
+
+  <section class="panel bloom-axis" aria-labelledby="bloom-h">
+    <div class="panel-head">
+      <h2 id="bloom-h">校园索引</h2>
+      <span class="panel-note">十二番花信 × 八处景名 · 取自校园植物与景观名录</span>
+    </div>
+    <div class="index-row">
+      <span class="index-label">花信</span>
+      <div class="bloom-cells" id="bloom-cells"></div>
+    </div>
+    <div class="index-row" id="views">
+      <span class="index-label">八景</span>
+      <ul class="views-list" id="views-list"></ul>
+    </div>
+    <p class="bloom-now"><span class="dot" aria-hidden="true"></span><span id="bloom-now"></span></p>
+  </section>
+
+  <section aria-labelledby="feed-h">
+    <div class="filters">
+      <h2 id="feed-h">作品</h2>
+      <div class="segmented" id="season-tabs" role="group" aria-label="按季节筛选"></div>
+      <span class="count num" id="feed-count"></span>
+    </div>
+    <div class="feed" id="feed"></div>
+  </section>
+
+  <section class="close" id="close" aria-labelledby="close-h">
+    <h2 id="close-h">视觉百花</h2>
+    <p class="close-note">
+      北化学生自己的图像共享平台，开源开放。每张作品保留拍摄者的署名与授权协议，
+      下载时一并带走引用格式。校园的一年由十二番花信与八处景名索引，
+      照片按原始构图呈现，不裁切。
+    </p>
+    <ul class="credits" id="credits"></ul>
+  </section>
+
+</main>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  const now = new Date();
+  const term = currentTerm(now);
+  const season = seasonOfTerm(term);
+
+  document.getElementById('finding').innerHTML =
+    '<b>' + term.name + '</b>已过 · 花期结束，冬季天象与初雪正当时';
+
+  // 花信轴：十二番按北京花期排序，月份并入每格的旬标签，避免额外一行
+  const cellsEl = document.getElementById('bloom-cells');
+  cellsEl.innerHTML = BLOOMS.map(function (b) {
+    return '<button class="bloom" type="button" aria-pressed="false" data-bloom="' + b.name + '">' +
+      '<span class="bloom-name">' + b.name + '</span>' +
+      '<span class="bloom-ten">' + b.month + '月' + b.ten + '</span></button>';
+  }).join('');
+
+  const nextBloom = BLOOMS[0];
+  document.getElementById('bloom-now').textContent =
+    '此刻 ' + term.name + '（' + (now.getMonth() + 1) + '月' + now.getDate() + '日）· ' +
+    season + ' · 下一番花信为' + nextBloom.month + '月' + nextBloom.ten + '的' + nextBloom.name;
+
+  document.getElementById('views-list').innerHTML = EIGHT_VIEWS.map(function (v) {
+    return '<li><a href="index.html#views">' + v + '</a></li>';
+  }).join('');
+
+  // 季节筛选
+  let activeSeason = '全部';
+  let activeBloom = null;
+  const tabs = ['全部'].concat(SEASONS);
+  const tabsEl = document.getElementById('season-tabs');
+  tabsEl.innerHTML = tabs.map(function (s) {
+    return '<button type="button" data-season="' + s + '" aria-pressed="' + (s === activeSeason) + '">' + s + '</button>';
+  }).join('');
+
+  function visible() {
+    return PHOTOS.filter(function (p) {
+      if (activeBloom) return p.bloom === activeBloom;
+      if (activeSeason !== '全部') return p.season === activeSeason;
+      return true;
+    });
+  }
+
+  function columnCount() {
+    const w = window.innerWidth;
+    if (w <= 760) return 1;
+    if (w <= 1100) return 2;
+    return 3;
+  }
+
+  function card(p) {
+    const dash = '<span class="dash">—</span>';
+    const place = p.place || dash;
+    const season = p.season || dash;
+    return '<figure class="shot">' +
+      '<a class="shot-frame" href="photo.html?id=' + p.id + '" aria-label="' + p.title + '，作者 ' + p.author + '">' +
+        '<img src="' + p.src + '" width="' + p.w + '" height="' + p.h + '" alt="' + p.title + '：' + p.subject + '" loading="lazy" decoding="async">' +
+        '<span class="shot-actions">' +
+          '<button class="icon-btn" type="button" aria-label="收藏 ' + p.title + '">' +
+            '<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M7.5 12.5 2.6 7.8a3.1 3.1 0 0 1 4.9-3.8 3.1 3.1 0 0 1 4.9 3.8Z"/></svg>' +
+          '</button>' +
+          '<button class="icon-btn" type="button" aria-label="下载 ' + p.title + '">' +
+            '<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M7.5 2v8m0 0 3-3m-3 3-3-3M2.5 12.5h10"/></svg>' +
+          '</button>' +
+        '</span>' +
+      '</a>' +
+      '<figcaption>' +
+        '<div class="shot-meta"><span class="shot-title">' + p.title + '</span>' +
+        '<span class="shot-author">' + p.author + '</span></div>' +
+        '<div class="shot-sub"><span class="chip">' + p.licence + '</span>' +
+        '<span>' + season + '</span><span>·</span><span>' + place + '</span></div>' +
+      '</figcaption></figure>';
+  }
+
+  function render() {
+    const rows = visible();
+    const feed = document.getElementById('feed');
+    document.getElementById('feed-count').textContent = rows.length + ' 张';
+
+    if (!rows.length) {
+      const label = activeBloom || activeSeason;
+      feed.innerHTML = '<p class="empty"><b>' + label + '</b> 还没有作品。' +
+        '这一番花信开着的时候，欢迎你来投第一张。</p>';
+      return;
+    }
+
+    // 真瀑布流：按真实宽高比把每张放进当前最短的列
+    const n = columnCount();
+    const cols = [];
+    const heights = [];
+    for (let i = 0; i < n; i++) { cols.push([]); heights.push(0); }
+    rows.forEach(function (p) {
+      let k = 0;
+      for (let i = 1; i < n; i++) if (heights[i] < heights[k]) k = i;
+      cols[k].push(p);
+      heights[k] += p.h / p.w;
+    });
+    feed.innerHTML = cols.map(function (c) {
+      return '<div class="feed-col">' + c.map(card).join('') + '</div>';
+    }).join('');
+  }
+
+  tabsEl.addEventListener('click', function (e) {
+    const b = e.target.closest('button[data-season]');
+    if (!b) return;
+    activeSeason = b.dataset.season;
+    activeBloom = null;
+    tabsEl.querySelectorAll('button').forEach(function (x) {
+      x.setAttribute('aria-pressed', String(x === b));
+    });
+    cellsEl.querySelectorAll('.bloom').forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
+    render();
+  });
+
+  cellsEl.addEventListener('click', function (e) {
+    const b = e.target.closest('.bloom');
+    if (!b) return;
+    const same = activeBloom === b.dataset.bloom;
+    activeBloom = same ? null : b.dataset.bloom;
+    cellsEl.querySelectorAll('.bloom').forEach(function (x) {
+      x.setAttribute('aria-pressed', String(!same && x === b));
+    });
+    if (!same) {
+      activeSeason = '全部';
+      tabsEl.querySelectorAll('button').forEach(function (x) {
+        x.setAttribute('aria-pressed', String(x.dataset.season === '全部'));
+      });
+    }
+    render();
+  });
+
+  document.getElementById('credits').innerHTML = PHOTOS.map(function (p) {
+    return '<li>「' + p.title + '」 ' + p.author + ' · ' + p.licence +
+      ' · <a href="' + p.source + '" rel="noopener">来源</a></li>';
+  }).join('');
+
+  let t;
+  window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(render, 120); });
+
+  const bar = document.getElementById('topbar');
+  const onScroll = function () { bar.classList.toggle('is-stuck', window.scrollY > 4); };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  render();
+})();
+</script>
+</body>
+</html>

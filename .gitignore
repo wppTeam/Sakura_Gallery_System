@@ -82,3 +82,24 @@ backend/sh.exe.stackdump
 buct_homepage.png
 58eed08b7f193033590da4e2a99985a2.png
 Fixing/
+
+# ── 凭据与本地运维（永不提交）────────────────────────────
+.env.production
+.env.*.local
+*.pem
+*.key
+.claude/
+.omx/
+
+# ── 个人与敏感材料（不进公开仓库）────────────────────────
+# 归属审计证据：含服务器端源码与清单
+audit/
+# 个人作品集站点
+portfolio/
+
+# ── 设计与检测临时产物 ──────────────────────────────────
+.taste-skill/
+# assets.mjs 的根目录下载副本，正式资产在 design/assets/
+/assets/
+# 早期安全排查记录，含凭据位置清单，已被 docs/ROADMAP.md M7 取代，仅本地保留
+docs/SAKURA_ROADMAP.md

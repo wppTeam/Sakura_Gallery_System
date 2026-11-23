@@ -131,13 +131,13 @@ SQLite is only a fallback for isolated experiments and is not production-parity.
 Start SSH tunnels:
 
 ```powershell
-ssh -N -L 19530:127.0.0.1:19530 -L 19000:127.0.0.1:9000 yanp@121.195.148.85
+ssh -N -L 19530:127.0.0.1:19530 -L 19000:127.0.0.1:9000 <deploy-user>@<server-ip>
 ```
 
 For full parity, include PostgreSQL:
 
 ```powershell
-ssh -N -L 15432:127.0.0.1:5432 -L 19000:127.0.0.1:9000 -L 19530:127.0.0.1:19530 yanp@121.195.148.85
+ssh -N -L 15432:127.0.0.1:5432 -L 19000:127.0.0.1:9000 -L 19530:127.0.0.1:19530 <deploy-user>@<server-ip>
 ```
 
 Start backend from `backend/`:
@@ -229,7 +229,7 @@ Recommended feature workflow:
 
 ```powershell
 # 1. Keep tunnels open in a separate shell.
-ssh -N -L 19530:127.0.0.1:19530 -L 19000:127.0.0.1:9000 yanp@121.195.148.85
+ssh -N -L 19530:127.0.0.1:19530 -L 19000:127.0.0.1:9000 <deploy-user>@<server-ip>
 
 # 2. Start backend from backend/.
 .\scripts\start_local_backend.ps1

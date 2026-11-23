@@ -5,7 +5,7 @@ set -e
 
 cd "$(dirname "$0")/.."
 PROJECT_DIR="$(pwd)"
-SUDO_PASS="mt01@buct"
+SUDO_PASS="${SUDO_PASS:?请先 export SUDO_PASS（凭据不写入仓库）}"
 TARGET="all"
 TAXONOMY_MIGRATION_MODE="${TAXONOMY_MIGRATION_MODE:-skip}"
 TAXONOMY_APPLY_CONFIRM="${TAXONOMY_APPLY_CONFIRM:-}"

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# 视觉北化 服务器初始化脚本
+# 视觉百花 服务器初始化脚本
 # 在服务器上执行: bash server-setup.sh
 set -euo pipefail
 
-SUDO_PASS="mt01@buct"
+SUDO_PASS="${SUDO_PASS:?请先 export SUDO_PASS（凭据不写入仓库）}"
 PG_HOST="/www/server/pgsql"
 APP_DIR="/opt/visual_buct"
 WWW_DIR="/home/wwwroot/visual_buct"
@@ -32,7 +32,7 @@ if [ ! -d "$APP_DIR/.git" ]; then
     log "Cloning repository..."
     echo "$SUDO_PASS" | sudo -S rm -rf $APP_DIR
     echo "$SUDO_PASS" | sudo -S mkdir -p $APP_DIR
-    echo "$SUDO_PASS" | sudo -S chown yanp:yanp $APP_DIR
+    echo "$SUDO_PASS" | sudo -S chown "${DEPLOY_USER:?请先 export DEPLOY_USER}:${DEPLOY_USER}" $APP_DIR
     git clone https://github.com/JackWPP/BUCT_Media_System.git $APP_DIR
 else
     log "Repository exists, pulling..."

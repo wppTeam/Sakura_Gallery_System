@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>作品 · 视觉百花 Sakura Gallery</title>
+<meta name="description" content="视觉百花作品页：原始构图呈现，保留作者署名、授权协议与可复制的引用格式。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="sakura.css">
+</head>
+<body>
+
+<header class="topbar" id="topbar">
+  <div class="shell topbar-inner">
+    <a class="mark" href="index.html" aria-label="视觉百花 首页">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+        <g fill="#f2b33d">
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(72 10 10)"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(144 10 10)"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(216 10 10)"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(288 10 10)"/>
+        </g>
+        <circle cx="10" cy="10" r="2.1" fill="#000"/>
+      </svg>
+      视觉百花
+    </a>
+    <nav class="nav" aria-label="主导航">
+      <a href="index.html">探索</a>
+      <a href="index.html#views">八景</a>
+      <a href="upload.html">投稿</a>
+      <a href="index.html#close">关于</a>
+    </nav>
+    <div class="topbar-right">
+      <form class="search" role="search" onsubmit="return false">
+        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="6" cy="6" r="4.25"/><path d="M9.2 9.2 12.5 12.5"/>
+        </svg>
+        <input type="search" placeholder="搜索花信、景名或作者" aria-label="搜索作品">
+      </form>
+      <button class="btn btn-quiet menu-btn" type="button" aria-label="打开菜单">菜单</button>
+      <a class="btn btn-primary" href="upload.html">投稿</a>
+    </div>
+  </div>
+</header>
+
+<main class="shell canvas">
+
+  <div class="detail-head">
+    <a class="btn btn-quiet" href="index.html">← 探索</a>
+    <img class="detail-cover" id="cover" src="" alt="">
+    <div class="detail-id">
+      <h1 class="detail-name" id="d-name"></h1>
+      <p class="detail-meta" id="d-meta"></p>
+    </div>
+    <div class="detail-actions">
+      <button class="btn" type="button">收藏</button>
+      <button class="btn" type="button" id="copy-cite">复制引用</button>
+      <a class="btn btn-primary" id="download" href="#" download>下载原图</a>
+    </div>
+  </div>
+
+  <div class="detail-body">
+    <div class="stage">
+      <img id="stage-img" src="" alt="">
+      <p class="stage-note">原始构图，不裁切。署名与协议随下载一起带走。</p>
+    </div>
+
+    <div class="side">
+      <section class="panel" aria-labelledby="author-h">
+        <div class="panel-head"><h2 id="author-h">拍摄者</h2></div>
+        <div class="author-row">
+          <span class="avatar" id="avatar" aria-hidden="true"></span>
+          <div>
+            <div class="author-name" id="a-name"></div>
+            <div class="author-sub" id="a-sub"></div>
+          </div>
+          <button class="btn" type="button" style="margin-left:auto">关注</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="licence-h">
+        <div class="panel-head"><h2 id="licence-h">授权</h2></div>
+        <div class="licence-box">
+          <div class="licence-name" id="l-name"></div>
+          <p class="licence-text" id="l-text"></p>
+          <p class="cite" id="l-cite"></p>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="info-h">
+        <div class="panel-head"><h2 id="info-h">作品信息</h2></div>
+        <div class="kv" id="info"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="exif-h">
+        <div class="panel-head"><h2 id="exif-h">拍摄参数</h2></div>
+        <div class="kv" id="exif"></div>
+        <p class="empty" id="exif-empty" hidden>此作品未携带拍摄参数。上传时若原图含 EXIF，机身与曝光参数会显示在这里。</p>
+      </section>
+    </div>
+  </div>
+
+  <section class="close" id="close" aria-labelledby="close-h">
+    <h2 id="close-h">视觉百花</h2>
+    <p class="close-note">
+      北化学生自己的图像共享平台，开源开放。作品页保留拍摄者署名与授权协议，
+      引用格式可一键复制。GPS 等敏感 EXIF 在入库时剥离，不在公开页面展示。
+    </p>
+    <ul class="credits" id="credits"></ul>
+  </section>
+
+</main>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  const id = new URLSearchParams(location.search).get('id') || 'p05';
+  const p = PHOTOS.find(function (x) { return x.id === id; }) || PHOTOS[4];
+
+  const LICENCE_TEXT = {
+    'CC0': '作者已放弃全部权利，可自由使用，无需署名。平台仍保留署名以尊重来源。',
+    'CC BY 3.0': '可自由复制、修改与商用，须署名作者并注明协议。',
+    'CC BY 4.0': '可自由复制、修改与商用，须署名作者、注明协议并说明是否改动。',
+    'CC BY-SA 3.0': '可自由复制、修改与商用，须署名作者，且衍生作品须以相同协议共享。',
+    'CC BY-SA 4.0': '可自由复制、修改与商用，须署名作者、注明协议，且衍生作品须以相同协议共享。',
+  };
+
+  document.title = p.title + ' · 视觉百花 Sakura Gallery';
+
+  const cover = document.getElementById('cover');
+  cover.src = p.src;
+  cover.alt = '';
+
+  const img = document.getElementById('stage-img');
+  img.src = p.src;
+  img.width = p.w;
+  img.height = p.h;
+  img.alt = p.title + '：' + p.subject;
+
+  document.getElementById('d-name').textContent = p.title;
+  document.getElementById('d-meta').textContent =
+    p.author + ' · ' + (p.captured || '日期未提供') + ' · ' + (p.place || '地点未提供');
+
+  document.getElementById('a-name').textContent = p.author;
+  document.getElementById('a-sub').textContent = '开放收藏贡献者 · 署名依 ' + p.licence;
+  document.getElementById('avatar').textContent = p.author.trim().charAt(0).toUpperCase();
+
+  document.getElementById('l-name').textContent = p.licence;
+  document.getElementById('l-text').textContent = LICENCE_TEXT[p.licence] || '';
+
+  const cite = '「' + p.title + '」 ' + p.author + '，' + p.licence +
+    '，视觉百花 Sakura Gallery。来源：' + p.source;
+  document.getElementById('l-cite').textContent = cite;
+
+  const dl = document.getElementById('download');
+  dl.href = p.src;
+  dl.setAttribute('download', p.title + '.jpg');
+
+  document.getElementById('copy-cite').addEventListener('click', function () {
+    const btn = this;
+    const done = function () {
+      btn.textContent = '已复制';
+      setTimeout(function () { btn.textContent = '复制引用'; }, 1600);
+    };
+    if (navigator.clipboard) navigator.clipboard.writeText(cite).then(done, done);
+    else done();
+  });
+
+  const dash = '<span class="dash">—</span>';
+  function kv(rows) {
+    return rows.map(function (r) {
+      const v = r[1] ? r[1] : dash;
+      return '<div class="kv-row"><span class="kv-key">' + r[0] + '</span>' +
+        '<span class="kv-val num">' + v + '</span></div>';
+    }).join('');
+  }
+
+  document.getElementById('info').innerHTML = kv([
+    ['季节', p.season],
+    ['题材', p.subject],
+    ['花信', p.bloom],
+    ['地点', p.place],
+    ['拍摄日期', p.captured],
+    ['原始尺寸', p.w + ' × ' + p.h],
+  ]);
+
+  const exifRows = [
+    ['机身', p.camera], ['镜头', p.lens], ['焦距', p.focal],
+    ['光圈', p.aperture], ['快门', p.shutter], ['感光度', p.iso],
+  ];
+  const hasExif = exifRows.some(function (r) { return r[1]; });
+  document.getElementById('exif').innerHTML = hasExif ? kv(exifRows) : '';
+  document.getElementById('exif').hidden = !hasExif;
+  document.getElementById('exif-empty').hidden = hasExif;
+
+  document.getElementById('credits').innerHTML =
+    '<li>「' + p.title + '」 ' + p.author + ' · ' + p.licence +
+    ' · <a href="' + p.source + '" rel="noopener">来源</a></li>';
+
+  const bar = document.getElementById('topbar');
+  const onScroll = function () { bar.classList.toggle('is-stuck', window.scrollY > 4); };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>

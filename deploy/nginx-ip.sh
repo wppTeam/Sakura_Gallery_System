@@ -45,5 +45,5 @@ ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 nginx -t && nginx -s reload
 
 echo ""
-echo "Done! Access at http://121.195.148.85"
+echo "Done! Access at http://${DEPLOY_HOST}"
 curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://127.0.0.1/

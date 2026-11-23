@@ -99,7 +99,7 @@ VITE_APP_TITLE=视觉北化 - Dev
 
 ```bash
 # 仅用于排查线上数据；日常开发优先使用本地后端 + Vite proxy
-VITE_API_BASE_URL=http://121.195.148.85
+VITE_API_BASE_URL=http://<server-ip>
 VITE_APP_TITLE=视觉北化 - 本地开发
 ```
 
@@ -147,18 +147,18 @@ npm run preview
 
 ```bash
 # 方式一：在服务器上构建（推荐）
-ssh yanp@121.195.148.85
+ssh <deploy-user>@<server-ip>
 cd /opt/visual_buct/BUCT_Media_System
 git pull origin master
 cd frontend
 npm install
 npm run build
-echo mt01@buct | sudo -S cp -r dist/* /home/wwwroot/visual_buct/
+echo <sudo-password> | sudo -S cp -r dist/* /home/wwwroot/visual_buct/
 
 # 方式二：本地构建后上传
 npm run build
-scp -r dist/* yanp@121.195.148.85:/tmp/frontend/
-ssh yanp@121.195.148.85 "echo mt01@buct | sudo -S cp -r /tmp/frontend/* /home/wwwroot/visual_buct/"
+scp -r dist/* <deploy-user>@<server-ip>:/tmp/frontend/
+ssh <deploy-user>@<server-ip> "echo <sudo-password> | sudo -S cp -r /tmp/frontend/* /home/wwwroot/visual_buct/"
 ```
 
 ---
@@ -170,7 +170,7 @@ ssh yanp@121.195.148.85 "echo mt01@buct | sudo -S cp -r /tmp/frontend/* /home/ww
 | 环境 | 地址 | 说明 |
 |------|------|------|
 | **生产环境** | `https://tkjs.buct.edu.cn` | 域名访问 |
-| **生产环境** | `http://121.195.148.85` | IP 直接访问 |
+| **生产环境** | `http://<server-ip>` | IP 直接访问 |
 | **本地后端** | `http://localhost:8000` | 本地开发后端 |
 
 ### API 可用性检查
@@ -179,13 +179,13 @@ ssh yanp@121.195.148.85 "echo mt01@buct | sudo -S cp -r /tmp/frontend/* /home/ww
 
 ```bash
 # 测试公开接口
-curl http://121.195.148.85/api/v1/photos/public?page_size=1
+curl http://<server-ip>/api/v1/photos/public?page_size=1
 
 # 测试搜索接口
-curl -G "http://121.195.148.85/api/v1/search" --data-urlencode "q=秋天"
+curl -G "http://<server-ip>/api/v1/search" --data-urlencode "q=秋天"
 
 # 测试缩略图
-curl -I "http://121.195.148.85/api/v1/photos/b3000f79-1795-51a1-a9d9-b237c352a1e7/image/thumbnail"
+curl -I "http://<server-ip>/api/v1/photos/b3000f79-1795-51a1-a9d9-b237c352a1e7/image/thumbnail"
 ```
 
 ### CORS 配置
@@ -194,7 +194,7 @@ curl -I "http://121.195.148.85/api/v1/photos/b3000f79-1795-51a1-a9d9-b237c352a1e
 
 - `https://tkjs.buct.edu.cn`
 - `http://tkjs.buct.edu.cn`
-- `http://121.195.148.85`
+- `http://<server-ip>`
 - `http://localhost:5173` (Vite 开发服务器)
 - `http://localhost:5174`
 - `http://localhost:5175`
@@ -294,7 +294,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://121.195.148.85',  // 远程后端
+        target: 'http://<server-ip>',  // 远程后端
         changeOrigin: true,
       },
     },
@@ -310,7 +310,7 @@ export default defineConfig({
 
 **检查**：
 ```bash
-curl -I "http://121.195.148.85/api/v1/photos/{photo_id}/image/thumbnail"
+curl -I "http://<server-ip>/api/v1/photos/{photo_id}/image/thumbnail"
 ```
 
 **注意**：URL 是 `/image/thumbnail`，不是 `/thumbnail`
@@ -325,8 +325,8 @@ curl -I "http://121.195.148.85/api/v1/photos/{photo_id}/image/thumbnail"
 
 **检查**：
 ```bash
-ping 121.195.148.85
-curl http://121.195.148.85/api/v1/photos/public?page_size=1
+ping <server-ip>
+curl http://<server-ip>/api/v1/photos/public?page_size=1
 ```
 
 **注意**：必须在校园网内才能访问
@@ -335,7 +335,7 @@ curl http://121.195.148.85/api/v1/photos/public?page_size=1
 
 ## 📞 联系方式
 
-- **后端/运维**：yanp
+- **后端/运维**：<deploy-user>
 - **项目地址**：https://github.com/JackWPP/BUCT_Media_System
 - **API 文档**：[docs/API.md](./API.md)
 

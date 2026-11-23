@@ -6,10 +6,10 @@
 
 | 项目 | 值 |
 |------|-----|
-| IP | 121.195.148.85 |
+| IP | <server-ip> |
 | OS | Ubuntu 22.04 LTS |
-| SSH | `ssh yanp@121.195.148.85` |
-| sudo | 密码 `mt01@buct` |
+| SSH | `ssh <deploy-user>@<server-ip>` |
+| sudo | 密码 `<sudo-password>` |
 | 项目路径 | `/opt/visual_buct/BUCT_Media_System/` |
 
 ## 架构速览
@@ -47,7 +47,7 @@ bash deploy/deploy.sh all
 git push origin master
 
 # 服务器：拉取 + 部署
-ssh yanp@121.195.148.85
+ssh <deploy-user>@<server-ip>
 cd /opt/visual_buct/BUCT_Media_System
 git pull origin master
 bash deploy/deploy.sh all
@@ -81,7 +81,7 @@ sudo systemctl restart nginx
 
 ```bash
 # 连接 PostgreSQL
-echo mt01@buct | sudo -S -u postgres /www/server/pgsql/bin/psql -d visual_buct
+echo <sudo-password> | sudo -S -u postgres /www/server/pgsql/bin/psql -d visual_buct
 
 # 常用查询
 SELECT count(*) FROM photos;
@@ -145,5 +145,5 @@ S3_ENDPOINT=http://127.0.0.1:9000
 S3_BUCKET=buctmedia
 AI_ENABLED=false
 SECRET_KEY=...  # 变更会导致 AI Provider API Key 无法解密
-ALLOWED_ORIGINS='["http://121.195.148.85"]'
+ALLOWED_ORIGINS='["http://<server-ip>"]'
 ```

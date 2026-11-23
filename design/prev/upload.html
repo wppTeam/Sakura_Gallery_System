@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>投稿 · 视觉百花 Sakura Gallery</title>
+<meta name="description" content="视觉百花投稿：照片按原始构图保存，不裁切；提交前必须为作品选择授权协议。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="sakura.css">
+</head>
+<body>
+
+<header class="topbar" id="topbar">
+  <div class="shell topbar-inner">
+    <a class="mark" href="index.html" aria-label="视觉百花 首页">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+        <g fill="#f2b33d">
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(72 10 10)"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(144 10 10)"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(216 10 10)"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(288 10 10)"/>
+        </g>
+        <circle cx="10" cy="10" r="2.1" fill="#000"/>
+      </svg>
+      视觉百花
+    </a>
+    <nav class="nav" aria-label="主导航">
+      <a href="index.html">探索</a>
+      <a href="index.html#views">八景</a>
+      <a href="upload.html" aria-current="page">投稿</a>
+      <a href="index.html#close">关于</a>
+    </nav>
+    <div class="topbar-right">
+      <form class="search" role="search" onsubmit="return false">
+        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="6" cy="6" r="4.25"/><path d="M9.2 9.2 12.5 12.5"/>
+        </svg>
+        <input type="search" placeholder="搜索花信、景名或作者" aria-label="搜索作品">
+      </form>
+      <button class="btn btn-quiet menu-btn" type="button" aria-label="打开菜单">菜单</button>
+      <a class="btn btn-primary" href="index.html">看作品</a>
+    </div>
+  </div>
+</header>
+
+<main class="shell canvas">
+
+  <div class="title-row">
+    <div>
+      <h1>投稿</h1>
+      <p class="finding">照片按原始构图保存，<b>不裁切</b> · 每张必须选定授权协议才能提交</p>
+    </div>
+  </div>
+
+  <div class="upload-cols">
+   <div class="col">
+
+    <section class="panel" aria-labelledby="q-h">
+      <div class="panel-head">
+        <h2 id="q-h">待提交</h2>
+        <span class="panel-note num" id="q-count">0 张</span>
+      </div>
+
+      <div class="drop" id="drop">
+        <p class="drop-title">把照片拖进来</p>
+        <p class="drop-note">JPG / PNG / WebP，单张最大 20MB。原图保留，列表与详情页使用按原始比例生成的多尺寸变体。</p>
+        <label class="btn btn-primary" for="file">选择文件</label>
+        <input id="file" type="file" accept="image/*" multiple hidden>
+      </div>
+
+      <ul class="queue" id="queue" hidden></ul>
+
+      <div class="kv" style="margin-top:16px">
+        <div class="kv-row"><span class="kv-key">原图</span><span class="kv-val">保留，不裁切</span></div>
+        <div class="kv-row"><span class="kv-key">展示变体</span><span class="kv-val num">320 / 640 / 1080 / 1600 / 2400</span></div>
+        <div class="kv-row"><span class="kv-key">格式</span><span class="kv-val">WebP，JPEG 兜底</span></div>
+        <div class="kv-row"><span class="kv-key">敏感 EXIF</span><span class="kv-val">GPS 入库时剥离</span></div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="m-h">
+      <div class="panel-head"><h2 id="m-h">归类</h2><span class="panel-note">作用于本批全部照片</span></div>
+      <div class="field">
+        <label for="season">季节</label>
+        <div class="segmented" id="season" role="group" aria-label="季节"></div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="bloom">花信</label>
+          <select id="bloom"></select>
+        </div>
+        <div class="field">
+          <label for="view">景名</label>
+          <select id="view"></select>
+        </div>
+        <div class="field">
+          <label for="place">校区</label>
+          <select id="place">
+            <option value="">未提供</option>
+            <option>昌平校区</option>
+            <option>朝阳校区</option>
+            <option>海淀校区</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+   </div>
+   <div class="col">
+
+    <section class="panel" aria-labelledby="l-h">
+      <div class="panel-head"><h2 id="l-h">授权协议</h2></div>
+      <div class="radios" id="licences" role="radiogroup" aria-label="授权协议"></div>
+      <p class="licence-text" id="l-text">先为这批作品选择一种协议。</p>
+      <div class="field" style="padding-top:16px">
+        <label>引用格式预览</label>
+        <p class="cite" id="cite">选择协议后显示</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="s-h">
+      <div class="panel-head"><h2 id="s-h">提交</h2></div>
+      <p class="licence-text" id="gate">还没有选择照片。</p>
+      <div class="kv" style="margin-top:14px">
+        <div class="kv-row"><span class="kv-key">张数</span><span class="kv-val num" id="s-count">0</span></div>
+        <div class="kv-row"><span class="kv-key">协议</span><span class="kv-val" id="s-lic"><span class="dash">—</span></span></div>
+        <div class="kv-row"><span class="kv-key">季节</span><span class="kv-val" id="s-season">秋季</span></div>
+      </div>
+      <p class="licence-text" style="margin-top:12px">提交后进入审核队列。涉及可识别人物的照片需被摄者同意。</p>
+      <button class="btn btn-primary" id="submit" type="button" disabled style="width:100%;margin-top:14px">提交</button>
+    </section>
+
+   </div>
+  </div>
+
+</main>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  const LICENCES = [
+    { id: 'CC0', name: 'CC0 公共领域', text: '放弃全部权利，任何人可自由使用，无需署名。平台仍保留署名以尊重来源。' },
+    { id: 'CC BY 4.0', name: 'CC BY 署名', text: '可自由复制、修改与商用，须署名作者并注明协议。校园作品推荐此项。' },
+    { id: 'CC BY-SA 4.0', name: 'CC BY-SA 署名-相同方式共享', text: '可自由使用与修改，须署名，且衍生作品须以相同协议共享。' },
+    { id: 'CC BY-NC 4.0', name: 'CC BY-NC 署名-非商业性使用', text: '可自由使用与修改，须署名，但不得用于商业目的。' },
+    { id: 'ARR', name: '保留所有权利', text: '仅在本平台展示，不开放下载与再利用。' },
+  ];
+
+  let files = [];
+  let licence = null;
+  let season = '秋季';
+
+  const seasonEl = document.getElementById('season');
+  seasonEl.innerHTML = SEASONS.map(function (s) {
+    return '<button type="button" data-s="' + s + '" aria-pressed="' + (s === season) + '">' + s + '</button>';
+  }).join('');
+  seasonEl.addEventListener('click', function (e) {
+    const b = e.target.closest('button[data-s]');
+    if (!b) return;
+    season = b.dataset.s;
+    seasonEl.querySelectorAll('button').forEach(function (x) {
+      x.setAttribute('aria-pressed', String(x === b));
+    });
+    updateCite();
+    summary();
+  });
+
+  const bloomEl = document.getElementById('bloom');
+  bloomEl.innerHTML = '<option value="">未提供</option>' + BLOOMS.map(function (b) {
+    return '<option>' + b.name + '</option>';
+  }).join('');
+
+  const viewEl = document.getElementById('view');
+  viewEl.innerHTML = '<option value="">未提供</option>' + EIGHT_VIEWS.map(function (v) {
+    return '<option>' + v + '</option>';
+  }).join('');
+
+  const licEl = document.getElementById('licences');
+  licEl.innerHTML = LICENCES.map(function (l) {
+    return '<label class="radio"><input type="radio" name="lic" value="' + l.id + '">' +
+      '<span><span class="radio-name">' + l.name + '</span></span></label>';
+  }).join('');
+
+  licEl.addEventListener('change', function (e) {
+    licence = LICENCES.find(function (l) { return l.id === e.target.value; });
+    document.getElementById('l-text').textContent = licence.text;
+    updateCite();
+    gate();
+  });
+
+  function updateCite() {
+    const el = document.getElementById('cite');
+    if (!licence) { el.textContent = '选择协议后显示'; return; }
+    const name = files.length ? files[0].title : '作品标题';
+    el.textContent = '「' + name + '」 你的署名，' + licence.id +
+      '，视觉百花 Sakura Gallery。' + (licence.id === 'ARR' ? ' 保留所有权利，不开放再利用。' : '');
+  }
+
+  const drop = document.getElementById('drop');
+  const input = document.getElementById('file');
+  const queue = document.getElementById('queue');
+
+  input.addEventListener('change', function () { add(Array.from(input.files)); input.value = ''; });
+  ['dragenter', 'dragover'].forEach(function (t) {
+    drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.add('is-over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (t) {
+    drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.remove('is-over'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    add(Array.from(e.dataTransfer.files).filter(function (f) { return f.type.startsWith('image/'); }));
+  });
+
+  function add(list) {
+    list.forEach(function (f) {
+      const url = URL.createObjectURL(f);
+      const item = { file: f, url: url, title: f.name.replace(/\.[^.]+$/, ''), w: 0, h: 0 };
+      files.push(item);
+      const probe = new Image();
+      probe.onload = function () { item.w = probe.naturalWidth; item.h = probe.naturalHeight; render(); };
+      probe.src = url;
+    });
+    render();
+  }
+
+  function fmt(bytes) {
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  function render() {
+    document.getElementById('q-count').textContent = files.length + ' 张';
+    drop.hidden = files.length > 0;
+    queue.hidden = files.length === 0;
+    queue.innerHTML = files.map(function (it, i) {
+      const dims = it.w ? it.w + ' × ' + it.h : '<span class="dash">—</span>';
+      const ratio = it.w ? (it.w / it.h).toFixed(2) + ':1' : '<span class="dash">—</span>';
+      return '<li class="q-row">' +
+        '<img class="q-thumb" src="' + it.url + '" alt="">' +
+        '<span class="q-id">' +
+          '<input class="q-title" value="' + it.title.replace(/"/g, '&quot;') + '" data-i="' + i + '" aria-label="作品标题">' +
+          '<span class="q-sub num">' + dims + ' · ' + ratio + ' · ' + fmt(it.file.size) + '</span>' +
+        '</span>' +
+        '<button class="btn btn-quiet q-del" type="button" data-i="' + i + '">移除</button>' +
+      '</li>';
+    }).join('');
+    gate();
+    updateCite();
+  }
+
+  queue.addEventListener('input', function (e) {
+    if (!e.target.classList.contains('q-title')) return;
+    files[+e.target.dataset.i].title = e.target.value;
+    updateCite();
+  });
+
+  queue.addEventListener('click', function (e) {
+    const b = e.target.closest('.q-del');
+    if (!b) return;
+    URL.revokeObjectURL(files[+b.dataset.i].url);
+    files.splice(+b.dataset.i, 1);
+    render();
+  });
+
+  function summary() {
+    const dash = '<span class="dash">—</span>';
+    document.getElementById('s-count').textContent = files.length;
+    document.getElementById('s-lic').innerHTML = licence ? licence.id : dash;
+    document.getElementById('s-season').textContent = season;
+  }
+
+  bloomEl.addEventListener('change', updateCite);
+  viewEl.addEventListener('change', updateCite);
+
+  function gate() {
+    summary();
+    const btn = document.getElementById('submit');
+    const msg = document.getElementById('gate');
+    if (!files.length) {
+      btn.disabled = true; btn.textContent = '提交';
+      msg.textContent = '还没有选择照片。';
+      return;
+    }
+    if (!licence) {
+      btn.disabled = true; btn.textContent = '提交 ' + files.length + ' 张';
+      msg.textContent = '还差一步：为这批作品选择授权协议。';
+      return;
+    }
+    btn.disabled = false;
+    btn.textContent = '提交 ' + files.length + ' 张';
+    msg.textContent = files.length + ' 张已就绪 · ' + licence.id + ' · ' + season;
+  }
+
+  document.getElementById('submit').addEventListener('click', function () {
+    document.getElementById('gate').textContent =
+      files.length + ' 张已进入待审核状态（原型未接入投稿接口）。';
+    this.disabled = true;
+    this.textContent = '已提交 ' + files.length + ' 张';
+  });
+
+  const bar = document.getElementById('topbar');
+  const onScroll = function () { bar.classList.toggle('is-stuck', window.scrollY > 4); };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  gate();
+})();
+</script>
+</body>
+</html>

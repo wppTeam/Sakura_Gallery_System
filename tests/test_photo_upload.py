@@ -11,7 +11,7 @@ BASE_URL = "http://127.0.0.1:8002/api/v1"
 
 # Admin credentials
 ADMIN_EMAIL = "admin@buct.edu.cn"
-ADMIN_PASSWORD = "admin123"
+ADMIN_PASSWORD = os.environ.get("E2E_ADMIN_PASSWORD", "")
 
 
 def create_test_image():

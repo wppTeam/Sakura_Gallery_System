@@ -130,7 +130,7 @@ VITE_APP_TITLE=视觉北化
 ## 默认测试账号
 
 - 邮箱: `admin@buct.edu.cn`
-- 密码: `admin123`
+- 密码: `<admin-password>`
 
 ## 注意事项
 

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>视觉百花 Sakura Gallery · 北化学生自己的图像平台</title>
+<meta name="description" content="视觉百花是北化学生自己的开源图像共享平台。校园的一年由十二番花信与八处景名索引，每张作品保留拍摄者署名与授权协议。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="annual.css">
+</head>
+<body>
+
+<!-- 首屏：two-by-two board -->
+<div class="board">
+  <div class="board-top">
+    <div class="tile tile-mark" aria-hidden="true">
+      <svg width="26" height="26" viewBox="0 0 20 20">
+        <g fill="currentColor">
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(72 10 10)"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(144 10 10)"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(216 10 10)"/>
+          <ellipse cx="10" cy="4.4" rx="2.5" ry="3.6" transform="rotate(288 10 10)"/>
+        </g>
+        <circle cx="10" cy="10" r="2.1" fill="#38450f"/>
+      </svg>
+    </div>
+    <nav class="tile tile-nav" aria-label="主导航">
+      <a href="#gallery">作品</a>
+      <a href="#work">四季</a>
+      <a href="#about">关于</a>
+    </nav>
+    <a class="tile-action" href="upload.html">投稿</a>
+    <button class="tile-menu" type="button" id="menu-open" aria-label="打开菜单">菜单</button>
+  </div>
+
+  <div class="board-grid">
+    <div class="tile tile-name">
+      <h1>视觉<br>百花</h1>
+      <p>北化学生自己的开源图像平台。</p>
+    </div>
+    <div class="tile tile-photo shutter drift">
+      <img src="assets/campus-view-of-buct-20241121-132601.jpg" width="1920" height="1440" alt="昌平校区校名石与图书馆，秋日晴天">
+    </div>
+    <div class="tile tile-photo second">
+      <img src="assets/buct-statue.jpg" width="1600" height="1200" alt="母校之光雕塑，双手托起分子结构，背后是图书馆">
+    </div>
+    <div class="board-split">
+      <div class="tile tile-dark">
+        <p>学生投稿，学生策展。</p>
+      </div>
+      <div class="tile tile-accent">
+        <p>署名与协议随图带走。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="menu-sheet" id="menu">
+  <button class="close" type="button" id="menu-close">关闭</button>
+  <a href="#gallery">作品</a>
+  <a href="#work">四季</a>
+  <a href="#about">关于</a>
+  <a href="upload.html">投稿</a>
+</div>
+
+<!-- 年刊索引：项目自绘四季马赛克，四块可点 -->
+<div class="masthead">
+  <img src="assets/four-seasons-mosaic.jpg" width="9638" height="3402" alt="视觉百花四季马赛克：春粉、夏绿、秋橙、冬蓝四块，每块绘有校园地标">
+  <div class="masthead-grid" id="masthead">
+    <a href="#春"><span>春<small>六番花信</small></span></a>
+    <a href="#夏"><span>夏<small>荷塘与柳湖</small></span></a>
+    <a href="#秋"><span>秋<small>枫叶与母校之光</small></span></a>
+    <a href="#冬"><span>冬<small id="now-mark">初雪与晚霞</small></span></a>
+  </div>
+</div>
+
+<!-- intro -->
+<section aria-labelledby="intro-h">
+  <div class="sheet">
+    <h2 class="axis sec-head reveal" id="intro-h">一年，十二番花信</h2>
+    <p class="side side-note reveal">
+      校园的花木名录里正好十二种花，从三月上旬的迎春开到五月中旬的芍药。
+      平台按这个顺序索引照片，而不是按上传时间。
+    </p>
+    <div class="wide facts">
+      <div class="fact reveal"><b class="num">十二</b><span>番花信，迎春到芍药</span></div>
+      <div class="fact reveal"><b class="num">八</b><span>处景名，北化八景</span></div>
+      <div class="fact reveal"><b class="num">四</b><span>个季相，各一块色域</span></div>
+      <div class="fact reveal"><b class="num">三</b><span>个校区，昌平朝阳海淀</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- gallery：可拖拽横排 -->
+<section class="gallery" id="gallery" aria-labelledby="gallery-h">
+  <div class="gallery-head">
+    <h2 id="gallery-h" class="reveal">校园的样子</h2>
+    <span class="num" id="gallery-count"></span>
+  </div>
+  <div class="dragrow" id="dragrow">
+    <div class="mod mod-tall"><img src="assets/swan.jpg" width="1367" height="2048" alt="纯黑水面上的一只天鹅，倒影清晰" loading="lazy"></div>
+    <div class="mod mod-pair">
+      <img src="assets/backlit-cherry-blossoms-in-the-botanical-garden.jpg" width="1920" height="1281" alt="逆光下的樱花枝" loading="lazy">
+      <img src="assets/ancient-lotus-triplicate-flower.jpg" width="1920" height="1280" alt="一朵三蒂莲" loading="lazy">
+    </div>
+    <div class="mod mod-wide"><img src="assets/campus-view-of-buct-20241121-132601.jpg" width="1920" height="1440" alt="昌平校区校名石与图书馆" loading="lazy"></div>
+    <div class="mod mod-pair">
+      <img src="assets/snow-covered-roofs-and-listed-buildings-in.jpg" width="1920" height="1440" alt="初雪覆盖的屋顶" loading="lazy">
+      <img src="assets/beijing-university-of-chemical-technology-20240125140308.jpg" width="1920" height="1280" alt="朝阳校区南门，冬日晴天" loading="lazy">
+    </div>
+    <div class="mod mod-tall"><img src="assets/golden-hour-on-uz-campus.jpg" width="1542" height="2047" alt="晚霞落在教学楼与松树剪影上" loading="lazy"></div>
+    <div class="mod mod-wide"><img src="assets/buct-statue.jpg" width="1600" height="1200" alt="母校之光雕塑" loading="lazy"></div>
+    <div class="mod mod-wide"><img src="assets/buct-houdebang.jpg" width="1600" height="1200" alt="厚德榜" loading="lazy"></div>
+  </div>
+</section>
+
+<!-- work：四季整块色域 -->
+<section class="work" id="work" aria-labelledby="work-h" style="padding:0">
+  <div class="sheet" style="padding-top:140px;padding-bottom:96px">
+    <h2 class="axis sec-head reveal" id="work-h">四季</h2>
+    <p class="side side-note reveal">
+      四个季相各占一整块色域，颜色取自平台自绘的四季马赛克。
+      照片与色块无缝相接，像一本印出来的年刊。
+    </p>
+  </div>
+
+  <div class="season" data-s="春" id="春">
+    <div class="season-inner">
+      <h3 class="reveal">春</h3>
+      <div class="season-side reveal"><b>六番花信</b> · 迎春 · 玉兰 · 杏 · 连翘 · 桃 · 樱花</div>
+    </div>
+    <div class="mosaic">
+      <img class="span3" src="assets/backlit-cherry-blossoms-in-the-botanical-garden.jpg" width="1920" height="1281" alt="逆光樱花" loading="lazy">
+      <div class="fill span3" style="background:#8f3f50">二月兰 · 郁金香 · 海棠</div>
+    </div>
+    <p class="season-note reveal">三月到四月，校园从迎春开始。樱花苑、玉兰苑、杏坛苑——宿舍区的名字就是这份名录。</p>
+  </div>
+
+  <div class="season" data-s="夏" id="夏">
+    <div class="season-inner">
+      <h3 class="reveal">夏</h3>
+      <div class="season-side reveal"><b>荷塘与柳湖</b> · 小荷听书 · 镜湖书柳 · 馆声凫影</div>
+    </div>
+    <div class="mosaic">
+      <img class="span2" src="assets/swan.jpg" width="1367" height="2048" alt="静水中的天鹅" loading="lazy">
+      <img class="span2" src="assets/ancient-lotus-triplicate-flower.jpg" width="1920" height="1280" alt="三蒂莲" loading="lazy">
+      <div class="fill span2" style="background:#47612b">黑天鹅 · 绿头鸭 · 苍鹭</div>
+    </div>
+    <p class="season-note reveal">柳湖的黑天鹅是校园明星。动物名录里还有白鹅、番鸭、黑水鸡与小天鹅。</p>
+  </div>
+
+  <div class="season" data-s="秋" id="秋">
+    <div class="season-inner">
+      <h3 class="reveal">秋</h3>
+      <div class="season-side reveal"><b>枫叶与母校之光</b> · 烟雨玉屏 · 平湖跃金 · 化彩三台</div>
+    </div>
+    <div class="mosaic">
+      <img class="span2" src="assets/campus-view-of-buct-20241121-132601.jpg" width="1920" height="1440" alt="校名石与图书馆" loading="lazy">
+      <img class="span2" src="assets/buct-statue.jpg" width="1600" height="1200" alt="母校之光雕塑" loading="lazy">
+      <img class="span2" src="assets/buct-houdebang.jpg" width="1600" height="1200" alt="厚德榜" loading="lazy">
+    </div>
+    <p class="season-note reveal">玉屏山的枫叶广场与钟塔是这个季节的两个机位。母校之光的双手托起分子结构，是北化自己的符号。</p>
+  </div>
+
+  <div class="season" data-s="冬" id="冬">
+    <div class="season-inner">
+      <h3 class="reveal">冬</h3>
+      <div class="season-side reveal"><b>初雪与晚霞</b> · 雪 · 雾 · 星轨 · 银河 · 晚霞</div>
+    </div>
+    <div class="mosaic">
+      <video class="span2" src="assets/nevicata-svizzera.webm" poster="assets/snow-covered-roofs-and-listed-buildings-in.jpg" width="854" height="480" autoplay muted loop playsinline aria-label="落雪"></video>
+      <img class="span2" src="assets/beijing-university-of-chemical-technology-20240125140308.jpg" width="1920" height="1280" alt="南门冬日" loading="lazy">
+      <div class="fill span2" style="background:#2f5a8f">日出 · 日落 · 蓝天</div>
+    </div>
+    <p class="season-note reveal">花期结束后，自然现象接管索引。初雪、雾、星轨与晚霞，是冬天值得等的四件事。</p>
+  </div>
+</section>
+
+<!-- about：肖像作为首字下沉 -->
+<section id="about" aria-labelledby="about-h">
+  <div class="sheet" style="padding-bottom:48px">
+    <h2 class="axis sec-head reveal" id="about-h">开源开放</h2>
+  </div>
+  <div class="sheet about-grid">
+    <div class="about-facts reveal">
+      <b>代码</b>开源，可自部署
+      <b>照片</b>依作者所选协议
+      <b>构图</b>原始比例，不裁切
+    </div>
+    <div class="about-text">
+      <p class="reveal">
+        <img class="dropcap" src="assets/buct-statue.jpg" width="1600" height="1200" alt="母校之光雕塑局部">
+        视觉百花把校园摄影变成一本可以持续投稿的年刊。
+      </p>
+      <p class="reveal">
+        每张作品保留拍摄者的署名与授权协议，下载时一并带走引用格式。
+        照片按原始构图呈现，列表与详情页使用按同一比例生成的多尺寸变体。
+      </p>
+      <p class="reveal">
+        涉及可识别人物的作品需被摄者同意，GPS 等敏感信息在入库时剥离。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- cta：三张照片 + 一块色域 -->
+<section class="cta" aria-labelledby="cta-h">
+  <div class="cta-strip">
+    <img src="assets/golden-hour-on-uz-campus.jpg" width="1542" height="2047" alt="晚霞落在教学楼上" loading="lazy">
+    <img src="assets/snow-covered-roofs-and-listed-buildings-in.jpg" width="1920" height="1440" alt="初雪覆顶" loading="lazy">
+    <img src="assets/backlit-cherry-blossoms-in-the-botanical-garden.jpg" width="1920" height="1281" alt="逆光樱花" loading="lazy">
+  </div>
+  <div class="cta-band">
+    <div class="cta-say">
+      <h2 id="cta-h" class="reveal" style="font-size:var(--step-lead);margin-bottom:20px">投稿</h2>
+      <p class="reveal">把你拍的校园，<a href="upload.html">投给视觉百花</a>。<br>下一届入学时，他们看到的就是你留下的这一年。</p>
+      <p class="cta-small reveal">单张最大 20MB，原图保留。提交前为作品选定授权协议，之后进入审核队列。</p>
+    </div>
+    <img class="cta-portrait" src="assets/buct-houdebang.jpg" width="1600" height="1200" alt="厚德榜" loading="lazy">
+  </div>
+</section>
+
+<!-- footer：名字在先 -->
+<footer class="footer">
+  <div class="footer-name" aria-hidden="true">视觉百花 Sakura Gallery</div>
+  <div class="footer-row">
+    <div class="footer-places">
+      <a href="#gallery">昌平校区</a>
+      <a href="#gallery">朝阳校区</a>
+      <a href="#gallery">海淀校区</a>
+    </div>
+    <div class="footer-links">
+      <ul>
+        <li><a href="#gallery">作品</a></li>
+        <li><a href="#work">四季</a></li>
+        <li><a href="#春">花信</a></li>
+      </ul>
+      <ul>
+        <li><a href="upload.html">投稿</a></li>
+        <li><a href="#about">授权协议</a></li>
+        <li><a href="#about">内容规范</a></li>
+      </ul>
+      <ul>
+        <li><a href="https://github.com/wppTeam/Sakura_Gallery_System" rel="noopener">开源仓库</a></li>
+        <li><a href="#about">关于</a></li>
+        <li><a href="#top">回到顶部</a></li>
+      </ul>
+    </div>
+  </div>
+  <ul class="credits" id="credits"></ul>
+  <div class="footer-last">
+    <span>照片依作者所选协议 · 署名见上</span>
+    <a href="#top">回到顶部</a>
+  </div>
+</footer>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  document.getElementById('gallery-count').textContent = PHOTOS.length + ' 张';
+
+  document.getElementById('credits').innerHTML = PHOTOS.map(function (p) {
+    return '<li>「' + p.title + '」 ' + p.author + ' · ' + p.licence +
+      ' · <a href="' + p.source + '" rel="noopener">来源</a></li>';
+  }).join('') + '<li>落雪影像「Nevicata, Svizzera」 Jo-Jo Eumerus · CC BY-SA 4.0 · ' +
+    '<a href="https://commons.wikimedia.org/wiki/File:Nevicata,_Svizzera.webm" rel="noopener">来源</a></li>';
+
+  var menu = document.getElementById('menu');
+  document.getElementById('menu-open').addEventListener('click', function () { menu.classList.add('open'); });
+  document.getElementById('menu-close').addEventListener('click', function () { menu.classList.remove('open'); });
+  menu.querySelectorAll('a').forEach(function (a) {
+    a.addEventListener('click', function () { menu.classList.remove('open'); });
+  });
+
+  // 此刻：真实节气定位到季相，冬块标出
+  var term = currentTerm(new Date());
+  var s = seasonOfTerm(term).charAt(0);
+  var mark = document.getElementById('now-mark');
+  if (s === '冬') mark.textContent = '此刻 · ' + term.name + '已过';
+
+  // 入场
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { rootMargin: '0px 0px -12% 0px', threshold: 0.05 });
+
+  document.querySelectorAll('.reveal').forEach(function (el, i) {
+    el.style.transitionDelay = (i % 4) * 70 + 'ms';
+    io.observe(el);
+  });
+  document.querySelectorAll('.shutter').forEach(function (el) { io.observe(el); });
+
+  // 兜底：整页渲染或脚本异常时，内容不得保持隐藏
+  setTimeout(function () {
+    document.querySelectorAll('.reveal:not(.in), .shutter:not(.in)').forEach(function (el) {
+      el.classList.add('in');
+    });
+  }, 900);
+
+  // 横排拖拽
+  var row = document.getElementById('dragrow');
+  var down = false, startX = 0, startLeft = 0;
+  row.addEventListener('pointerdown', function (e) {
+    down = true; startX = e.clientX; startLeft = row.scrollLeft;
+    row.classList.add('is-drag'); row.setPointerCapture(e.pointerId);
+  });
+  row.addEventListener('pointermove', function (e) {
+    if (!down) return;
+    row.scrollLeft = startLeft - (e.clientX - startX);
+  });
+  ['pointerup', 'pointercancel'].forEach(function (t) {
+    row.addEventListener(t, function () { down = false; row.classList.remove('is-drag'); });
+  });
+})();
+</script>
+</body>
+</html>

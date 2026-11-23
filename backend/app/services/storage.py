@@ -194,9 +194,17 @@ class S3StorageBackend(StorageBackend):
     by the firewall when accessing MinIO from outside.
     """
 
-    # SSH connection info for write operations
-    _ssh_host = "121.195.148.85"
-    _ssh_user = "yanp"
+    # 本地开发绕过防火墙的可选兜底；凭据不写入仓库，未配置则不可用。
+    # 生产应直连 S3，此兜底计划移除（见 docs/ROADMAP.md M0）。
+    _ssh_host = os.environ.get("S3_SSH_FALLBACK_HOST", "")
+    _ssh_user = os.environ.get("S3_SSH_FALLBACK_USER", "")
+
+    def _require_ssh_fallback(self) -> None:
+        if not (self._ssh_host and self._ssh_user):
+            raise RuntimeError(
+                "S3 写入的 SSH 兜底未配置。请直连 S3，或设置 "
+                "S3_SSH_FALLBACK_HOST / S3_SSH_FALLBACK_USER 环境变量。"
+            )
 
     def __init__(self) -> None:
         if boto3 is None or BotoConfig is None:
@@ -219,6 +227,7 @@ class S3StorageBackend(StorageBackend):
 
     def _mc_pipe(self, local_path: str, key: str) -> None:
         """Upload a local file to MinIO via SSH + mc pipe."""
+        self._require_ssh_fallback()
         import subprocess
         cmd = f"mc pipe local/{self.bucket}/{key}"
         with open(local_path, "rb") as fh:
@@ -234,6 +243,7 @@ class S3StorageBackend(StorageBackend):
 
     def _mc_rm(self, key: str) -> bool:
         """Delete an object from MinIO via SSH + mc rm."""
+        self._require_ssh_fallback()
         import subprocess
         cmd = f"mc rm local/{self.bucket}/{key}"
         proc = subprocess.run(

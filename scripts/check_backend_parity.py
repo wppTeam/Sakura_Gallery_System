@@ -23,7 +23,7 @@ DEFAULT_LOCAL_PYTHON = REPO_ROOT / ".venv312" / ("Scripts/python.exe" if sys.pla
 REMOTE_ROOT = "/opt/visual_buct/BUCT_Media_System"
 REMOTE_BACKEND = f"{REMOTE_ROOT}/backend"
 REMOTE_PYTHON = f"{REMOTE_BACKEND}/.venv/bin/python"
-REMOTE_HOST = "yanp@121.195.148.85"
+REMOTE_HOST = os.environ.get("DEPLOY_SERVER", "")
 
 KEY_PACKAGES = [
     "fastapi",

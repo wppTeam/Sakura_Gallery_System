@@ -102,7 +102,7 @@ Top 标签：红砖建筑(62) / 远山(60) / 学生(60) / 夏季(59) / 建筑(53
 ```
 浏览器 ──→ localhost:8000 (FastAPI StreamingResponse)
                 │
-                └──→ 121.195.148.85:9000 (MinIO S3, bucket: buctmedia)
+                └──→ <server-ip>:9000 (MinIO S3, bucket: buctmedia)
 ```
 
 - 图片通过后端流式传输，前端 `<img>` 标签直接指向 `/api/v1/photos/{id}/image/original` 或 `/thumbnail`
@@ -131,7 +131,7 @@ Top 标签：红砖建筑(62) / 远山(60) / 学生(60) / 夏季(59) / 建筑(53
 
 ```env
 STORAGE_BACKEND=s3
-S3_ENDPOINT=http://121.195.148.85:9000
+S3_ENDPOINT=http://<server-ip>:9000
 S3_BUCKET=buctmedia
 AI_ENABLED=true
 AI_PROVIDER=openai_compatible

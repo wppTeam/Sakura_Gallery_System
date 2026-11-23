@@ -47,8 +47,8 @@ except ImportError:
 
 
 # ── Config ──
-SSH_HOST = "121.195.148.85"
-SSH_USER = "yanp"
+SSH_HOST = os.environ.get("S3_SSH_FALLBACK_HOST", "")
+SSH_USER = os.environ.get("S3_SSH_FALLBACK_USER", "")
 
 
 # Global flag for graceful pause

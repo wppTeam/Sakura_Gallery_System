@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>视觉百花 Sakura Gallery · 北化学生自己的图像平台</title>
+<meta name="description" content="视觉百花是北化学生自己的开源图像共享平台。校园的一年由十二番花信与八处景名索引，每张作品保留拍摄者署名与授权协议。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="fonts/zcool.css" rel="stylesheet">
+<link rel="icon" href="brand/favicon/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="brand/favicon/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="brand/favicon/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="brand/favicon/icon-180.png">
+<meta property="og:title" content="视觉百花 Sakura Gallery">
+<meta property="og:description" content="北化学生自己的开源创作资源共享平台。校园摄影、AI 生成图像与模板，保留作者署名与授权协议。">
+<meta property="og:image" content="brand/og-share.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="sakura.css">
+</head>
+<body>
+
+<div class="petals" id="petals" aria-hidden="true"></div>
+
+<header class="top">
+  <div class="wrap top-in">
+    <a class="brand" href="index.html">
+      <img src="brand/logo-combo-zh.png" alt="视觉百花 Sakura Gallery" height="28">
+    </a>
+    <nav class="top-nav" aria-label="主导航">
+      <a href="#feed" aria-current="page">探索</a>
+      <a href="#seasons">四季</a>
+      <a href="#views">八景</a>
+      <a href="#join">投稿</a>
+    </nav>
+    <form class="find" role="search" onsubmit="return false">
+      <svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="6" cy="6" r="4.25"/><path d="M9.2 9.2 12.5 12.5"/></svg>
+      <input type="search" placeholder="搜花信、景名或作者" aria-label="搜索作品">
+    </form>
+    <button class="btn menu-btn" type="button" id="menu-open">菜单</button>
+    <a class="btn btn-go" href="#join">投稿</a>
+  </div>
+</header>
+
+<div class="sheet-menu" id="menu">
+  <button class="btn" type="button" id="menu-close">关闭</button>
+  <a href="#feed">探索</a>
+  <a href="#seasons">四季</a>
+  <a href="#views">八景</a>
+  <a href="#join">投稿</a>
+</div>
+
+<main>
+
+  <section class="hero" aria-labelledby="hero-h">
+    <div class="wrap hero-in">
+      <div class="hero-say">
+        <h1 id="hero-h"><em>视觉</em>百花</h1>
+        <p class="hero-lead">北化学生自己的开源图像平台。校园的一年，由十二番花信与八处景名索引。</p>
+        <form class="hero-search" role="search" onsubmit="return false">
+          <svg width="18" height="18" viewBox="0 0 14 14" fill="none" stroke="#7d5f68" stroke-width="1.6" aria-hidden="true"><circle cx="6" cy="6" r="4.25"/><path d="M9.2 9.2 12.5 12.5"/></svg>
+          <input type="search" placeholder="试试「樱花苑」「柳湖 黑天鹅」「初雪」" aria-label="搜索校园作品">
+          <button class="btn btn-go" type="submit">搜索</button>
+        </form>
+        <p class="now-note" id="now-note"></p>
+      </div>
+      <div class="hero-pic">
+        <img src="assets/art/hero.webp" width="1672" height="941" alt="樱花盛开的校园：深红色带与青绿玻璃错层的曲面图书馆，前为草坪与石砌矮墙，粉紫天空下花瓣飘落">
+        <span class="hero-credit">视觉百花 主视觉 · 项目自制</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="topics" aria-label="按季相与景名浏览">
+    <div class="wrap topics-row" id="topics"></div>
+  </section>
+
+  <section class="feed-sec" id="feed" aria-labelledby="feed-h">
+    <div class="wrap">
+      <div class="feed-head">
+        <h2 id="feed-h">校园的样子</h2>
+        <span class="num" id="feed-count"></span>
+      </div>
+      <div class="feed" id="grid"></div>
+    </div>
+  </section>
+
+  <div class="seasons" id="seasons"></div>
+
+  <section class="views-sec" id="views" aria-labelledby="views-h">
+    <div class="wrap">
+      <h2 id="views-h">北化八景</h2>
+      <p>八处景名取自校园景观名录，是平台的策展主轴。每一景都可以由学生持续投稿，攒成自己的专辑。</p>
+      <div class="views-grid" id="views-grid"></div>
+    </div>
+  </section>
+
+  <section class="join" id="join" aria-labelledby="join-h">
+    <div class="wrap join-in">
+      <div class="join-say">
+        <h2 id="join-h">把你拍的校园交出来</h2>
+        <p>下一届入学时，他们看到的就是你留下的这一年。</p>
+        <a class="btn btn-go" href="#join">开始投稿</a>
+        <small>单张最大 20MB，原图保留、不裁切。提交前选定授权协议，之后进入审核队列。</small>
+      </div>
+      <div class="join-pic">
+        <img src="assets/photo/golden-hour-on-uz-campus.jpg" width="1542" height="2047" alt="晚霞落在教学楼与松树剪影上" loading="lazy">
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-name">视觉百花</div>
+    <div class="foot-row">
+      <div>
+        <h3>校区</h3>
+        <ul>
+          <li><a href="#feed">昌平校区</a></li>
+          <li><a href="#feed">朝阳校区</a></li>
+          <li><a href="#feed">海淀校区</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>浏览</h3>
+        <ul>
+          <li><a href="#feed">探索</a></li>
+          <li><a href="#seasons">四季</a></li>
+          <li><a href="#views">八景</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>参与</h3>
+        <ul>
+          <li><a href="#join">投稿</a></li>
+          <li><a href="#join">授权协议</a></li>
+          <li><a href="#views">内容规范</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>项目</h3>
+        <ul>
+          <li><a href="https://github.com/wppTeam/Sakura_Gallery_System" rel="noopener">开源仓库</a></li>
+          <li><a href="#join">关于</a></li>
+          <li><a href="#top">回到顶部</a></li>
+        </ul>
+      </div>
+    </div>
+    <ul class="credits" id="credits"></ul>
+    <div class="foot-last">
+      <span>照片依作者所选协议 · 署名见上</span>
+      <a href="#top">回到顶部</a>
+    </div>
+  </div>
+</footer>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  var SEASON_KEY = { '春季': '春', '夏季': '夏', '秋季': '秋', '冬季': '冬' };
+  var SEASON_CLASS = { '春': 'spring', '夏': 'summer', '秋': 'autumn', '冬': 'winter' };
+  var BLOOM_OF = {
+    '春': '迎春 · 玉兰 · 杏 · 连翘 · 桃 · 樱花 · 二月兰 · 郁金香 · 海棠',
+    '夏': '紫花地丁 · 牡丹 · 芍药 · 荷塘 · 黑天鹅 · 苍鹭',
+    '秋': '枫叶广场 · 母校之光 · 钟塔 · 晚霞 · 日落',
+    '冬': '雪 · 雾 · 星轨 · 银河 · 蓝天 · 日出'
+  };
+  var KEYFILE = { '春': 'spring', '夏': 'summer', '秋': 'autumn', '冬': 'winter' };
+  var VIEW_NOTE = {
+    '化彩三台': '中心广场与三台', '馆声凫影': '图书馆与湖鸟',
+    '镜湖书柳': '柳湖与垂柳', '小荷听书': '荷塘与师贤亭',
+    '花海晴光': '花海与晴日', '平湖跃金': '湖面与夕照',
+    '花海聆淙': '花海与水声', '烟雨玉屏': '玉屏山与烟雨'
+  };
+
+  var active = 'all';
+
+  function chip(p) {
+    var k = SEASON_KEY[p.season];
+    if (!k) return '';
+    return '<span class="chip chip-' + SEASON_CLASS[k] + '">' + p.season + '</span>';
+  }
+
+  function card(p) {
+    return '<figure class="shot">' +
+      '<a class="shot-frame" href="#feed" aria-label="' + p.title + '，作者 ' + p.author + '">' +
+        '<img src="' + p.src + '" width="' + p.w + '" height="' + p.h + '" alt="' + p.title + '：' + p.subject + '" loading="lazy" decoding="async">' +
+        '<span class="shot-acts">' +
+          '<button class="ic" type="button" aria-label="收藏 ' + p.title + '"><svg width="16" height="16" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M7.5 12.5 2.6 7.8a3.1 3.1 0 0 1 4.9-3.8 3.1 3.1 0 0 1 4.9 3.8Z"/></svg></button>' +
+          '<button class="ic" type="button" aria-label="下载 ' + p.title + '"><svg width="16" height="16" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M7.5 2v8m0 0 3-3m-3 3-3-3M2.5 12.5h10"/></svg></button>' +
+        '</span>' +
+        '<span class="shot-by"><span class="dot">' + p.author.charAt(0).toUpperCase() + '</span>' + p.author + '</span>' +
+      '</a>' +
+      '<figcaption class="shot-meta"><span class="shot-title">' + p.title + '</span>' + chip(p) +
+        '<span class="chip chip-lic">' + p.licence + '</span></figcaption>' +
+    '</figure>';
+  }
+
+  function cols() {
+    var w = window.innerWidth;
+    if (w <= 720) return 1;
+    if (w <= 1080) return 2;
+    return 3;
+  }
+
+  function indexCard(k) {
+    return '<div class="view-card"><b>' + k + '季索引</b><span>' + BLOOM_OF[k] +
+      '</span><span>点开任意作品可看署名与授权协议</span></div>';
+  }
+
+  function masonry(list, n, extra) {
+    var items = list.map(function (p) { return { html: card(p), r: p.h / p.w }; });
+    if (extra) items.push({ html: extra, r: 0.62 });
+    var buckets = [], heights = [];
+    for (var i = 0; i < n; i++) { buckets.push([]); heights.push(0); }
+    items.forEach(function (it) {
+      var k = 0;
+      for (var j = 1; j < n; j++) if (heights[j] < heights[k]) k = j;
+      buckets[k].push(it.html); heights[k] += it.r;
+    });
+    return buckets.map(function (b) { return '<div class="feed-col">' + b.join('') + '</div>'; }).join('');
+  }
+
+  function renderFeed() {
+    var rows = PHOTOS.filter(function (p) {
+      return active === 'all' || SEASON_KEY[p.season] === active;
+    });
+    document.getElementById('feed-count').textContent = rows.length + ' 张';
+    var grid = document.getElementById('grid');
+    if (!rows.length) {
+      grid.innerHTML = '<p class="empty"><b>' + active + '</b> 还没有作品。这一季开着的时候，欢迎你来投第一张。</p>';
+      return;
+    }
+    var n = cols(), buckets = [], heights = [];
+    for (var i = 0; i < n; i++) { buckets.push([]); heights.push(0); }
+    rows.forEach(function (p) {
+      var k = 0;
+      for (var j = 1; j < n; j++) if (heights[j] < heights[k]) k = j;
+      buckets[k].push(p);
+      heights[k] += p.h / p.w;
+    });
+    grid.innerHTML = buckets.map(function (b) {
+      return '<div class="feed-col">' + b.map(card).join('') + '</div>';
+    }).join('');
+  }
+
+  // 话题标签
+  var tags = ['all', '春', '夏', '秋', '冬'];
+  var topics = document.getElementById('topics');
+  topics.innerHTML = tags.map(function (t) {
+    return '<button class="tag" type="button" data-s="' + t + '" aria-pressed="' + (t === active) + '">' +
+      (t === 'all' ? '全部' : t) + '</button>';
+  }).join('');
+
+  topics.addEventListener('click', function (e) {
+    var b = e.target.closest('.tag');
+    if (!b) return;
+    active = b.dataset.s;
+    topics.querySelectorAll('.tag').forEach(function (x) {
+      x.setAttribute('aria-pressed', String(x === b));
+    });
+    renderFeed();
+  });
+
+  var term = currentTerm(new Date());
+  document.getElementById('now-note').innerHTML =
+    '此刻 <b>' + term.name + '</b> · ' + seasonOfTerm(term) + ' · 下一番花信 ' + BLOOMS[0].month + '月' + BLOOMS[0].ten + '的' + BLOOMS[0].name;
+
+  // 四季色域
+  document.getElementById('seasons').innerHTML = ['春', '夏', '秋', '冬'].map(function (k) {
+    var list = PHOTOS.filter(function (p) { return SEASON_KEY[p.season] === k; });
+    return '<section class="season" data-s="' + k + '" id="' + k + '" aria-labelledby="s-' + k + '">' +
+      '<div class="wrap">' +
+        '<div class="season-head up">' +
+          '<h3 id="s-' + k + '">' + k + '</h3>' +
+          '<p>' + BLOOM_OF[k] + '</p>' +
+          '<span class="num">' + list.length + ' 张</span>' +
+        '</div>' +
+        '<div class="season-key">' +
+          (k === '冬'
+            ? '<video src="assets/photo/nevicata-svizzera.webm" poster="assets/art/winter.webp" width="854" height="480" autoplay muted loop playsinline aria-label="落雪影像"></video>'
+            : '<img src="assets/art/' + KEYFILE[k] + '.webp" width="1472" height="1140" alt="' + k + '季校园插画" loading="lazy">') +
+          '<span class="kind">' + (k === '冬' ? '落雪影像 · CC BY-SA 4.0' : '季相插画 · AI 生成') + '</span>' +
+        '</div>' +
+        '<div class="season-row">' + masonry(list, 3, indexCard(k)) + '</div>' +
+        '</div>' +
+      '</div></section>';
+  }).join('');
+
+  // 八景
+  document.getElementById('views-grid').innerHTML = EIGHT_VIEWS.map(function (v) {
+    return '<a class="view-card up" href="#views"><b>' + v + '</b><span>' + VIEW_NOTE[v] + '</span></a>';
+  }).join('');
+
+  // 署名
+  document.getElementById('credits').innerHTML = PHOTOS.map(function (p) {
+    return '<li>「' + p.title + '」 ' + p.author + ' · ' + p.licence +
+      ' · <a href="' + p.source + '" rel="noopener">来源</a></li>';
+  }).join('') + '<li>落雪影像「Nevicata, Svizzera」 Jo-Jo Eumerus · CC BY-SA 4.0 · <a href="https://commons.wikimedia.org/wiki/File:Nevicata,_Svizzera.webm" rel="noopener">来源</a></li>' +
+    '<li>首屏主视觉：项目自制（用户提供）；四季插画：AI 生成（qwen-image-3.0-pro，阿里云百炼），图书馆形态依实景参考照片绘制，均非摄影作品</li>';
+
+  // 飘落樱花
+  var petals = document.getElementById('petals');
+  for (var i = 0; i < 14; i++) {
+    var el = document.createElement('span');
+    el.className = 'petal';
+    el.style.left = (i * 7 + Math.random() * 5) + 'vw';
+    el.style.animationDuration = (13 + Math.random() * 12) + 's';
+    el.style.animationDelay = (-Math.random() * 20) + 's';
+    var s = 8 + Math.random() * 8;
+    el.style.width = s + 'px';
+    el.style.height = s + 'px';
+    petals.appendChild(el);
+  }
+
+  // 入场
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { rootMargin: '0px 0px -10% 0px', threshold: 0.05 });
+  document.querySelectorAll('.up').forEach(function (el, i) {
+    el.style.transitionDelay = (i % 4) * 70 + 'ms';
+    io.observe(el);
+  });
+  setTimeout(function () {
+    document.querySelectorAll('.up:not(.in)').forEach(function (el) { el.classList.add('in'); });
+  }, 900);
+
+  // 菜单
+  var menu = document.getElementById('menu');
+  document.getElementById('menu-open').addEventListener('click', function () { menu.classList.add('open'); });
+  document.getElementById('menu-close').addEventListener('click', function () { menu.classList.remove('open'); });
+  menu.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', function () { menu.classList.remove('open'); }); });
+
+  var t;
+  window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(renderFeed, 120); });
+  renderFeed();
+})();
+</script>
+</body>
+</html>

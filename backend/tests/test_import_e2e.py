@@ -12,7 +12,7 @@ from pathlib import Path
 # API 配置
 BASE_URL = "http://127.0.0.1:8002/api/v1"
 EMAIL = "admin@buct.edu.cn"
-PASSWORD = "admin123"
+PASSWORD = os.environ.get("E2E_ADMIN_PASSWORD", "")
 
 
 async def login() -> str:

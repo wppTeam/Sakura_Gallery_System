@@ -3,9 +3,9 @@
 # 用法: bash deploy/deploy-from-local.sh [deploy|backend|frontend|restart] [--skip-taxonomy|--taxonomy-dry-run|--taxonomy-apply --confirm-taxonomy-apply]
 set -e
 
-SERVER="yanp@121.195.148.85"
+SERVER="${DEPLOY_SERVER:?请先 export DEPLOY_SERVER，形如 user@host}"
 PROJECT="/opt/visual_buct/BUCT_Media_System"
-SUDO_PASS="mt01@buct"
+SUDO_PASS="${SUDO_PASS:?请先 export SUDO_PASS（凭据不写入仓库）}"
 TARGET="deploy"
 TAXONOMY_MIGRATION_MODE="${TAXONOMY_MIGRATION_MODE:-skip}"
 TAXONOMY_APPLY_CONFIRM="${TAXONOMY_APPLY_CONFIRM:-}"
