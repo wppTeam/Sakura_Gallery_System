@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import { uploadPhoto } from '../api/photo'
 import type { AigcUploadDeclaration } from '../types/photo'
 
@@ -33,6 +33,9 @@ function createAigcState(): AigcDeclarationState {
 export interface FileItem {
     file: File
     preview: string | null
+    /** 原始像素尺寸，用于预览按真实比例展示（不裁切） */
+    width: number | null
+    height: number | null
     status: 'pending' | 'uploading' | 'success' | 'error'
     progress: number
     errorMsg?: string
@@ -45,6 +48,8 @@ export const useUploadStore = defineStore('upload', () => {
     const fileList = ref<FileItem[]>([])
     const uploading = ref(false)
     const metadata = ref({
+        title: null as string | null,
+        author: null as string | null,
         season: null as string | null,
         category: null as string | null,
         campus: null as string | null,
@@ -89,13 +94,24 @@ export const useUploadStore = defineStore('upload', () => {
             const reader = new FileReader()
             reader.onload = (e) => {
                 const preview = e.target?.result as string
-                fileList.value.push({
+                const item = reactive<FileItem>({
                     id: Math.random().toString(36).substr(2, 9),
                     file,
                     preview,
+                    width: null,
+                    height: null,
                     status: 'pending',
                     progress: 0,
                 })
+                fileList.value.push(item)
+                // 读取真实像素尺寸，供预览舞台按原始比例渲染（预览不裁切）
+                const probe = new Image()
+                probe.onload = () => {
+                    // 必须通过 reactive 代理写入，否则模板不会重渲染
+                    item.width = probe.naturalWidth || null
+                    item.height = probe.naturalHeight || null
+                }
+                probe.src = preview
             }
             reader.readAsDataURL(file)
         })
@@ -109,6 +125,8 @@ export const useUploadStore = defineStore('upload', () => {
         // Revoke object URLs if we used URL.createObjectURL (here we used dataURL so strict cleanup isn't as critical but good memory hygiene to reset)
         fileList.value = []
         metadata.value = {
+            title: null,
+            author: null,
             season: null,
             category: null,
             campus: null,
@@ -175,6 +193,8 @@ export const useUploadStore = defineStore('upload', () => {
 
         try {
             const metadataToSend: any = {}
+            if (metadata.value.title?.trim()) metadataToSend.title = metadata.value.title.trim()
+            if (metadata.value.author?.trim()) metadataToSend.author = metadata.value.author.trim()
             if (metadata.value.season) metadataToSend.season = metadata.value.season
             if (metadata.value.category) metadataToSend.category = metadata.value.category
             if (metadata.value.campus) metadataToSend.campus = metadata.value.campus

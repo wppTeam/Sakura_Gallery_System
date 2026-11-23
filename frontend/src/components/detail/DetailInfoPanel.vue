@@ -1,5 +1,57 @@
 <template>
   <aside class="info">
+
+    <!-- AI 生成声明摘要卡：法定显式标识（仅 AIGC 作品渲染） -->
+    <section v-if="detail.aigc" class="aigc-summary-card" aria-label="AI 生成声明">
+      <div class="aigc-summary-head">
+        <span class="aigc-seal">
+          <n-icon :component="SparklesOutline" :size="13" />
+          AI 生成
+        </span>
+        <span class="aigc-summary-kicker">依法标注 · 显式标识</span>
+      </div>
+      <p class="aigc-summary-lead">
+        本作品包含 AI 生成合成内容，已按《人工智能生成合成内容标识办法》展示显式标识；下载副本含 XMP 隐式标识。
+      </p>
+      <dl class="aigc-facts">
+        <div v-if="detail.aigc.model" class="aigc-fact">
+          <dt>生成模型</dt>
+          <dd>{{ detail.aigc.model }}</dd>
+        </div>
+        <div v-if="detail.aigc.provider" class="aigc-fact">
+          <dt>服务提供方</dt>
+          <dd>{{ detail.aigc.provider }}</dd>
+        </div>
+        <div v-if="detail.aigc.sourceWorkId" class="aigc-fact">
+          <dt>图生图源作品</dt>
+          <dd class="is-mono">{{ detail.aigc.sourceWorkId }}</dd>
+        </div>
+        <div v-if="detail.aigc.faceSwap" class="aigc-fact">
+          <dt>人脸替换</dt>
+          <dd>是（已获被摄者书面同意）</dd>
+        </div>
+        <div v-if="detail.aigc.declaredAt" class="aigc-fact">
+          <dt>声明时间</dt>
+          <dd>{{ detail.aigc.declaredAt }}</dd>
+        </div>
+      </dl>
+      <div v-if="detail.aigc.prompt" class="aigc-prompt">
+        <button
+          type="button"
+          class="aigc-prompt-toggle"
+          :aria-expanded="promptExpanded"
+          @click="promptExpanded = !promptExpanded"
+        >
+          公开提示词
+          <n-icon :component="promptExpanded ? ChevronUpOutline : ChevronDownOutline" :size="13" />
+        </button>
+        <p class="aigc-prompt-text" :class="{ 'is-collapsed': !promptExpanded }">{{ detail.aigc.prompt }}</p>
+      </div>
+      <p class="aigc-summary-foot">
+        <n-icon :component="ShieldCheckmarkOutline" :size="13" />
+        <span>下载副本含 XMP 隐式标识 · 请勿用于伪造真实人物或误导性传播</span>
+      </p>
+    </section>
     <div class="info-head">
       <div class="info-tags">
         <span class="tag tag-kind" :class="kindClass">{{ kindLabel }}</span>
@@ -12,7 +64,6 @@
           {{ detail.season }}
         </router-link>
         <span v-if="detail.category" class="tag tag-plain">{{ detail.category }}</span>
-        <span v-if="detail.aigc" class="tag tag-aigc">含 AI 生成内容</span>
       </div>
 
       <h1 class="info-title">{{ detail.title }}</h1>
@@ -89,11 +140,6 @@
         <n-icon :component="CopyOutline" :size="18" />
       </button>
     </div>
-    <p v-if="detail.aigc" class="aigc-download-hint">
-      <n-icon :component="ShieldCheckmarkOutline" :size="13" />
-      <span>下载副本带 AI 生成标识：原图文件已写入 XMP 隐式标识。</span>
-    </p>
-
     <section v-if="detail.description" class="block">
       <h2 class="block-title">作品简介</h2>
       <p class="description">{{ detail.description }}</p>
@@ -124,53 +170,6 @@
         {{ exifExpanded ? '收起参数' : `展开全部 ${detail.exifRows.length} 项参数` }}
         <n-icon :component="exifExpanded ? ChevronUpOutline : ChevronDownOutline" :size="14" />
       </button>
-    </section>
-
-    <section v-if="detail.aigc" class="block aigc-block">
-      <h2 class="block-title">AI 生成说明</h2>
-      <p class="aigc-intro">
-        本作品包含 AI 生成合成内容，已按《人工智能生成合成内容标识办法》在展示页添加显式标识「AI 生成」，
-        并在原图下载文件中写入 XMP 隐式标识。请不要用于伪造真实人物或误导性传播。
-      </p>
-      <dl class="spec-list">
-        <div v-if="detail.aigc.label" class="spec-row">
-          <dt>显式标识</dt>
-          <dd>{{ detail.aigc.label }}</dd>
-        </div>
-        <div v-if="detail.aigc.model" class="spec-row">
-          <dt>生成模型</dt>
-          <dd>{{ detail.aigc.model }}</dd>
-        </div>
-        <div v-if="detail.aigc.provider" class="spec-row">
-          <dt>服务提供方</dt>
-          <dd>{{ detail.aigc.provider }}</dd>
-        </div>
-        <div v-if="detail.aigc.sourceWorkId" class="spec-row">
-          <dt>图生图源作品</dt>
-          <dd class="mono">{{ detail.aigc.sourceWorkId }}</dd>
-        </div>
-        <div v-if="detail.aigc.faceSwap" class="spec-row">
-          <dt>人脸替换</dt>
-          <dd>是（已确认获得被摄者书面同意）</dd>
-        </div>
-        <div v-if="detail.aigc.declaredAt" class="spec-row">
-          <dt>声明时间</dt>
-          <dd>{{ detail.aigc.declaredAt }}</dd>
-        </div>
-        <div class="spec-row">
-          <dt>隐式标识</dt>
-          <dd>原图下载文件含 XMP 标识</dd>
-        </div>
-      </dl>
-      <div v-if="detail.aigc.prompt" class="prompt-box">
-        <div class="prompt-head">
-          <span>生成提示词</span>
-          <button type="button" class="link-btn" @click="promptExpanded = !promptExpanded">
-            {{ promptExpanded ? '收起' : '展开' }}
-          </button>
-        </div>
-        <p class="prompt-text" :class="{ 'is-collapsed': !promptExpanded }">{{ detail.aigc.prompt }}</p>
-      </div>
     </section>
 
     <section v-if="detail.tags.length" class="block">
@@ -235,6 +234,7 @@ import {
   OpenOutline,
   ShareSocialOutline,
   ShieldCheckmarkOutline,
+  SparklesOutline,
 } from '@vicons/ionicons5'
 import { formatDate, formatFileSize, getPhotoUrl } from '../../utils/format'
 import type { WorkDetail } from './workDetail'
@@ -447,7 +447,7 @@ onBeforeUnmount(() => {
 }
 
 .tag-kind.kind-aigc {
-  background: linear-gradient(135deg, #7b61ff, var(--sakura-deep, #c93a63));
+  background: var(--sakura-deep, #c93a63);
 }
 
 .tag-kind.kind-template {
@@ -481,11 +481,6 @@ onBeforeUnmount(() => {
 .season-winter {
   background: var(--winter-pale, #d6e8f7);
   color: #2d6491;
-}
-
-.tag-aigc {
-  color: #5a3fd6;
-  background: #efeaff;
 }
 
 .info-title {
@@ -793,64 +788,127 @@ onBeforeUnmount(() => {
   text-decoration: underline;
 }
 
-/* ── AI 生成说明 ────────────────────────────────────── */
-.aigc-block {
-  padding: 16px;
-  border-radius: 14px;
-  background: linear-gradient(160deg, #f6f2ff, #fff4f8);
-  border: 1px solid #e8ddff;
+/* ── AI 生成声明摘要卡 ──────────────────────────────── */
+.aigc-summary-card {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--sakura-deep);
+  border-radius: var(--r-md);
+  background: linear-gradient(180deg, var(--sakura-wash), var(--surface));
 }
 
-.aigc-download-hint {
+.aigc-summary-head {
   display: flex;
-  align-items: flex-start;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: 6px;
+}
+
+.aigc-seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: var(--r-pill);
+  background: var(--sakura-deep);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.aigc-summary-kicker {
+  color: var(--faint);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.aigc-summary-lead {
+  margin: 9px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.75;
+}
+
+.aigc-facts {
+  display: grid;
+  gap: 5px;
   margin: 10px 0 0;
-  padding: 8px 12px;
-  border-radius: var(--r-sm, 10px);
-  background: var(--sakura-wash, #fff0f5);
-  color: var(--sakura-deep, #c93a63);
+  padding: 0;
+}
+
+.aigc-fact {
+  display: grid;
+  grid-template-columns: 5.6em minmax(0, 1fr);
+  gap: 8px;
   font-size: 12px;
   line-height: 1.6;
 }
 
-.aigc-intro {
+.aigc-fact dt {
+  color: var(--faint);
+}
+
+.aigc-fact dd {
   margin: 0;
-  font-size: 12.5px;
-  line-height: 1.8;
-  color: #5f5178;
+  color: var(--ink);
+  overflow-wrap: anywhere;
 }
 
-.prompt-box {
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(122, 97, 200, 0.14);
+.aigc-fact dd.is-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
 }
 
-.prompt-head {
-  display: flex;
+.aigc-prompt {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.aigc-prompt-toggle {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sakura-deep);
   font-size: 12px;
-  font-weight: 600;
-  color: #5a3fd6;
+  cursor: pointer;
 }
 
-.prompt-text {
+.aigc-prompt-toggle:hover {
+  text-decoration: underline;
+}
+
+.aigc-prompt-text {
   margin: 6px 0 0;
+  color: var(--muted);
   font-size: 12.5px;
   line-height: 1.75;
-  color: var(--muted, #63474f);
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
 
-.prompt-text.is-collapsed {
+.aigc-prompt-text.is-collapsed {
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.aigc-summary-foot {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-top: 9px;
+  border-top: 1px dashed var(--line);
+  color: var(--sakura-deep);
+  font-size: 11.5px;
+  line-height: 1.6;
 }
 
 /* ── 标签 ───────────────────────────────────────────── */

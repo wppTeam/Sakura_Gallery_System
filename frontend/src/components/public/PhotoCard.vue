@@ -83,7 +83,6 @@
         </span>
         <span v-if="seasonMeta && placeText" class="sep" aria-hidden="true">·</span>
         <span v-if="placeText" class="place">{{ placeText }}</span>
-        <span v-if="photo.aigc" class="kind-note">AI 生成</span>
       </p>
     </div>
   </article>
@@ -255,13 +254,15 @@ const authorInitial = computed(() => (props.photo.author || '匿').slice(0, 1))
   align-items: center;
   height: 24px;
   padding: 0 9px;
+  border: 1px solid rgba(74, 43, 53, 0.1);
   border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--ink);
+  /* 法定显式标识：纯白底 + 深墨字（对比度约 12:1），不依赖模糊，任何图片上都可读 */
+  background: var(--surface, #fff);
+  color: var(--ink, #4a2b35);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.04em;
-  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(74, 43, 53, 0.18);
 }
 
 .shade {
@@ -444,11 +445,6 @@ const authorInitial = computed(() => (props.photo.author || '匿').slice(0, 1))
 .place {
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.kind-note {
-  flex-shrink: 0;
-  color: var(--sakura-deep);
 }
 
 .photo-card--compact .meta {

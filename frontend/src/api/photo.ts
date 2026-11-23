@@ -66,6 +66,8 @@ export function getPublicPhotoById(id: string): Promise<Photo> {
 export function uploadPhoto(
   file: File,
   metadata: {
+    title?: string
+    author?: string
     description?: string
     season?: string
     category?: string
@@ -77,6 +79,8 @@ export function uploadPhoto(
 ): Promise<PhotoUploadResponse> {
   const formData = new FormData()
   formData.append('file', file)
+  if (metadata.title) formData.append('title', metadata.title)
+  if (metadata.author) formData.append('author', metadata.author)
   if (metadata.description) formData.append('description', metadata.description)
   if (metadata.season) formData.append('season', metadata.season)
   if (metadata.category) formData.append('category', metadata.category)
