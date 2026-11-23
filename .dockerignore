@@ -1,0 +1,31 @@
+# 仓库根构建上下文排除清单（deploy/Dockerfile.frontend 以仓库根为上下文）
+# 注意：BuildKit 若发现与 Dockerfile 同名的 <Dockerfile>.dockerignore，会优先使用它；
+# 本文件是兜底，防止在旧版客户端/CI 下把 .venv、uploads、node_modules 塞进上下文。
+.git
+.gitignore
+.github
+.vscode
+.idea
+.tmp
+.tmp-shots
+.tmp-fe
+portfolio
+audit
+docs
+design
+backend/.venv
+backend/.pytest_cache
+backend/__pycache__
+backend/uploads
+backend/.tmp*
+backend/.seed-demo-credentials.json
+backend/.env
+backend/seed
+backend/tests
+frontend/node_modules
+frontend/dist
+frontend/.tmp
+**/__pycache__
+**/*.pyc
+**/node_modules
+**/dist

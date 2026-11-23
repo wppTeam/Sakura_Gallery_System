@@ -179,7 +179,20 @@ class LocalStorageBackend(StorageBackend):
         if not os.path.exists(target):
             from fastapi import HTTPException
             raise HTTPException(status_code=404, detail=f"Media file not found: {file_path}")
-        return FileResponse(target, filename=download_name)
+        if download_name:
+            # 下载语义：必须带 Content-Disposition，且别让中间层缓存成在线预览。
+            return FileResponse(
+                target,
+                filename=download_name,
+                headers={"Cache-Control": "private, max-age=0, must-revalidate"},
+            )
+        # 在线预览（缩略图/压缩图/原图）：图片 URL 与 photo id + 变体档位绑定，
+        # 文件名内容不可变，可以放心长缓存——2c4g 小机器最重要的带宽优化之一。
+        # Starlette FileResponse 自带 ETag / Last-Modified，nginx 也能直接 304。
+        return FileResponse(
+            target,
+            headers={"Cache-Control": "public, max-age=31536000, immutable"},
+        )
 
     @contextmanager
     def local_copy(self, file_path: str) -> Iterator[str]:
@@ -305,27 +318,42 @@ class S3StorageBackend(StorageBackend):
         file_path: str,
         download_name: Optional[str] = None,
     ) -> Response:
+        """返回 307 跳到对象存储的预签名 URL，而不是经 Python 转发字节流。
+
+        2c4g 机器上「Python 边读 S3 边吐给用户」会同时占住一个 uvicorn worker
+        和一份内存缓冲；预签名跳转把带宽与并发直接交给对象存储（R2/OSS），
+        应用只需要一次不耗内存的重定向。
+        """
+        from urllib.parse import quote
+
+        params = {"Bucket": self.bucket, "Key": file_path}
+        if download_name:
+            # RFC 5987: 让浏览器把对象存成可读的中文文件名。
+            encoded_name = quote(download_name)
+            params["ResponseContentDisposition"] = (
+                f"attachment; filename*=UTF-8''{encoded_name}"
+            )
         try:
-            from fastapi.responses import StreamingResponse
-            from urllib.parse import quote
-            response = self.client.get_object(Bucket=self.bucket, Key=file_path)
-            headers = {}
-            if download_name:
-                # RFC 5987: use filename*=UTF-8'' for non-ASCII filenames
-                encoded_name = quote(download_name)
-                headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_name}"
-            return StreamingResponse(
-                response["Body"],
-                media_type=response.get("ContentType", "image/jpeg"),
-                headers=headers,
+            url = self.client.generate_presigned_url(
+                "get_object",
+                Params=params,
+                ExpiresIn=settings.S3_PRESIGN_EXPIRE_SECONDS,
             )
         except Exception as exc:
             logging.getLogger(__name__).warning(
-                "Media fetch failed for key=%s bucket=%s: %s",
-                file_path, self.bucket, exc
+                "Presign failed for key=%s bucket=%s: %s", file_path, self.bucket, exc
             )
             from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Media file not found")
+
+        headers = {
+            # 预签名 URL 有 TTL；重定向本身只缓存 5 分钟（< TTL 10 分钟），
+            # 既避免每张图都回源，也不会缓存出一个已过期的地址。
+            "Cache-Control": "private, max-age=300",
+        }
+        if download_name:
+            headers["Cache-Control"] = "private, max-age=0, must-revalidate"
+        return RedirectResponse(url=url, status_code=307, headers=headers)
 
     @contextmanager
     def local_copy(self, file_path: str) -> Iterator[str]:

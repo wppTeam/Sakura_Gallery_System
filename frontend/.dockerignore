@@ -1,0 +1,17 @@
+# =============================================================================
+# 前端单独构建时的上下文排除清单（上下文 = frontend/，例如：
+#   docker build -f frontend/Dockerfile frontend/）
+# 生产镜像走 deploy/Dockerfile.frontend + deploy/Dockerfile.frontend.dockerignore，
+# 这里只用于本地/CI 单独构建前端镜像，两者规则保持一致。
+# =============================================================================
+node_modules
+dist
+coverage
+.env.local
+.env.*.local
+**/*.log
+*.md
+.git
+.github
+.gitignore
+.dockerignore

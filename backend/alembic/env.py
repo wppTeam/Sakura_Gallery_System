@@ -24,10 +24,18 @@ config = context.config
 def _to_sync_url(url: str) -> str:
     """Convert async SQLAlchemy URL to sync equivalent for Alembic.
 
-    sqlite+aiosqlite:///...  → sqlite:///...
-    postgresql+asyncpg://... → postgresql://...
+    sqlite+aiosqlite:///...   → sqlite:///...
+    postgresql+asyncpg://...  → postgresql+psycopg2://...
+
+    显式写 ``+psycopg2``：SQLAlchemy 2.1 起 ``postgresql://`` 默认走 psycopg(v3)，
+    而依赖里只装了 ``psycopg2-binary``（requirements-base.txt），不写驱动会
+    ``ModuleNotFoundError: No module named 'psycopg'``。requirements 已钉在 2.0.x，
+    这里再显式一次，避免下次升级踩同一个坑。
     """
-    return re.sub(r"^(sqlite|postgresql|mysql)(?:\+[^:]+)(?=://)", r"\1", url)
+    url = re.sub(r"^(sqlite|postgresql|mysql)(?:\+[^:]+)(?=://)", r"\1", url)
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg2://" + url[len("postgresql://"):]
+    return url
 
 
 # Set database URL from configuration file

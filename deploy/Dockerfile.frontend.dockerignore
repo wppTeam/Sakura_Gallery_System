@@ -1,0 +1,26 @@
+# =============================================================================
+# 前端镜像专用 .dockerignore（白名单式）
+# -----------------------------------------------------------------------------
+# BuildKit 会为 deploy/Dockerfile.frontend 自动加载同目录下的
+# deploy/Dockerfile.frontend.dockerignore。构建上下文是仓库根，但镜像只需要：
+#   - frontend/              源码 + package-lock（npm ci / vite build）
+#   - deploy/nginx.prod.conf 生产 nginx 站点配置
+# 其余全部排除：891MB 的 backend/uploads、351MB 的 frontend/node_modules、
+# .git、backend/.venv 与任何 .env（凭据不进构建上下文）。
+# 注意：加文件后要在这里同步放行，否则 COPY 会报 not found。
+# =============================================================================
+
+# 1) 先全部排除（* 只匹配上下文顶层条目）
+*
+!frontend
+!frontend/**
+!deploy
+!deploy/nginx.prod.conf
+
+# 2) 再排除构建产物与本地私密配置（后写的规则覆盖前面的放行）
+frontend/node_modules
+frontend/dist
+frontend/coverage
+frontend/.env.local
+frontend/.env.*.local
+**/*.log

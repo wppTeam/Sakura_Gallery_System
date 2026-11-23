@@ -162,8 +162,8 @@ flowchart TB
 | 数据 | PostgreSQL（生产），本地开发默认 SQLite；`pg_trgm` + `tsvector` 做跨类型全文检索 |
 | 资产 | MinIO / S3 对象存储；图片变体预生成，Nginx 反代或预签名 URL 直出，不经 Python 流式转发 |
 | 可选增强 | Redis + Celery（默认 BackgroundTasks）；Milvus 语义检索缺失时优雅降级 |
-| AI | 阿里云百炼直连（生图异步任务）+ NewAPI 代理（快模型）；审核 VLM 与推理模型双渠道互备 |
-| 交付 | Nginx + systemd；GitHub Actions 自动部署；目标是 `docker compose up` 一键起（M7） |
+| AI | 统一原语 `backend/app/services/ai_client.py::chat_json()`（渠道解析 / 预算闸门 / 重试 / JSON 修复 / 用量落库）；快筛 VLM `qwen3-vl-plus` + 难例复核 `deepseek-v4.1-flash-1017`；生图走百炼异步 |
+| 交付 | `deploy/docker-compose.prod.yml` 一键起（PostgreSQL + uvicorn --workers 2 + nginx）；面向 2c4g 单机，逐步上机文档见 [`docs/DEPLOY_2C4G.md`](docs/DEPLOY_2C4G.md) |
 
 ## 快速开始
 
@@ -200,12 +200,13 @@ npm run dev
 - API 文档 http://localhost:8000/docs
 - 新版公共端设计原型：直接用浏览器打开 [`design/index.html`](design/index.html)（纯静态，无需构建）
 
-> 当前 `frontend/` 仍是旧版公共端 + admin；新版公共端在 `design/` 中作为原型维护，
-> 按路线图 M0–M1 落进工程。公共端重建期间，admin 后台保持可用。
+> 新版公共端已落进 `frontend/src`（首页 / 探索页 / 详情页 / Agent 检索页 / 审核队列），
+> `design/` 中的原型保留作设计参照；admin 后台沿用 Naive UI 不动。
+> 生产构建用 `npm run build` 后 `npm run preview` 验证（预览端口 5175，`/api` 反代到 8001）。
 
 ### 配置
 
-复制 `backend/.env.example` 为 `backend/.env`，部署用 `deploy/.env.production.example`。
+复制 `backend/.env.example` 为 `backend/.env`；生产部署复制 `deploy/.env.prod.example` 为 `deploy/.env.prod`（`chmod 600`，绝不入库）。
 **真实凭据不提交仓库**，脚本通过环境变量读取：
 
 | 变量 | 用途 |
@@ -233,18 +234,23 @@ cd backend && pytest
 | 部分 | 现在 |
 |---|---|
 | 公共端设计原型 | ✅ 已完成，1440 / 768 / 390 三宽度门禁 0 FAIL / 0 WARN |
-| 新版公共端工程 | 🚧 重建中：M1 落进 `frontend/src`，替换失效样式与瀑布流实现 |
-| 数据模型 | 🚧 M0：`works` 基表 + `kind` 判别 + 三张元数据表 |
-| 资产管线 | 🚧 M0：取消强制裁切、多尺寸变体、LQIP、CDN 化交付 |
-| 隐私修复 | 🚧 M0：公开响应改白名单，剔除学号 / 真实姓名 / 完整 EXIF |
+| 新版公共端工程 | ✅ 已落地 `frontend/src`（首页 / 探索页真瀑布流 / 详情页 / Agent 检索页 / 审核队列），1440 + 390 截图验收 |
+| 数据模型 | 🚧 M0 未做：`works` 基表 + `kind` 判别 + 三张元数据表（当前仍以 `photos` 单表承载） |
+| 资产管线 | ✅ 取消强制裁切、5 档变体、LQIP、GPS 剥离、媒体长缓存/预签名 |
+| 隐私修复 | ✅ 公开响应白名单化（学号 / 真实姓名 / 完整 EXIF 不再公开） |
+| Agent 审核 | ✅ 规则前置 + VLM 快筛 + 难例复核 + 自动放行 + 人工队列 API |
+| Agent 检索 | ✅ pg_trgm + tsvector + 汉字二元组，意图分解 / 多 facet / 解释 / 澄清追问答 |
+| 2c4g 部署包 | ✅ compose / Dockerfile / nginx / env 模板 / 迁移入口 / 备份脚本（未实际部署） |
 | 旧版单类型系统 | ✅ 摄影类型下可用，admin 后台保留 |
 | Agent 审核 | ◻️ M3：规则前置 + 快筛 + 复核 |
 | AIGC 专区 | ◻️ M2：法定标识链路 |
 | 模板专区 | ◻️ M6：S3 直传 + LibreOffice 预览 + 字体清单 |
 | 开源 v1.0 | ◻️ M7：凭据轮换、git 历史清洗、CI、LICENSE |
 
-已具备的后端能力：上传与批量导入、AI 打标、审核、taxonomy 多维分类、语义检索、
+已具备的后端能力：上传与批量导入、Agent 审核（`/api/v1/admin/moderation/*`）、
+Agent 检索（`/api/v1/search?mode=agent|fast` + facets/suggest/traces）、taxonomy 多维分类、
 RBAC、审计日志、站内通知、收藏、浏览统计。
+审核与检索的架构、配置项、成本实测与降级矩阵见 [`docs/AI_PLATFORM.md`](docs/AI_PLATFORM.md)。
 
 ## 路线图
 
@@ -262,6 +268,10 @@ RBAC、审计日志、站内通知、收藏、浏览统计。
 | **M7** | 01/12 – 01/18 | 开源发布 v1.0 |
 
 **关键路径**：M0 → M1 → M5。资产管线不先做完，真瀑布流没有素材可排；M2 与 M1 可并行，M4 与 M3 可并行。
+
+**实际进度（2026-11）**：M1（公共端）、M3（Agent 审核）、M4（Agent 检索）的核心能力已提前交付并带测试；
+M0 的 `works` 基表重构与 M2（AIGC 法定标识四件套）、M6（模板）仍待做；
+M7 的"一键起"已由 `deploy/docker-compose.prod.yml` 覆盖（上机步骤见 `docs/DEPLOY_2C4G.md`）。
 
 ## 设计系统
 

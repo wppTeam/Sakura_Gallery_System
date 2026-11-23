@@ -492,15 +492,25 @@ async def find_near_duplicates(
 # 统一入口
 # ---------------------------------------------------------------------------
 
+def _inspect_sync(storage, storage_path: str, filename: str) -> RuleResult:
+    """同步版本的规则检查（Pillow 解码 + dhash + EXIF）。
+
+    单独抽出来是为了丢线程池：S3 拉取与 Pillow 解码都是阻塞操作，
+    直接在 async 上下文里跑会把事件循环卡住（审核是后台任务但共享同一 loop）。
+    """
+    with storage.local_copy(storage_path) as local_path:
+        return inspect_image_file(local_path, filename=filename)
+
+
 async def run_rules(db: AsyncSession, photo: Photo) -> RuleResult:
     """对一张照片执行完整规则前置。绝不抛异常，失败降级为 warn 命中。"""
     result = RuleResult()
     try:
-        local_path: str | None = None
         storage_path = photo.original_path or photo.thumb_path
         try:
-            with get_storage().local_copy(storage_path) as local_path:
-                result = inspect_image_file(local_path, filename=photo.filename)
+            result = await asyncio.to_thread(
+                _inspect_sync, get_storage(), storage_path, photo.filename
+            )
         except (FileNotFoundError, OSError):
             result.checked = True
             result.add("file_missing", "block", "照片文件不存在或不可读")

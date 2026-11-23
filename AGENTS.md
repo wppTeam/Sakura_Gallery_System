@@ -24,15 +24,19 @@
 ## 2. 架构
 
 ```
-前端 Vue 3 + Vite + TS + Naive UI + Tailwind 4
+前端 Vue 3 + Vite + TS + Naive UI + Tailwind 4（构建产物由 nginx 静态托管）
    │
-   └── Nginx ── FastAPI (uvicorn) ── PostgreSQL
-                    │                  │
-                    ├── MinIO (S3)     └── Alembic 迁移
+   └── Nginx ── FastAPI (uvicorn --workers 2) ── PostgreSQL
+                    │                            │
+                    ├── S3 / R2 / MinIO          └── Alembic 迁移
+                    │   （媒体走预签名 307 跳转，不经 Python 转发字节）
                     ├── Redis / Celery（可选，默认 BackgroundTasks）
-                    ├── Milvus + bge-small-zh（可选，语义检索增强）
+                    ├── Milvus + bge-small-zh（可选，语义检索增强，2c4g 不装）
                     └── AI 渠道（审核 VLM / 打标 / 查询改写 / 生图）
 ```
+
+生产编排见 [`deploy/docker-compose.prod.yml`](deploy/docker-compose.prod.yml)（postgres + backend + nginx，
+无 Redis/Celery/Milvus/MinIO 服务），逐步上机说明见 [`docs/DEPLOY_2C4G.md`](docs/DEPLOY_2C4G.md)。
 
 **公共端重建，admin 后台保留。** `views/admin/*` 与 `TaggingWorkspace.vue` 沿用 Naive UI 不动。
 
@@ -117,8 +121,11 @@ template_meta work_id, file_key, format, slides, ratio, fonts[],
   API 以 `lqip` / `lqip_color` 字段返回，内部键不进公开 EXIF
 - `sanitize_exif` 白名单只保留相机/镜头/拍摄时间/曝光/ISO/焦距/朝向
 - ⚠️ 真实上传流程目前只产出 thumb/compressed/LQIP，variants 目录尚未接入 storage（种子脚本已生成），上线前补
-- 图片不经 Python 流式转发：nginx 反代 MinIO 或预签名 URL
-- `Cache-Control: public, max-age=31536000, immutable` + ETag
+- 图片不经 Python 流式转发：本地模式返回 `FileResponse`（sendfile/responses 层），
+  S3 模式返回 **307 预签名跳转**（`STORAGE_BACKEND=s3`），由对象存储直出带宽
+- 在线预览响应头 `Cache-Control: public, max-age=31536000, immutable` + ETag/Last-Modified
+  （`LocalStorageBackend.build_media_response`）；下载语义改 `private, must-revalidate`
+- 上传时的 Pillow 变体生成与 S3 写入都在 `run_in_threadpool` 里执行，不占事件循环
 - 模板走 S3 直传 + 预签名下载；预览由 LibreOffice headless 异步渲染
 
 ## 7. 检索
@@ -171,6 +178,8 @@ uvicorn app.main:app --reload --port 8000
 
 # 前端
 cd frontend && npm install && npm run dev
+# 生产构建验收（dist + /api 代理到 8001，用来验证拆包/按需引入后的真实产物）
+cd frontend && npm run build && npm run preview
 
 # 测试（tests/conftest.py 自动切临时 SQLite，不碰本地 PG）
 cd backend && pytest -q
@@ -186,8 +195,19 @@ backend/.venv/bin/python scripts/shot.py <url> <out.png> --width 1440 --full --w
 ```
 
 依赖已分层：`requirements-base.txt` / `-ai.txt` / `-vector.txt` / `-worker.txt`，
-外部贡献者不会被强制安装 torch。`docker compose up` 一键起仍是目标，本轮未做；
-2c4g 部署方案见 [`docs/research/2026-11-23-small-vps-deploy.md`](docs/research/2026-11-23-small-vps-deploy.md)。
+外部贡献者不会被强制安装 torch。一键起用 `deploy/docker-compose.prod.yml`；
+调研背景见 [`docs/research/2026-11-23-small-vps-deploy.md`](docs/research/2026-11-23-small-vps-deploy.md)。
+
+**2c4g 性能约定（改代码时别破坏）**
+
+- 前端：Naive UI 由 `unplugin-vue-components` + `NaiveUiResolver` 按需引入，
+  **不要**在 `main.ts` 里 `app.use(naive)` 全量注册；vite 已把 echarts / naive 运行时 /
+  vue 运行时拆成独立 vendor chunk（首屏 gzip 由 ~454KB 降到 ~227KB）。
+- 后端：任何 Pillow 解码 / 变体生成 / boto3 上传这类阻塞调用都必须
+  `await run_in_threadpool(...)` 或 `asyncio.to_thread(...)`，不要在 async 端点里裸跑。
+- 数据库：连接池参数走 `DB_POOL_SIZE` / `DB_POOL_MAX_OVERFLOW` / `DB_POOL_RECYCLE`，
+  `uvicorn --workers 2` 时真实连接数 = workers ×（pool_size + max_overflow）。
+- 媒体：图片走长缓存 + 预签名跳转，不要新增加「Python 读文件再流式返回」的接口。
 
 ## 10. AI 渠道（实测结论，不含 key）
 
@@ -232,6 +252,8 @@ Body: {"model":"qwen-image-3.0-pro",
 - AIGC 作品不带显式与隐式标识就放行
 - 把 Milvus / torch 变成必装依赖
 - 用 `{**model.__dict__}` 构造公开响应
+- 在 async 端点/后台任务里直接执行 Pillow、boto3、同步文件 IO 等阻塞调用
+- 在 `main.ts` 里 `app.use(naive)` 全量注册组件（会打爆首屏体积）
 
 ## 12. 路线图
 

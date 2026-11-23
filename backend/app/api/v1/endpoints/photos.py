@@ -43,6 +43,7 @@ from app.services.image_processing import process_uploaded_image
 from app.services.runtime_settings import get_runtime_settings
 from app.services.search_interpreter import get_search_interpreter
 from app.services.storage import cleanup_staged_files, get_storage, stage_photo_upload
+from starlette.concurrency import run_in_threadpool
 from app.services.moderation_worker import enqueue_moderation
 from app.services.task_dispatcher import dispatch_ai_analysis_task
 from app.services.taxonomy import (
@@ -502,14 +503,25 @@ async def upload_photo(
     try:
         runtime_settings = await get_runtime_settings(db)
         photo_uuid, staged_original_path, original_filename, _ = await stage_photo_upload(file)
-        processing_result = process_uploaded_image(
+        # Pillow 解码 + 5 档 WebP/JPEG 变体 + LQIP 是纯 CPU 密集的同步调用，
+        # 直接在 async 端点里跑会堵住整个事件循环（2c4g 上 workers=2，两个并发
+        # 上传就能让全站 API 卡住数秒）。丢到线程池，事件循环继续服务其它请求。
+        processing_result = await run_in_threadpool(
+            process_uploaded_image,
             staged_original_path,
             photo_uuid,
             output_dir=str(Path(staged_original_path).parent),
         )
         staged_thumb_path = processing_result.get("thumb_path")
         staged_compressed_path = processing_result.get("compressed_path")
-        stored_media = get_storage().persist_photo_files(photo_uuid, staged_original_path, staged_thumb_path, staged_compressed_path)
+        # S3 写入是网络阻塞调用（boto3），同样不能占住事件循环。
+        stored_media = await run_in_threadpool(
+            get_storage().persist_photo_files,
+            photo_uuid,
+            staged_original_path,
+            staged_thumb_path,
+            staged_compressed_path,
+        )
 
         processing_status = "pending" if enable_ai and runtime_settings.ai_enabled else "manual"
         photo = await photo_crud.create_photo(

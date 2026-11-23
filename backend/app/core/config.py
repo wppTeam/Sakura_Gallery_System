@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     
     # 数据库配置
     DATABASE_URL: str = "sqlite+aiosqlite:///./visual_buct.db"
+    # 连接池按「小机器」可调：2c4g + uvicorn --workers 2 时，每个 worker 都有
+    # 自己的池，pool_size*workers 才是真实连接数（PG 默认 max_connections=100）。
+    DB_POOL_SIZE: int = 10
+    DB_POOL_MAX_OVERFLOW: int = 20
+    DB_POOL_RECYCLE: int = 1800
     REDIS_URL: str = "redis://localhost:6379/0"
     TASK_QUEUE_BACKEND: Literal["background", "celery"] = "background"
     

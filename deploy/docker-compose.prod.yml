@@ -1,0 +1,199 @@
+# =============================================================================
+# 视觉百花 Sakura Gallery — 2c4g 单机生产编排（Docker Compose）
+# -----------------------------------------------------------------------------
+# 三个服务：postgres（数据库）→ backend（FastAPI/uvicorn）→ nginx（静态站点 + 反代）
+# 刻意不引入：MinIO / Redis / Celery / Milvus —— 2c4g 装不下，且默认实现已按
+# 「本地卷/Multipart + 进程内 BackgroundTasks + PG 词法检索」设计（见 AGENTS.md §2/§7）。
+#
+# 用法（在仓库根执行，凭据放 deploy/.env.prod，见 deploy/.env.prod.example）：
+#   cp deploy/.env.prod.example deploy/.env.prod && chmod 600 deploy/.env.prod
+#   docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod \
+#     up -d --build
+#   docker compose -f deploy/docker-compose.prod.yml ps
+# 详细步骤、内存预算、TLS、备份与排障见 docs/DEPLOY_2C4G.md。
+#
+# 要求：Docker Engine ≥ 24（BuildKit 默认开启，构建用 COPY heredoc）
+#       Docker Compose ≥ v2.24（env_file.required 长语法）
+# =============================================================================
+name: ${COMPOSE_PROJECT_NAME:-sakura-gallery}
+
+# 容器日志统一滚动，避免 20GB 小盘被 json-file 写满
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16：唯一有状态服务，参数按 2c4g 调过（见 docs/DEPLOY_2C4G.md §4）
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-sakura-gallery}-pg
+    restart: unless-stopped
+    # env_file 可选：首次部署还没 .env.prod 时，`docker compose config` 仍可通过
+    # （真实凭据由 --env-file 插值 + env_file 注入，两处都在 deploy/.env.prod）
+    env_file:
+      - path: .env.prod
+        required: false
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sakura}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 deploy/.env.prod 设置 POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-sakura_gallery}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: "${TZ:-Asia/Shanghai}"
+    command:
+      - postgres
+      # 内存：shared_buffers 512MB 是 4GB 机器的常见取法（约 1/8 内存）
+      - -c
+      - shared_buffers=512MB
+      # 告诉规划器 OS 还有多少可缓存数据（4GB 机器扣掉容器后的保守值）
+      - -c
+      - effective_cache_size=1536MB
+      # 2 个 uvicorn worker，单查询并发很低，work_mem 不宜大（按连接数翻倍占内存）
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=128MB
+      # 后端 pool_size=10 + max_overflow=20，2 worker 最多 60 连接；
+      # 再加 alembic/psql/监控留 20 余量 → 80
+      - -c
+      - max_connections=80
+      # 2c4g 上 JIT 收益为负（编译耗 CPU + 内存），关掉
+      - -c
+      - jit=off
+      # 并行查询在 2 核上容易吃满内存与 /dev/shm，关掉最稳
+      - -c
+      - max_parallel_workers_per_gather=0
+      - -c
+      - wal_compression=on
+      # 慢查询日志（>1s），排障时 docker compose logs postgres 能看到
+      - -c
+      - log_min_duration_statement=1000
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # 并行查询 / 大排序用的共享内存；128MB 足够本规模，且计入 mem_limit
+    shm_size: 128mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    # 注意：任务书给的是 512m，但 shared_buffers=512MB 时 PG 常驻约 750–900MB，
+    # 512m 会被 cgroup 直接 OOM kill。这里取 1024m（可用 PG_MEM_LIMIT 覆盖）。
+    mem_limit: ${PG_MEM_LIMIT:-1024m}
+    stop_grace_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+    networks:
+      - sakura
+
+  # ---------------------------------------------------------------------------
+  # 后端：FastAPI + uvicorn --workers 2；启动时等 PG、跑 alembic upgrade head
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../deploy/Dockerfile.backend
+      args:
+        # 国内服务器可换成 registry 镜像源，见 deploy/.env.prod.example
+        PYTHON_IMAGE: "${PYTHON_IMAGE:-python:3.12-slim}"
+        PIP_INDEX_URL: "${PIP_INDEX_URL:-https://pypi.org/simple}"
+    image: sakura-gallery-backend:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-sakura-gallery}-backend
+    restart: unless-stopped
+    init: true # 回收 uvicorn worker 复用产生的僵尸进程
+    env_file:
+      - path: .env.prod
+        required: false
+    environment:
+      TZ: "${TZ:-Asia/Shanghai}"
+      # 上传文件落容器内固定目录，由 uploads 数据卷持久化（覆盖 env 模板里的值）
+      UPLOAD_DIR: /app/uploads
+      PORT: "8000"
+      UVICORN_WORKERS: "${UVICORN_WORKERS:-2}"
+      UVICORN_LIMIT_MAX_REQUESTS: "${UVICORN_LIMIT_MAX_REQUESTS:-10000}"
+      # 只信任本编排内 nginx 的转发；--proxy-headers 需要它才能取到真实协议/IP
+      FORWARDED_ALLOW_IPS: "${FORWARDED_ALLOW_IPS:-*}"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # 注意：backend 不对宿主机暴露端口，只能经 nginx 访问（少一层攻击面）
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # 首次启动要等 PG + 跑完迁移，给足 90s；之后每 30s 探一次
+      start_period: 90s
+    # 2 worker 实测 240–360MB，768m 上限留出图片处理峰值；swap 兜底防瞬时 OOM
+    mem_limit: ${BACKEND_MEM_LIMIT:-768m}
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+    networks:
+      - sakura
+
+  # ---------------------------------------------------------------------------
+  # 前端：nginx 托管 Vite 产物 + 反代 /api 到 backend:8000（唯一对外端口）
+  # ---------------------------------------------------------------------------
+  nginx:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.frontend
+      args:
+        NODE_IMAGE: "${NODE_IMAGE:-node:22-alpine}"
+        NGINX_IMAGE: "${NGINX_IMAGE:-nginx:1.27-alpine}"
+        NPM_REGISTRY: "${NPM_REGISTRY:-https://registry.npmjs.org}"
+    image: sakura-gallery-frontend:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-sakura-gallery}-nginx
+    restart: unless-stopped
+    ports:
+      # 只映射 HTTP；TLS 由宿主机 Caddy/certbot 或前置 CDN 终止（见部署文档 §7）
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      # 用 service_started 而非 service_healthy：后端迁移失败时 nginx 仍能起来，
+      # 直接返回 502 便于从日志定位；探活/回滚见部署文档 §9
+      backend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    mem_limit: ${NGINX_MEM_LIMIT:-64m}
+    stop_grace_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+    networks:
+      - sakura
+
+# ---------------------------------------------------------------------------
+# 持久化：命名卷由 Docker 管理（宿主机路径：/var/lib/docker/volumes/...）
+#   pgdata  数据库（备份见 deploy/backup.sh；不要手工删）
+#   uploads STORAGE_BACKEND=local 时的原图/变体（切换 S3/R2 后仅留历史数据）
+# ---------------------------------------------------------------------------
+volumes:
+  pgdata:
+    name: ${COMPOSE_PROJECT_NAME:-sakura-gallery}-pgdata
+  uploads:
+    name: ${COMPOSE_PROJECT_NAME:-sakura-gallery}-uploads
+
+networks:
+  sakura:
+    name: ${COMPOSE_PROJECT_NAME:-sakura-gallery}-net
+    driver: bridge

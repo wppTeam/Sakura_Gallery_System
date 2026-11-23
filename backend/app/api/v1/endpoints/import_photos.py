@@ -15,6 +15,7 @@ from app.services.import_service import scan_and_parse_json_files, import_servic
 from app.services.audit import log_audit
 from app.services.storage import ensure_upload_dirs
 from app.services.image_processing import process_uploaded_image
+from starlette.concurrency import run_in_threadpool
 from app.crud import photo as photo_crud
 from app.crud import tag as tag_crud
 from app.services.taxonomy import ensure_default_taxonomy, resolve_legacy_photo_classifications, set_photo_classifications
@@ -129,8 +130,8 @@ async def import_photos(
             shutil.copy2(image_path, original_dest)
             logger.info(f"复制图片: {image_path} -> {original_dest}")
             
-            # 处理图片 (生成缩略图, 提取 EXIF)
-            processing_result = process_uploaded_image(original_dest, photo_uuid)
+            # 处理图片 (生成缩略图/变体, 提取 EXIF)：CPU 密集，丢线程池避免堵事件循环
+            processing_result = await run_in_threadpool(process_uploaded_image, original_dest, photo_uuid)
             
             # 获取文件大小
             file_size = os.path.getsize(original_dest)

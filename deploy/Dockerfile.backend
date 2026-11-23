@@ -1,0 +1,216 @@
+# =============================================================================
+# 视觉百花 Sakura Gallery — 后端生产镜像（FastAPI + uvicorn）
+# -----------------------------------------------------------------------------
+# 构建上下文必须是 backend/（见 deploy/docker-compose.prod.yml）：
+#   docker build -f deploy/Dockerfile.backend -t sakura-gallery-backend:latest backend/
+# 镜像只装 requirements.txt（base + ai），不含 torch / Milvus / Celery：
+#   2c4g 单机跑不动向量库与 worker 集群，后台任务用进程内 BackgroundTasks + DB outbox。
+#
+# 基础镜像可用 --build-arg PYTHON_IMAGE=... 替换（国内服务器换镜像源，见
+# deploy/.env.prod.example 的 PYTHON_IMAGE / PIP_INDEX_URL 注释）。
+# 不用 `# syntax=` 指令：COPY heredoc 需要 BuildKit（Docker ≥ 23），
+# 省一次 docker/dockerfile frontend 镜像拉取，内网/离线环境更稳。
+# =============================================================================
+ARG PYTHON_IMAGE=python:3.12-slim
+FROM ${PYTHON_IMAGE}
+
+LABEL org.opencontainers.image.title="sakura-gallery-backend" \
+      org.opencontainers.image.description="视觉百花 Sakura Gallery 后端（FastAPI + uvicorn，2c4g 生产编排）" \
+      org.opencontainers.image.source="https://github.com/visual-buct/sakura-gallery" \
+      org.opencontainers.image.vendor="Sakura Gallery" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="1.0.0"
+
+# - PYTHONUNBUFFERED：日志立即落盘，docker logs 不延迟
+# - PYTHONDONTWRITEBYTECODE：去掉 __pycache__，镜像更小
+# - PIP_NO_CACHE_DIR：构建层不留 pip 缓存
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    TZ=Asia/Shanghai \
+    LANG=C.UTF-8
+
+# 不装 apt 包：python:3.12-slim 已内置 ca-certificates（HTTPS 出站必需）与 tzdata，
+# healthcheck / 迁移等待都用 python 标准库（urllib / psycopg2），不需要 curl。
+# 少一层 apt 还带来两个好处：构建在受限网络下不会被 deb.debian.org 卡住；镜像更小。
+RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo "Asia/Shanghai" > /etc/timezone
+
+WORKDIR /app
+
+# ---------------------------------------------------------------------------
+# 依赖层：先装依赖，再拷代码。只改业务代码时可复用这一层缓存（构建 <30s）。
+# ---------------------------------------------------------------------------
+ARG PIP_INDEX_URL=https://pypi.org/simple
+COPY requirements.txt requirements-base.txt requirements-ai.txt ./
+RUN pip install --upgrade pip \
+    && pip install --index-url "${PIP_INDEX_URL}" -r requirements.txt \
+    && find /usr/local -name '__pycache__' -type d -prune -exec rm -rf {} +
+
+# 依赖版本注意（已在 backend 侧修掉，这里只留说明）：
+# requirements-base.txt 已钉 `sqlalchemy[asyncio]>=2.0,<2.1`（2.0.x + greenlet），
+# alembic/env.py 也把同步 URL 显式写成 `postgresql+psycopg2://`。历史坑：
+# ① 只写 `sqlalchemy` 时会装到 2.1 且不带 greenlet → `import sqlalchemy.ext.asyncio` 失败；
+# ② 2.1 起 `postgresql://` 默认走 psycopg(v3)，本地只装 psycopg2-binary → 迁移报
+#    `ModuleNotFoundError: No module named 'psycopg'`。
+
+# ---------------------------------------------------------------------------
+# 业务代码：只拷运行必需的最小集合（构建上下文 = backend/）
+# 不在镜像里的：tests/、.venv/、uploads/、.env、seed/、scripts/、docs/
+# ---------------------------------------------------------------------------
+COPY alembic.ini ./
+COPY alembic ./alembic
+COPY app ./app
+
+# 非 root 运行：固定 uid/gid 10001，uploads 数据卷首次创建时 chown 用它
+RUN groupadd --gid 10001 sakura \
+    && useradd --uid 10001 --gid sakura --no-create-home --home-dir /app \
+         --shell /usr/sbin/nologin sakura \
+    && mkdir -p /app/uploads \
+    && chown -R sakura:sakura /app
+
+# ---------------------------------------------------------------------------
+# 启动入口：等 PG → alembic upgrade head → exec uvicorn。
+# ⚠️ 下面 heredoc 的内容与 deploy/entrypoint.sh 必须逐字节一致
+#    （后端构建上下文是 backend/，没有 deploy/ 目录可 COPY，只能内联）。
+#    修改时两处同步；校验：
+#      python3 - <<'PY'
+#      import re,pathlib
+#      d=pathlib.Path("deploy/Dockerfile.backend").read_text()
+#      h=re.search(r"COPY <<'ENTRYPOINT'.*?\n(.*?)\nENTRYPOINT\n",d,re.S).group(1)
+#      assert h==pathlib.Path("deploy/entrypoint.sh").read_text().rstrip("\n"), "不同步"
+#      PY
+# ---------------------------------------------------------------------------
+COPY <<'ENTRYPOINT' /usr/local/bin/entrypoint.sh
+#!/bin/sh
+# =============================================================================
+# 视觉百花 Sakura Gallery — 后端容器启动入口
+# -----------------------------------------------------------------------------
+# 镜像内路径：/usr/local/bin/entrypoint.sh
+# ⚠️ 本文件与 deploy/Dockerfile.backend 中的 COPY heredoc 内容必须完全一致
+#    （后端构建上下文是 backend/，无法 COPY 仓库里的 deploy/ 目录）。
+#    修改流程：先改本文件 → 同步粘贴到 Dockerfile heredoc → 重新构建。
+# 流程：① 环境自检（占位值 fail fast）→ ② 等 PostgreSQL 就绪
+#       → ③ alembic upgrade head（有限重试）→ ④ exec uvicorn（PID 1，信号直通）
+# =============================================================================
+set -eu
+
+log() { printf '[entrypoint] %s\n' "$*" >&2; }
+die() { log "错误：$*"; exit 1; }
+
+: "${DATABASE_URL:?DATABASE_URL 未设置（检查 deploy/.env.prod 是否随容器注入）}"
+DEBUG="${DEBUG:-false}"
+
+# ---------------------------------------------------------------------------
+# ① 环境自检：生产环境绝不带着占位值启动
+# ---------------------------------------------------------------------------
+case "${SECRET_KEY:-}" in
+  "")
+    die "SECRET_KEY 未设置；生成方式：python3 -c 'import secrets; print(secrets.token_urlsafe(64))'"
+    ;;
+  *CHANGE_ME* | *your-secret-key-here* | *changethis*)
+    die "SECRET_KEY 仍是模板占位值；生成方式：python3 -c 'import secrets; print(secrets.token_urlsafe(64))'"
+    ;;
+esac
+case "$DATABASE_URL" in
+  *CHANGE_ME*)
+    die "DATABASE_URL 仍含 CHANGE_ME；请在 deploy/.env.prod 填入真实数据库口令（特殊字符需 URL 编码）"
+    ;;
+esac
+if [ "$DEBUG" != "true" ] && [ "${#SECRET_KEY}" -lt 32 ]; then
+  die "生产环境（DEBUG=$DEBUG）SECRET_KEY 长度应 ≥ 32，当前只有 ${#SECRET_KEY} 字符"
+fi
+log "环境自检通过（DEBUG=$DEBUG）"
+
+# ---------------------------------------------------------------------------
+# ② 等待 PostgreSQL 就绪
+#    走 psycopg2（requirements-base.txt 已装），比只等 TCP 端口更可靠：
+#    容器端口先通、数据库仍在做 initdb/恢复时会把 alembic 弄失败。
+# ---------------------------------------------------------------------------
+case "$DATABASE_URL" in
+  postgresql://* | postgresql+asyncpg://* | postgresql+psycopg2://*)
+    log "等待 PostgreSQL 就绪 ..."
+    attempt=1
+    max_attempts="${DB_WAIT_ATTEMPTS:-60}"
+    wait_interval="${DB_WAIT_INTERVAL:-2}"
+    while :; do
+      if python - <<'PY'
+import os
+import sys
+
+import psycopg2
+
+url = os.environ["DATABASE_URL"]
+for prefix in ("postgresql+asyncpg://", "postgresql+psycopg2://"):
+    if url.startswith(prefix):
+        url = "postgresql://" + url[len(prefix):]
+        break
+try:
+    conn = psycopg2.connect(url, connect_timeout=3)
+    conn.close()
+except Exception as exc:  # noqa: BLE001 - 启动探活要吞掉所有驱动异常
+    print("[entrypoint] PostgreSQL 暂不可用: %s" % exc, file=sys.stderr)
+    sys.exit(1)
+PY
+      then
+        log "PostgreSQL 已就绪"
+        break
+      fi
+      if [ "$attempt" -ge "$max_attempts" ]; then
+        die "等待 PostgreSQL 超时（${max_attempts} 次 × ${wait_interval}s）；检查 postgres 容器状态与 DATABASE_URL 主机名/口令"
+      fi
+      attempt=$((attempt + 1))
+      sleep "$wait_interval"
+    done
+    ;;
+  *)
+    log "DATABASE_URL 非 PostgreSQL（可能是 SQLite 调试），跳过等待"
+    ;;
+esac
+
+# ---------------------------------------------------------------------------
+# ③ 数据库迁移：alembic upgrade head
+#    多副本同时启动时可能竞争，此方案为单机单副本部署；失败最多重试 3 次。
+# ---------------------------------------------------------------------------
+log "执行数据库迁移：alembic upgrade head"
+attempt=1
+max_migrate_attempts="${MIGRATE_ATTEMPTS:-3}"
+until alembic upgrade head; do
+  if [ "$attempt" -ge "$max_migrate_attempts" ]; then
+    die "数据库迁移失败（已尝试 ${attempt} 次）；查看上方 alembic 错误，或手动执行 docker compose -f deploy/docker-compose.prod.yml run --rm backend alembic current"
+  fi
+  log "迁移失败，第 ${attempt}/${max_migrate_attempts} 次重试，5s 后继续 ..."
+  attempt=$((attempt + 1))
+  sleep 5
+done
+log "数据库迁移完成（head）"
+
+# ---------------------------------------------------------------------------
+# ④ 启动 uvicorn（exec 让 uvicorn 成为 PID 1，docker stop 的 SIGTERM 可直达）
+#    - workers 2         ：2 vCPU 的小机器，多开会抢 GIL 且翻倍内存/DB 连接
+#    - proxy-headers     ：信任 nginx 传来的 X-Forwarded-Proto，否则 FastAPI 生成
+#                          的跳转/文档链接会是 http
+#    - limit-max-requests：定期回收 worker，规避潜在内存泄漏（配合无 --reload）
+# ---------------------------------------------------------------------------
+log "启动 uvicorn：workers=${UVICORN_WORKERS:-2} port=${PORT:-8000}"
+exec uvicorn app.main:app \
+  --host 0.0.0.0 \
+  --port "${PORT:-8000}" \
+  --workers "${UVICORN_WORKERS:-2}" \
+  --proxy-headers \
+  --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-*}" \
+  --limit-max-requests "${UVICORN_LIMIT_MAX_REQUESTS:-10000}"
+ENTRYPOINT
+
+RUN chmod 0755 /usr/local/bin/entrypoint.sh
+
+USER sakura
+
+EXPOSE 8000
+
+# 与 deploy/docker-compose.prod.yml 的 healthcheck 保持一致（compose 里会覆盖此值）
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+    CMD python -c "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"
+
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/entrypoint.sh"]

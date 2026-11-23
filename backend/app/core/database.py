@@ -15,10 +15,14 @@ engine_kwargs = {
 if settings.DATABASE_URL.startswith("sqlite"):
     engine_kwargs["connect_args"] = {"check_same_thread": False}
 elif settings.DATABASE_URL.startswith("postgresql"):
-    engine_kwargs["pool_size"] = 10
-    engine_kwargs["max_overflow"] = 20
+    # 连接池参数走配置（DB_POOL_*），2c4g 部署时默认值应调小：
+    # uvicorn --workers 2 且 pool_size=10 时，PG 侧最多 2*(10+20)=60 条连接。
+    engine_kwargs["pool_size"] = settings.DB_POOL_SIZE
+    engine_kwargs["max_overflow"] = settings.DB_POOL_MAX_OVERFLOW
     engine_kwargs["pool_pre_ping"] = True
-    engine_kwargs["pool_recycle"] = 1800
+    engine_kwargs["pool_recycle"] = settings.DB_POOL_RECYCLE
+    # 单条查询/事务的语句超时由 PG 侧兜底；这里只保证连接不会无限等待。
+    engine_kwargs["pool_timeout"] = 30
 
 # 创建异步数据库引擎
 engine = create_async_engine(settings.DATABASE_URL, **engine_kwargs)

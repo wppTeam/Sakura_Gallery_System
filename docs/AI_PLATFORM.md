@@ -248,4 +248,20 @@ curl -H "Authorization: Bearer $TOKEN" \
    后续在列表/详情序列化中补 `uploader:{username,display_name}`（注意 N+1，建议 join）。
 4. 向量检索默认关闭；作品量 >2 万条再评估 pgvector HNSW + embedding API
    （见 `docs/research/2026-11-23-agentic-image-search.md`）。
-5. 前端审核队列的批量通过、Agent 意见与人工终判分层仍在打磨（fe-pages 负责）。
+5. 前端审核队列的批量通过、Agent 意见与人工终判分层已交付（`frontend/src/views/admin/PhotoReview.vue`），
+   批量通过暂只对 L0 高置信度样本开放；更细的操作体验仍可继续打磨。
+
+## 10. 2c4g 性能与部署约束
+
+AI 链路不得破坏小机器假设（详细部署见 [`docs/DEPLOY_2C4G.md`](DEPLOY_2C4G.md)）：
+
+- **审核后台执行、不阻塞上传**：上传端点只做一次 `enqueue_moderation()`；AI 调用走异步 httpx，
+  规则层的 Pillow 解码 + dHash 用 `asyncio.to_thread` 丢线程池；客户端断开/渠道超时都只降级，不抛回上传。
+- **检索有延迟预算**：`AGENT_SEARCH_LATENCY_BUDGET_MS=3000`，评分/解释超预算就跳过 LLM 解释、
+  用确定性中文兜底；任何 AI 异常降级 `mode=fast` 纯 SQL 检索，绝不 500。
+- **渠道单点熔断**：`MODERATION_DAILY_CALL_BUDGET` / `AGENT_SEARCH_DAILY_CALL_BUDGET`
+  按 operation 前缀做日调用闸门（0 = 不限），渠道抖动时先保上传与浏览可用。
+- **没有额外常驻服务**：不引入 Redis/Celery/Milvus/torch 作为必装依赖；
+  审核 worker 与 uvicorn 同进程（可换独立 worker），检索只依赖 PG `pg_trgm` + `tsvector`。
+- **成本可见**：每次调用写 `ai_usage_events`，管理端 `GET /api/v1/admin/moderation/stats`
+  可看各 tier 数量、平均延迟、tokens 与 USD 成本。
