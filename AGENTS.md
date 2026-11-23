@@ -97,6 +97,19 @@ template_meta work_id, file_key, format, slides, ratio, fonts[],
 - **AIGC 标识是法定要求**（《人工智能生成合成内容标识办法》，2025-09-01 施行）：
   ① 上传强制声明 ② 展示显式角标 + 详情说明 ③ **下载文件写入隐式标识（XMP/EXIF）**
   ④ 图生图换脸类额外限制。四件都要做，不是加个 tag。
+  **现状（四件已落地）**：
+  ① `POST /photos/upload` 的 `aigc_declared` 为必填 Form，缺失 400；声明 true 时记录
+    `aigc_meta`（model/provider/prompt/prompt_public/source_work_id/face_swap/consent_confirmed/declared_at）。
+  ② `photos.is_aigc` / `aigc_label`（"AI 生成"）/ `aigc_meta` / `label_written` 四列（迁移
+    `b1c2d3e4f5a6_add_aigc_labeling.py`）；公开响应出 `is_aigc`/`kind`/`aigc_label`/`aigc_meta`
+    （prompt 仅在 `prompt_public=true` 时出），前端投稿/详情/卡片/审核页接线。
+  ③ `GET /photos/{id}/download` 对 `is_aigc` 作品在**返回字节**里写 XMP 隐式标识
+    （`backend/app/services/aigc_labeling.py`：JPEG APP1 / PNG iTXt，按文件头嗅探真实格式，
+    不修改库内原图），响应头 `X-AIGC-Label: AIGC`、`X-AIGC-Implicit-Label: xmp`，并回写
+    `label_written=true`；WebP/GIF 暂不支持写入，降级为 `unsupported-format`。
+  ④ 图生图（`aigc_source_work_id`）与换脸（`aigc_face_swap`）未传 `consent_confirmed=true` 时上传 400；
+    审核策略 `_apply_aigc_declaration_policy` 把声明 AIGC 的作品 tier 抬到 ≥L1，图生图/换脸强制 L2，
+    且 AIGC 作品不参与自动放行（`_can_auto_approve` 要求 `not photo.is_aigc`）。
 - **个人信息白名单**（已在 `backend/app/api/v1/endpoints/photos.py` 落地）：公开响应**不得**包含
   `uploader_student_id`、真实姓名、完整 `exif_data`。学号永不公开，公开身份用 `username` / `display_name`
   （`users.username` 唯一、`users.display_name`，见 `f0a1b2c3d4e5` 迁移）。

@@ -2,12 +2,14 @@
 Photo API endpoints.
 """
 import json
+import logging
 import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -57,6 +59,16 @@ from app.services.audit import log_audit
 from app.services.notification import notify_user as send_notification
 
 settings = get_settings()
+
+# 《人工智能生成合成内容标识办法》要求：AIGC 投稿必须显式声明并展示角标；
+# 图生图/换脸类还需额外确认被摄者同意，且一律进 L2 前审。
+AIGC_LABEL_TEXT = "AI 生成"
+_AIGC_FACE_SWAP_KEYWORDS = (
+    "换脸", "换头", "face swap", "faceswap", "deepfake", "人脸替换",
+    "明星脸", "写真生成", "证件照生成", "脱衣", "nudify",
+)
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
@@ -187,6 +199,21 @@ def _internal_exif(photo: Photo, key: str) -> Optional[str]:
     return value if isinstance(value, str) and value else None
 
 
+def _public_aigc_meta(photo: Photo) -> Optional[Dict[str, Any]]:
+    """AIGC 生成信息对外子集：prompt 仅在作者勾选「公开提示词」时返回。"""
+    meta = photo.aigc_meta if isinstance(photo.aigc_meta, dict) else None
+    if not meta:
+        return None
+    safe: Dict[str, Any] = {}
+    for key in ("model", "provider", "source_work_id", "face_swap", "declared_at"):
+        value = meta.get(key)
+        if value not in (None, "", [], {}):
+            safe[key] = value
+    if meta.get("prompt_public") and meta.get("prompt"):
+        safe["prompt"] = meta["prompt"]
+    return safe or None
+
+
 def _photo_common_dict(photo: Photo) -> dict:
     """显式字段白名单（禁止 {**photo.__dict__}，避免泄漏内部/个人信息）。"""
     return {
@@ -216,6 +243,12 @@ def _photo_common_dict(photo: Photo) -> dict:
         "lqip": _internal_exif(photo, "_lqip"),
         "lqip_color": _internal_exif(photo, "_lqip_color"),
         "blurhash": _internal_exif(photo, "_blurhash"),
+        # AIGC 法定标识：显式角标所需字段（隐式 XMP 标识在 /download 写入）
+        "is_aigc": bool(photo.is_aigc),
+        "kind": "aigc" if photo.is_aigc else "photo",
+        "aigc_label": photo.aigc_label,
+        "aigc_meta": photo.aigc_meta if isinstance(photo.aigc_meta, dict) else None,
+        "label_written": bool(photo.label_written),
     }
 
 
@@ -228,6 +261,8 @@ async def serialize_photo(db: AsyncSession, photo: Photo) -> PhotoResponse:
     photo_dict["tags"] = free_tags
     photo_dict["free_tags"] = free_tags
     photo_dict["classifications"] = serialize_classifications(photo)
+    photo_dict["aigc_meta"] = _public_aigc_meta(photo)
+    photo_dict["label_written"] = None
     photo_dict["uploader_name"] = None
     photo_dict["uploader_student_id"] = None
     return PhotoResponse(**photo_dict)
@@ -448,6 +483,66 @@ async def get_photo_compressed(
     return get_storage().build_media_response(path)
 
 
+async def _aigc_download_response(db: AsyncSession, photo: Photo) -> Response:
+    """AIGC 作品下载：把隐式标识（XMP）写进返回的文件字节。
+
+    不改库内原图（原图只读），下载的每个副本都带标识；WebP/GIF 等暂不支持
+    写入的格式降级为原字节 + ``X-AIGC-Implicit-Label: unsupported-format``，
+    由文档标注为已知限制。
+    """
+    from urllib.parse import quote
+
+    from app.services.aigc_labeling import build_xmp_packet, detect_image_mime, embed_aigc_label
+
+    # 显式查一次公开身份，避免在 async 上下文里访问 photo.uploader lazy relationship。
+    creator_row = (
+        await db.execute(
+            select(User.display_name, User.username).where(User.id == photo.uploader_id)
+        )
+    ).first()
+    creator = None
+    if creator_row is not None:
+        creator = creator_row.display_name or creator_row.username
+    packet = build_xmp_packet(photo, creator=creator).encode("utf-8")
+    filename = photo.filename or f"{photo.id}"
+    stem = Path(filename).stem or photo.id
+    suffix = Path(filename).suffix or ".jpg"
+    ascii_name = f"{photo.id}{suffix}"
+    disposition = (
+        f'attachment; filename="{ascii_name}"; '
+        f"filename*=UTF-8''{quote(filename)}"
+    )
+    headers: Dict[str, str] = {
+        "Content-Disposition": disposition,
+        "Cache-Control": "private, max-age=0, must-revalidate",
+        "X-AIGC-Label": "AIGC",
+        "X-AIGC-Work-Id": str(photo.id),
+    }
+    labeled: Optional[bytes] = None
+    actual_mime = photo.mime_type
+    with get_storage().local_copy(photo.original_path) as local_path:
+        data = Path(local_path).read_bytes()
+        actual_mime = detect_image_mime(data) or photo.mime_type
+        labeled = embed_aigc_label(data, actual_mime, packet)
+        if labeled is None:
+            labeled = data
+            headers["X-AIGC-Implicit-Label"] = "unsupported-format"
+        else:
+            headers["X-AIGC-Implicit-Label"] = "xmp"
+            if not photo.label_written:
+                photo.label_written = True
+                try:
+                    await db.commit()
+                except Exception:  # 记账失败不影响下载本身
+                    await db.rollback()
+                    logger.warning("AIGC label_written 落库失败 photo=%s", photo.id)
+    return Response(
+        content=labeled,
+        media_type=actual_mime or "application/octet-stream",
+        headers=headers,
+    )
+
+
 @router.get("/{photo_id}/download")
 async def download_photo(
     photo_id: str,
@@ -459,6 +554,8 @@ async def download_photo(
     if photo is None:
         raise HTTPException(status_code=404, detail="Photo not found")
     await _assert_photo_access(db, photo, current_user, portrait_visibility)
+    if photo.is_aigc:
+        return await _aigc_download_response(db, photo)
     return get_storage().build_media_response(photo.original_path, download_name=photo.filename)
 
 
@@ -474,6 +571,17 @@ async def upload_photo(
     campus: Optional[str] = Form(None),
     classifications: Optional[str] = Form(None),
     enable_ai: bool = Form(True),
+    # —— AIGC 法定标识：必须显式声明（不传即拒绝）——
+    aigc_declared: Optional[bool] = Form(
+        None, description="是否包含 AI 生成合成内容（必填：true/false）"
+    ),
+    aigc_model: Optional[str] = Form(None, max_length=100),
+    aigc_provider: Optional[str] = Form(None, max_length=100),
+    aigc_prompt: Optional[str] = Form(None, max_length=2000),
+    aigc_prompt_public: bool = Form(False),
+    aigc_source_work_id: Optional[str] = Form(None, max_length=36),
+    aigc_face_swap: bool = Form(False),
+    consent_confirmed: bool = Form(False, description="图生图/换脸类：已获得被摄者同意"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -487,6 +595,45 @@ async def upload_photo(
         "纪实", "纪实类", "活动", "人文纪实", "自然生态", "人像",
     ]:
         raise HTTPException(status_code=400, detail="Category must be a known legacy category")
+
+    # AIGC 声明强制校验（法规四件套之一：上传时强制声明）
+    if aigc_declared is None:
+        raise HTTPException(
+            status_code=400,
+            detail="投稿必须声明是否包含 AI 生成合成内容：请传 aigc_declared=true 或 false",
+        )
+    aigc_meta: Optional[dict] = None
+    if aigc_declared:
+        prompt_text = (aigc_prompt or "").lower()
+        face_swap = bool(aigc_face_swap) or any(
+            keyword in prompt_text for keyword in _AIGC_FACE_SWAP_KEYWORDS
+        )
+        img2img = bool(aigc_source_work_id)
+        # 图生图 / 换脸类额外限制：必须确认已获得被摄者同意，且强制进 L2 前审
+        if (face_swap or img2img) and not consent_confirmed:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "图生图 / 换脸类 AIGC 内容必须确认已获得被摄者书面同意"
+                    "（consent_confirmed=true），并会在人工前审后发布"
+                ),
+            )
+        aigc_meta = {
+            "model": (aigc_model or "").strip() or None,
+            "provider": (aigc_provider or "").strip() or None,
+            "prompt": (aigc_prompt or "").strip() or None,
+            "prompt_public": bool(aigc_prompt_public),
+            "source_work_id": aigc_source_work_id or None,
+            "face_swap": face_swap,
+            "consent_confirmed": bool(consent_confirmed),
+            "declared_at": datetime.utcnow().isoformat(timespec="seconds"),
+        }
+    else:
+        if any([aigc_model, aigc_provider, aigc_prompt, aigc_source_work_id, aigc_face_swap, consent_confirmed]):
+            raise HTTPException(
+                status_code=400,
+                detail="声明为非 AIGC 时不能提交 AI 生成信息（model/provider/prompt 等）",
+            )
 
     parsed_classifications: dict[str, int | list[int]] = {}
     if classifications:
@@ -537,7 +684,7 @@ async def upload_photo(
                 "width": processing_result.get("width"),
                 "height": processing_result.get("height"),
                 "file_size": stored_media.file_size,
-                "mime_type": file.content_type,
+                "mime_type": processing_result.get("mime_type") or file.content_type,
                 "exif_data": processing_result.get("exif_data", {}),
                 "captured_at": processing_result.get("captured_at"),
                 "description": description,
@@ -546,6 +693,10 @@ async def upload_photo(
                 "campus": campus,
                 "status": "pending",
                 "processing_status": processing_status,
+                "is_aigc": bool(aigc_declared),
+                "aigc_label": AIGC_LABEL_TEXT if aigc_declared else None,
+                "aigc_meta": aigc_meta,
+                "label_written": False,
             },
             str(current_user.id),
         )
@@ -591,6 +742,8 @@ async def upload_photo(
             width=photo.width,
             height=photo.height,
             status=photo.status,
+            is_aigc=bool(photo.is_aigc),
+            aigc_label=photo.aigc_label,
             message="Photo uploaded successfully",
         )
     except HTTPException:

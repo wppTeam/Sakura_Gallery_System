@@ -241,8 +241,11 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ## 9. 已知限制与后续
 
-1. **AIGC 法定标识**：本轮只做「疑似 AIGC」证据留存与审核提示；强制声明字段、
-   显式角标、下载文件隐式 XMP 标识仍未落库（ROADMAP M2）。
+1. **AIGC 法定标识（已落地，M2 完成）**：上传 `aigc_declared` 必填（缺失 400）、
+   `photos.is_aigc/aigc_label/aigc_meta/label_written` 四列（迁移 `b1c2d3e4f5a6`）、
+   公开响应出 `is_aigc/kind/aigc_label/aigc_meta`、下载副本写 XMP 隐式标识并回写 `label_written`。
+   已知边界：WebP/GIF 暂不支持写入（降级 `X-AIGC-Implicit-Label: unsupported-format`）；
+   客户端声明的 MIME 与真实字节不一致时按文件头嗅探（PNG 上传标 .jpg 也能正确写 iTXt）。
 2. 规则层目前不自动通知上传者「GPS 已剥离/请移除 EXIF」，只在审核结果里提示。
 3. 公开照片响应暂无 `uploader` 对象（详情页作者用 `author` 字段）；公开身份列已就绪，
    后续在列表/详情序列化中补 `uploader:{username,display_name}`（注意 N+1，建议 join）。
@@ -265,3 +268,30 @@ AI 链路不得破坏小机器假设（详细部署见 [`docs/DEPLOY_2C4G.md`](D
   审核 worker 与 uvicorn 同进程（可换独立 worker），检索只依赖 PG `pg_trgm` + `tsvector`。
 - **成本可见**：每次调用写 `ai_usage_events`，管理端 `GET /api/v1/admin/moderation/stats`
   可看各 tier 数量、平均延迟、tokens 与 USD 成本。
+
+## 11. AIGC 法定标识链路（M2）
+
+法规：《人工智能生成合成内容标识办法》（2025-09-01 施行）。四件套对应实现：
+
+| 义务 | 实现位置 | 关键行为 |
+|------|----------|----------|
+| ① 上传强制声明 | `backend/app/api/v1/endpoints/photos.py` upload 端点 | `aigc_declared` 必填 Form（缺失 400）；true 时记录 `aigc_meta`；false 却传 AI 字段 → 400 |
+| ② 显式角标 + 详情说明 | `photo` 四列 + `_public_aigc_meta()` + 前端 `components/detail/*`、`PhotoCard.vue` | 公开响应 `is_aigc/kind/aigc_label/aigc_meta`；`prompt` 仅 `prompt_public=true` 时公开 |
+| ③ 下载文件隐式标识 | `backend/app/services/aigc_labeling.py` + `_aigc_download_response()` | JPEG APP1 XMP / PNG iTXt，按文件头嗅探格式；不改库内原图；头 `X-AIGC-Label`/`X-AIGC-Implicit-Label` |
+| ④ 图生图/换脸限制 | upload 校验 + `moderation._apply_aigc_declaration_policy()` | 无 `consent_confirmed=true` → 400；声明 AIGC 抬到 ≥L1，img2img/换脸 → L2；AIGC 不自动放行 |
+
+XMP 字段（自定义命名空间 `https://sakura.buct.edu.cn/ns/aigc/1.0/`）：
+`xmp:Label`=「AI 生成」、`xmpMM:DocumentID=sakura:work:{id}`、`dc:creator`（display_name/username/author）、
+`sakura:IsAIGC/WorkID/LabeledAt/Model/Provider/Prompt(可选)/SourceWorkID(可选)/FaceSwap(可选)`。
+
+真实链路实测（2026-11-23，本机 8001 + 百炼 qwen-image-3.0-pro 生成样张）：
+
+- 生成 → 声明上传（`aigc_declared=true`、model/provider/prompt_public=true）→ 201，`is_aigc=true`、`aigc_label=AI 生成`；
+- 审核：规则 + 快筛 qwen3-vl-plus 3.33s / $0.000366，`rules.aigc_declaration` 证据完整，tier=L1；
+- 人工 approve 后公开详情返回 `is_aigc/kind/aigc_label/aigc_meta`，私有 prompt 不外泄；
+- 下载：`Content-Type: image/png`（按嗅探纠正）、`X-AIGC-Implicit-Label: xmp`、
+  `Content-Disposition: attachment`，字节内含完整 XMP，`label_written=true` 已回写。
+- 单元/集成测试：`backend/tests/test_aigc_labeling.py` 16 passed；全量 `pytest -q` 120 passed。
+
+已知限制：WebP/GIF 暂不支持隐式写入（下载时头标 `unsupported-format`，文件原样）；
+XMP 写入在下载时进行（同一作品重复下载会重新写），未缓存带标识的副本（后续可加派生文件缓存）。

@@ -209,6 +209,18 @@ def _merge_tier_from_prefilter(prefilter: dict[str, Any]) -> str:
     return VALID_TIERS[rank]
 
 
+def _apply_aigc_declaration_policy(photo: Photo, tier: str) -> str:
+    """AIGC 法定标识兜底：声明的 AIGC 至少 L1（人工确认角标与生成信息），
+    图生图 / 换脸类一律 L2 前审（即使模型误判 L0）。"""
+    if not bool(getattr(photo, "is_aigc", False)):
+        return tier
+    rank = max(TIER_RANK[tier], TIER_RANK["L1"])
+    meta = photo.aigc_meta if isinstance(photo.aigc_meta, dict) else {}
+    if meta.get("face_swap") or meta.get("source_work_id"):
+        rank = max(rank, TIER_RANK["L2"])
+    return VALID_TIERS[rank]
+
+
 def _should_escalate(prefilter: dict[str, Any], tier: str) -> bool:
     """只把难例送复核，控制成本。"""
     if tier == "L2":
@@ -376,6 +388,18 @@ async def moderate_photo(
     try:
         rule_result = await moderation_rules.run_rules(db, photo)
         review.rules = rule_result.to_dict()
+        if bool(getattr(photo, "is_aigc", False)):
+            meta = photo.aigc_meta if isinstance(photo.aigc_meta, dict) else {}
+            review.rules["aigc_declaration"] = {
+                "declared": True,
+                "label": photo.aigc_label,
+                "model": meta.get("model"),
+                "provider": meta.get("provider"),
+                "source_work_id": meta.get("source_work_id"),
+                "face_swap": bool(meta.get("face_swap")),
+                "consent_confirmed": bool(meta.get("consent_confirmed")),
+                "prompt_public": bool(meta.get("prompt_public")),
+            }
 
         # 第一层直接硬拦：不花模型钱
         if rule_result.blocked:
@@ -393,6 +417,7 @@ async def moderate_photo(
         review.prefilter = prefilter
         usage.add(prefilter_result)
         tier = _merge_tier_from_prefilter(prefilter)
+        tier = _apply_aigc_declaration_policy(photo, tier)
         review.suggested_tier = tier
 
         # 第三层：只处理难例
@@ -410,7 +435,7 @@ async def moderate_photo(
         review.status = "completed"
         usage.apply(review)
 
-        if _can_auto_approve(
+        if not bool(getattr(photo, "is_aigc", False)) and _can_auto_approve(
             rule_result=rule_result,
             prefilter=prefilter,
             escalated=escalated,

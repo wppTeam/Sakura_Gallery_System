@@ -64,6 +64,12 @@ class PhotoResponse(PhotoInDB):
     """Photo response schema"""
     uploader_name: Optional[str] = None
     uploader_student_id: Optional[str] = None
+    # AIGC 法定标识（显式角标 + 详情说明；下载副本另写隐式 XMP）
+    is_aigc: bool = False
+    kind: Optional[str] = Field(None, description="photo | aigc（由 is_aigc 派生，前端角标用）")
+    aigc_label: Optional[str] = None
+    aigc_meta: Optional[Dict[str, Any]] = None
+    label_written: Optional[bool] = None
     # 展示用占位图：20px WebP data-URI（首屏消除加载跳动），blurhash 预留
     lqip: Optional[str] = None
     lqip_color: Optional[str] = None
@@ -110,6 +116,8 @@ class PhotoUploadResponse(BaseModel):
     width: Optional[int] = None
     height: Optional[int] = None
     status: str
+    is_aigc: bool = False
+    aigc_label: Optional[str] = None
     message: str = "Photo uploaded successfully"
     
     model_config = ConfigDict(from_attributes=True)

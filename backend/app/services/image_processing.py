@@ -445,6 +445,23 @@ def extract_date_taken(exif_data: Dict[str, Any]) -> Optional[datetime]:
     return None
 
 
+_IMAGE_FORMAT_MIME = {
+    "JPEG": "image/jpeg",
+    "PNG": "image/png",
+    "WEBP": "image/webp",
+    "GIF": "image/gif",
+}
+
+
+def _detect_image_mime(path: str) -> Optional[str]:
+    """按 Pillow 解析出的真实格式返回 MIME（客户端 Content-Type 不可信）。"""
+    try:
+        with Image.open(path) as image:
+            return _IMAGE_FORMAT_MIME.get((image.format or "").upper())
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def process_uploaded_image(
     original_path: str,
     photo_uuid: str,
@@ -484,9 +501,13 @@ def process_uploaded_image(
         "lqip": None,
         "lqip_color": None,
         "variants": {},
+        "mime_type": None,
     }
 
     try:
+        # 0. 真实格式（客户端声明的 Content-Type 可能是错的，如 PNG 命名为 .jpg）
+        results["mime_type"] = _detect_image_mime(original_path)
+
         # 1. 显示尺寸（按 Orientation 校正，不裁切）
         width, height = _display_size(original_path)
         results["width"] = width

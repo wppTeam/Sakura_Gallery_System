@@ -3,7 +3,7 @@
 """
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, DateTime, JSON, Text, ForeignKey
+from sqlalchemy import Boolean, Column, String, Integer, DateTime, JSON, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -37,6 +37,17 @@ class Photo(Base):
     captured_at = Column(DateTime)  # 拍摄时间
     published_at = Column(DateTime)  # 上线时间
     views = Column(Integer, default=0)  # 浏览量
+
+    # AIGC 法定标识（《人工智能生成合成内容标识办法》2025-09-01 施行）
+    # is_aigc: 是否 AI 生成合成内容（用户声明或审核确认）
+    # aigc_label: 显式标识文案（详情页/角标展示），如「AI 生成」
+    # aigc_meta: 生成信息 {model, provider, prompt, prompt_public, source_work_id,
+    #            face_swap, consent_confirmed, declared_at}
+    # label_written: 下载副本是否已写入隐式标识（XMP/EXIF），写入后置 True
+    is_aigc = Column(Boolean, nullable=False, default=False, server_default="false")
+    aigc_label = Column(String(32), nullable=True)
+    aigc_meta = Column(JSON, nullable=True)
+    label_written = Column(Boolean, nullable=False, default=False, server_default="false")
 
     # 关系
     uploader = relationship("User", back_populates="photos")
