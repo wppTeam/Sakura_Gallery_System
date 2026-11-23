@@ -11,6 +11,17 @@ export interface TaxonomyValue {
   path: string[]
 }
 
+/** 单个响应式变体（后端 generate_variants 产出：WebP 主用 + JPEG 兜底） */
+export interface PhotoVariantSource {
+  webp?: string | null
+  jpeg?: string | null
+  width?: number | null
+  height?: number | null
+}
+
+/** 响应式变体字典，键为长边档位（"320"/"640"/"1080"/"1600"/"2400"）；老图为 null */
+export type PhotoVariants = Record<string, PhotoVariantSource>
+
 export interface Photo {
   id: string
   uploader_id: string
@@ -50,6 +61,8 @@ export interface Photo {
   aigc_meta?: Record<string, unknown> | null
   /** 隐式标识（XMP/EXIF）是否已写入下载文件 */
   label_written?: boolean | null
+  /** 响应式变体；缺失/老图为 null，前端回退单图 */
+  variants?: PhotoVariants | null
   /** 首页占位（后端 LQIP） */
   lqip?: string | null
   lqip_color?: string | null

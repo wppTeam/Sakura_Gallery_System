@@ -132,10 +132,8 @@ const sources = computed<LightboxSource[]>(() => {
     seen.add(url)
     list.push({ label, url })
   }
+  // 大图预览仍以原图为主：变体现在只用于页面内响应式加载，不在这里列出低清档位
   push('原始尺寸', props.detail.originalUrl)
-  for (const variant of props.detail.variants) {
-    push(variant.label, variant.url)
-  }
   push('适配屏幕', props.detail.displayUrl)
   return list
 })

@@ -25,7 +25,10 @@ export interface WorkExifRow {
 
 export interface WorkVariant {
   label: string
+  /** JPEG 兜底地址（也是 <img> 的 srcset 来源） */
   url: string
+  /** WebP 地址（<source type="image/webp"> 优先） */
+  webpUrl?: string
   width: number
   height: number
 }
@@ -254,10 +257,10 @@ function normalizeVariants(photo: RawPhoto, id: string): WorkVariant[] {
   const variants: WorkVariant[] = []
   const seen = new Set<string>()
 
-  const pushVariant = (label: string, url: string, width = 0, height = 0) => {
+  const pushVariant = (label: string, url: string, width = 0, height = 0, webpUrl = '') => {
     if (!url || seen.has(url)) return
     seen.add(url)
-    variants.push({ label, url, width, height })
+    variants.push({ label, url, width, height, ...(webpUrl ? { webpUrl } : {}) })
   }
 
   if (Array.isArray(rawVariants)) {
@@ -275,10 +278,19 @@ function normalizeVariants(photo: RawPhoto, id: string): WorkVariant[] {
     }
   } else if (isRecord(rawVariants)) {
     for (const [key, entry] of Object.entries(rawVariants)) {
-      const url = normalizeImageUrl(isRecord(entry) ? firstString(entry.url, entry.path) : entry)
-      const width = isRecord(entry) ? firstNumber(entry.width) ?? 0 : 0
-      const label = /^\d+$/.test(key) ? `${key}px` : key
-      pushVariant(label, url, width, heightOfVariant(width, id, photo))
+      if (isRecord(entry)) {
+        // 新格式：{"640": {webp, jpeg, width, height}}（后端 generate_variants 产出）
+        const webpUrl = normalizeImageUrl(firstString(entry.webp, entry.webp_url))
+        const jpegUrl = normalizeImageUrl(firstString(entry.jpeg, entry.jpeg_url, entry.url, entry.path))
+        const url = jpegUrl || webpUrl
+        const numericKey = /^\d+$/.test(key) ? Number(key) : 0
+        const width = firstNumber(entry.width) ?? numericKey
+        const height = firstNumber(entry.height) ?? heightOfVariant(width, id, photo)
+        const label = /^\d+$/.test(key) ? `${key}px` : key || (width ? `${width}px` : '变体')
+        pushVariant(label, url, width, height, webpUrl)
+      } else {
+        pushVariant('变体', normalizeImageUrl(entry))
+      }
     }
   }
 
@@ -350,7 +362,6 @@ export function normalizeWorkDetail(raw: RawPhoto): WorkDetail {
   const variants = normalizeVariants(raw, id)
   const displayVariant = pickDisplayVariant(variants)
   const displayUrl = displayVariant?.url || getPhotoUrl(id, 'compressed')
-  const originalVariant = variants[0]
 
   const title = displayPhotoTitle(raw) || '未命名作品'
   const rawAuthor = displayPhotoAuthor(raw)
@@ -381,7 +392,7 @@ export function normalizeWorkDetail(raw: RawPhoto): WorkDetail {
 
     thumbUrl: getPhotoUrl(id, 'thumbnail'),
     displayUrl,
-    originalUrl: originalVariant?.url || getPhotoUrl(id, 'original'),
+    originalUrl: getPhotoUrl(id, 'original'),
     downloadUrl: getPhotoDownloadUrl(id),
     variants,
 

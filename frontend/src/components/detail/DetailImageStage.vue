@@ -9,15 +9,28 @@
     />
 
     <div v-if="!failed" class="stage-frame">
-      <img
-        :src="src"
-        :alt="detail.title"
-        class="stage-img"
-        :class="{ 'is-loaded': loaded }"
-        decoding="async"
-        @load="handleLoad"
-        @error="handleError"
-      />
+      <!-- 响应式大图：WebP 优先 + JPEG srcset，浏览器按容器宽度选档；无变体时退回单图 -->
+      <picture class="stage-picture">
+        <source
+          v-if="responsive && webpSrcset"
+          type="image/webp"
+          :srcset="webpSrcset"
+          :sizes="SRC_SIZES"
+        />
+        <img
+          :src="src"
+          :srcset="responsive ? jpegSrcset || undefined : undefined"
+          :sizes="responsive && jpegSrcset ? SRC_SIZES : undefined"
+          :alt="detail.title"
+          :width="detail.width || undefined"
+          :height="detail.height || undefined"
+          class="stage-img"
+          :class="{ 'is-loaded': loaded }"
+          decoding="async"
+          @load="handleLoad"
+          @error="handleError"
+        />
+      </picture>
       <div v-if="!loaded" class="stage-loading" aria-hidden="true">
         <div class="stage-loading-bar" />
       </div>
@@ -77,6 +90,26 @@ const src = computed(() => {
 })
 
 const kindLabel = computed(() => props.kindLabel || '摄影作品')
+
+/** 与 .detail-grid 两栏宽度匹配：窄屏满宽，桌面约 62vw（1320 容器下 ≈ 892px） */
+const SRC_SIZES = '(max-width: 960px) 100vw, 62vw'
+
+/** 回退到原图（attempt>0）时不再使用 srcset，避免浏览器继续命中失败档位 */
+const responsive = computed(() => attempt.value === 0)
+
+const webpSrcset = computed(() =>
+  props.detail.variants
+    .filter((variant) => variant.webpUrl && variant.width > 0)
+    .map((variant) => `${variant.webpUrl} ${variant.width}w`)
+    .join(', '),
+)
+
+const jpegSrcset = computed(() =>
+  props.detail.variants
+    .filter((variant) => variant.url && variant.width > 0)
+    .map((variant) => `${variant.url} ${variant.width}w`)
+    .join(', '),
+)
 
 const stageStyle = computed(() => ({
   aspectRatio: props.detail.aspectRatio || '4 / 3',
@@ -143,6 +176,11 @@ watch(
   opacity: 0.55;
   transform: scale(1.04);
   z-index: 0;
+}
+
+.stage-picture {
+  /* 让 img 仍按 .stage-frame 的 flex 居中规则布局 */
+  display: contents;
 }
 
 .stage-frame {

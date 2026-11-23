@@ -12,18 +12,29 @@
           :to="`/photo/${photo.id}`"
           :aria-label="`查看作品：${photo.title}`"
         >
-          <img
-            class="thumb-img"
-            :src="photo.thumbUrl"
-            :alt="photo.title"
-            :width="photo.width || undefined"
-            :height="photo.height || undefined"
-            :loading="eager ? 'eager' : 'lazy'"
-            :fetchpriority="eager ? 'high' : 'auto'"
-            decoding="async"
-            @load="loaded = true"
-            @error="broken = true"
-          />
+          <picture class="thumb-picture">
+            <!-- 响应式图：WebP 优先，JPEG 兜底；无变体时退回 thumbUrl 单图 -->
+            <source
+              v-if="webpSrcset"
+              type="image/webp"
+              :srcset="webpSrcset"
+              :sizes="SRC_SIZES"
+            />
+            <img
+              class="thumb-img"
+              :src="photo.thumbUrl"
+              :srcset="jpegSrcset || undefined"
+              :sizes="jpegSrcset ? SRC_SIZES : undefined"
+              :alt="photo.title"
+              :width="photo.width || undefined"
+              :height="photo.height || undefined"
+              :loading="eager ? 'eager' : 'lazy'"
+              :fetchpriority="eager ? 'high' : 'auto'"
+              decoding="async"
+              @load="loaded = true"
+              @error="broken = true"
+            />
+          </picture>
         </RouterLink>
         <div v-else class="thumb-fallback">
           <svg width="34" height="34" viewBox="0 0 64 64" fill="none" aria-hidden="true">
@@ -80,7 +91,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { PublicPhoto } from '../../api/public'
+import { buildSrcset, type PublicPhoto } from '../../api/public'
 import { seasonKicker } from '../../constants/public'
 
 const props = withDefaults(
@@ -101,6 +112,14 @@ const props = withDefaults(
 
 const loaded = ref(false)
 const broken = ref(false)
+
+/**
+ * 瀑布流列宽近似值：Explore 最多 5 列 / 首页 3 列。
+ * 用 vw 描述符让浏览器按实际容器宽度选档，避免一次下载 2400 大图。
+ */
+const SRC_SIZES = '(max-width: 640px) 50vw, (max-width: 960px) 46vw, (max-width: 1280px) 33vw, 24vw'
+const webpSrcset = computed(() => buildSrcset(props.photo.variants, 'webp'))
+const jpegSrcset = computed(() => buildSrcset(props.photo.variants, 'jpeg'))
 
 const thumbStyle = computed(() => {
   const style: Record<string, string> = { aspectRatio: String(props.photo.aspectRatio) }
@@ -168,6 +187,12 @@ const authorInitial = computed(() => (props.photo.author || '匿').slice(0, 1))
 .card-act:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95), 0 0 0 5px var(--sakura-deep);
+}
+
+.thumb-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .thumb-img {

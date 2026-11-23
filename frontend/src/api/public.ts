@@ -8,11 +8,23 @@
  */
 import request from './index'
 import type { Photo, PhotoListResponse, TaxonomyValue } from '../types/photo'
-import { getPhotoDownloadUrl, getPhotoUrl } from '../utils/format'
+import { getImageUrl, getPhotoDownloadUrl, getPhotoUrl } from '../utils/format'
 import { displayPhotoAuthor, displayPhotoTitle } from '../utils/photoDisplay'
 
 /** 作品类型：后端 works 模型落地前只有 photo，AIGC 角标位预留 */
 export type WorkKind = 'photo' | 'aigc' | 'template'
+
+/** 单个响应式变体：WebP 主用 + JPEG 兜底，width 用作 srcset 描述符 */
+export interface PublicVariant {
+  /** 长边档位（320 / 640 / 1080 / 1600 / 2400） */
+  size: number
+  /** WebP URL；后端未生成时为 null */
+  webpUrl: string | null
+  /** JPEG 兜底 URL（srcset 的兼容来源） */
+  jpegUrl: string | null
+  width: number
+  height: number
+}
 
 /** 卡片 / 瀑布流使用的归一化作品 */
 export interface PublicPhoto {
@@ -23,8 +35,10 @@ export interface PublicPhoto {
   width: number
   height: number
   aspectRatio: number
-  /** 缩略图（列表用） */
+  /** 缩略图（列表用，单图回退） */
   thumbUrl: string
+  /** 响应式变体（按宽度升序）；老图为空数组，保持 thumbUrl 单图行为 */
+  variants: PublicVariant[]
   /** 压缩大图（详情 / 大图预览用） */
   imageUrl: string
   downloadUrl: string
@@ -135,6 +149,8 @@ function normalizeDimension(value: number | null | undefined): number {
 
 interface RawPhotoExtra {
   kind?: string
+  /** 响应式变体（serialize_photo 白名单） */
+  variants?: Photo['variants']
   /** 后端 AIGC 法定标识字段（serialize_photo 白名单） */
   is_aigc?: boolean
   aigc_label?: string | boolean | null
@@ -144,6 +160,39 @@ interface RawPhotoExtra {
   blurhash?: string | null
   lqip?: string | null
   lqip_color?: string | null
+}
+
+function toPublicVariants(raw: Photo['variants'] | null | undefined): PublicVariant[] {
+  if (!raw || typeof raw !== 'object') return []
+  const variants: PublicVariant[] = []
+  for (const [key, value] of Object.entries(raw)) {
+    if (!value || typeof value !== 'object') continue
+    const entry = value as { webp?: unknown; jpeg?: unknown; width?: unknown; height?: unknown }
+    const width = typeof entry.width === 'number' ? entry.width : Number(key) || 0
+    const height = typeof entry.height === 'number' ? entry.height : 0
+    const size = Number(key) || width
+    const webpUrl = typeof entry.webp === 'string' && entry.webp ? getImageUrl(entry.webp) : null
+    const jpegUrl = typeof entry.jpeg === 'string' && entry.jpeg ? getImageUrl(entry.jpeg) : null
+    if (!webpUrl && !jpegUrl) continue
+    variants.push({ size, webpUrl, jpegUrl, width: width || size, height })
+  }
+  return variants.sort((a, b) => (a.width || a.size) - (b.width || b.size))
+}
+
+/**
+ * 由变体生成 srcset 字符串（width 描述符）。
+ * 返回空串表示无可用变体，调用方回退单图。
+ */
+export function buildSrcset(variants: PublicVariant[], format: 'webp' | 'jpeg'): string {
+  return variants
+    .map((variant) => {
+      const url = format === 'webp' ? variant.webpUrl : variant.jpegUrl
+      if (!url) return ''
+      const width = variant.width || variant.size
+      return `${url} ${width}w`
+    })
+    .filter(Boolean)
+    .join(', ')
 }
 
 export function toPublicPhoto(photo: Photo): PublicPhoto {
@@ -175,6 +224,7 @@ export function toPublicPhoto(photo: Photo): PublicPhoto {
     height: knownRatio ? height : 0,
     aspectRatio: Math.min(Math.max(aspectRatio, 0.55), 2.2),
     thumbUrl: getPhotoUrl(photo.id, 'thumbnail'),
+    variants: toPublicVariants(extra.variants),
     imageUrl: getPhotoUrl(photo.id, 'compressed'),
     downloadUrl: getPhotoDownloadUrl(photo.id),
     season,
