@@ -244,7 +244,7 @@ cd backend && pytest
 | Agent 审核 | ✅ 规则前置 + VLM 快筛 + 难例复核 + 自动放行 + 人工队列 API；队列持久化（重启不丢、SKIP LOCKED 防重复领取） |
 | Agent 检索 | ✅ pg_trgm + tsvector + 汉字二元组，意图分解 / 多 facet / 解释 / 澄清追问答 |
 | AIGC 法定标识 | ✅ 上传强制声明 + 显式角标/详情 + 下载 XMP 隐式标识 + 图生图/换脸限制（M2 四件套） |
-| 2c4g 部署包 | ✅ compose / Dockerfile / nginx / env 模板 / 迁移入口 / 备份脚本；**本地三服务栈已跑通注册→上传→变体→取图全链路**；**容量已用 cgroup 模拟 2 vCPU 压测**（混合读 49→301 req/s，上传峰值 472MB，见 docs §14），真实服务器待上机 |
+| 2c4g 部署包 | ✅ compose / Dockerfile / nginx / env 模板 / 迁移入口 / 备份脚本；**本地三服务栈已跑通注册→上传→变体→取图全链路**；**容量已用 cgroup 模拟 2 vCPU 压测**（混合读 49→301 req/s，上传峰值 472MB，见 docs §14）；**S3 兼容路径已在 MinIO 上全链路验证**（307 预签名 + 对象元数据 + AIGC 下载写 XMP，见 docs §6.5），R2/OSS 与真实服务器待上机 |
 | 旧版单类型系统 | ✅ 摄影类型下可用，admin 后台保留 |
 | 模板专区 | ◻️ M6：S3 直传 + LibreOffice 预览 + 字体清单 |
 | 开源 v1.0 | ◻️ M7：凭据轮换、git 历史清洗、CI、LICENSE |

@@ -369,6 +369,54 @@ S3_USE_SSL=false       # 内网 http；公网必须 true
 - 对象存储侧设置缓存头（`Cache-Control: public, max-age=31536000, immutable`）由后端上传时写入；本地模式的缓存头由后端 FileResponse 设置。
 - 切换 `local → s3` 后，历史图片仍在 `uploads` 卷（不会自动搬运）；需要保留历史就写迁移脚本用 boto3 `upload_fileobj` 逐条搬运，搬完再删卷（先备份，见 §8）。
 
+### 6.5 本地用 MinIO 验证 S3 路径（已跑通，改存储相关代码后建议复跑）
+
+S3 模式的坑大多在「对象元数据 / 预签名 / 字节是否经过 Python」这些细节上，光看代码不够。
+用一次性 MinIO 容器 + 仓库自带脚本，可以在上机前把整条链路验掉：
+
+```bash
+# 1) 起一次性 MinIO（数据卷用完即删，不要写进生产 compose）
+docker run -d --name sakura-minio-dev \
+  -p 19000:9000 -p 19001:9001 \
+  -e MINIO_ROOT_USER=sakura-dev -e MINIO_ROOT_PASSWORD=<随机口令> \
+  minio/minio:latest server /data --console-address ":19001"
+
+# 2) 建私有桶
+MINIO_ROOT_USER=sakura-dev MINIO_ROOT_PASSWORD=<随机口令> backend/.venv/bin/python -c "
+import boto3, os
+boto3.client('s3', endpoint_url='http://127.0.0.1:19000',
+             aws_access_key_id=os.environ['MINIO_ROOT_USER'],
+             aws_secret_access_key=os.environ['MINIO_ROOT_PASSWORD'],
+             region_name='us-east-1').create_bucket(Bucket='sakura-media')"
+
+# 3) 用同一套 S3_* 起后端（另开端口，别动正在用的 8001）
+cd backend
+STORAGE_BACKEND=s3 S3_ENDPOINT=http://127.0.0.1:19000 S3_BUCKET=sakura-media \
+S3_ACCESS_KEY=sakura-dev S3_SECRET_KEY=<同口令> S3_REGION=us-east-1 S3_USE_SSL=false \
+AI_ENABLED=false MODERATION_ENABLED=false \
+.venv/bin/python -m uvicorn app.main:app --port 8002
+cd ..
+
+# 4) 全链路自检（上传 → 对象元数据 → 307 预签名 → 直出 → AIGC 下载写 XMP → 清理）
+S3_ENDPOINT=http://127.0.0.1:19000 S3_BUCKET=sakura-media \
+S3_ACCESS_KEY=sakura-dev S3_SECRET_KEY=<同口令> S3_REGION=us-east-1 \
+DB_SYNC_URL="postgresql+psycopg2://sakura:<pg口令>@127.0.0.1:5432/sakura_gallery" \
+backend/.venv/bin/python scripts/verify_s3.py --base-url http://127.0.0.1:8002
+```
+
+脚本会校验（任一失败退出码 1）：
+- `originals/thumbnails/compressed/variants` 对象真的落到桶里，且 `Content-Type` 是 `image/*`
+  （boto3 不会按扩展名猜类型，必须显式写；否则浏览器拿到 octet-stream 会变成下载）；
+- 对象元数据带 `Cache-Control: public, max-age=31536000, immutable`；
+- `/api/v1/photos/{id}/image/*` 返回 **307 + 预签名 URL**（不是 `200` 字节流），重定向头是短缓存；
+- 跳转后从对象存储直出 200、Content-Type 正确、字节非空；缺档位走兜底也是 307；
+- AIGC 作品的 `/download` 会从 S3 拉原图、写 XMP 隐式标识后返回，`X-AIGC-Implicit-Label: xmp`；
+- 结束后清理测试照片与对象（`--keep` 可保留排查）。
+
+> 2026-11-23 在本机 MinIO 上跑通全部检查（44 项 PASS）；R2/OSS 上仍建议上机后按上面命令复跑一次
+> （把 `S3_ENDPOINT` 换成真实地址、bucket 用测试桶）。
+> 单元测试 `backend/tests/test_storage_s3.py` 覆盖对象元数据与 307 预签名逻辑，不需要 MinIO。
+
 ---
 
 ## 7. TLS（HTTPS）
@@ -668,7 +716,9 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod dow
 > 「注册/用户名登录 → 上传 → 生成变体 → 经 nginx 取图（不可变缓存头）」全链路，并记录了空载内存占用。
 > 容量与内存峰值已在 **cgroup 限制为 2 vCPU 的模拟环境**下压测过（见 §14：混合读 49 req/s 无缓存、
 > 301 req/s 开微缓存；3 张 24MP 并发上传峰值 472MB、静置回落到 261MB）。
-> 仍未验证（需真实域名/公网/对象存储/真机）：TLS 证书签发与自动续期、HTTPS 跳转、S3/R2 预签名跳转、
+> 对象存储路径（S3 兼容：对象落盘、Content-Type/Cache-Control 元数据、307 预签名跳转、AIGC 下载写 XMP）
+> 已在本机 MinIO 上按 §6.5 全链路验证通过；R2/OSS 需上机后用同样脚本复跑。
+> 仍未验证（需真实域名/公网/真机）：TLS 证书签发与自动续期、HTTPS 跳转、
 > 备份恢复演练、真机 `docker stats` 内存曲线与公网带宽影响。首次上线请按 §4.6 逐项复验。
 
 ### 13.1 构建注意事项（本机实测踩到的问题，上机前先看）

@@ -57,6 +57,24 @@ def _media_type_for(path: str) -> Optional[str]:
     """
     return _MEDIA_TYPE_BY_SUFFIX.get(Path(path).suffix.lower())
 
+# 媒体对象在对象存储侧的长缓存语义（与本地 FileResponse 保持一致）。
+# 预签名 URL 每次请求都会刷新，但对象本身内容按 uuid 不变，可 immutable。
+_MEDIA_CACHE_CONTROL = "public, max-age=31536000, immutable"
+
+
+def _s3_extra_args(object_key: str) -> Dict[str, Any]:
+    """S3 上传的元信息：Content-Type 与 Cache-Control。
+
+    boto3 的 upload_file 不会根据扩展名猜 Content-Type，MinIO/R2 会把对象
+    存成 application/octet-stream；经 307 预签名跳转后浏览器拿到 octet-stream
+    会变成下载而不是渲染。这里显式带上类型，并把长缓存也写进对象元数据，
+    这样对象存储直出时同样命中 CDN/浏览器缓存。
+    """
+    return {
+        "ContentType": _media_type_for(object_key) or "application/octet-stream",
+        "CacheControl": _MEDIA_CACHE_CONTROL,
+    }
+
 
 def generate_unique_filename(original_filename: str) -> tuple[str, str]:
     """Generate a stable UUID identifier and preserve extension."""
@@ -332,7 +350,10 @@ class S3StorageBackend(StorageBackend):
         # Try direct upload first (works when running on the server),
         # fall back to SSH + mc pipe (works through VPN)
         try:
-            self.client.upload_file(staged_original_path, self.bucket, original_key)
+            self.client.upload_file(
+                staged_original_path, self.bucket, original_key,
+                ExtraArgs=_s3_extra_args(original_key),
+            )
         except Exception:
             self._mc_pipe(staged_original_path, original_key)
 
@@ -340,7 +361,10 @@ class S3StorageBackend(StorageBackend):
         if staged_thumbnail_path and os.path.exists(staged_thumbnail_path):
             thumb_key = f"thumbnails/{photo_uuid}_thumb.jpg"
             try:
-                self.client.upload_file(staged_thumbnail_path, self.bucket, thumb_key)
+                self.client.upload_file(
+                    staged_thumbnail_path, self.bucket, thumb_key,
+                    ExtraArgs=_s3_extra_args(thumb_key),
+                )
             except Exception:
                 self._mc_pipe(staged_thumbnail_path, thumb_key)
 
@@ -348,7 +372,10 @@ class S3StorageBackend(StorageBackend):
         if staged_compressed_path and os.path.exists(staged_compressed_path):
             compressed_key = f"compressed/{photo_uuid}_compressed.jpg"
             try:
-                self.client.upload_file(staged_compressed_path, self.bucket, compressed_key)
+                self.client.upload_file(
+                    staged_compressed_path, self.bucket, compressed_key,
+                    ExtraArgs=_s3_extra_args(compressed_key),
+                )
             except Exception:
                 self._mc_pipe(staged_compressed_path, compressed_key)
 
@@ -363,7 +390,10 @@ class S3StorageBackend(StorageBackend):
                     suffix = "webp" if fmt == "webp" else "jpg"
                     variant_key = f"variants/{photo_uuid}_{variant_size}.{suffix}"
                     try:
-                        self.client.upload_file(staged_path, self.bucket, variant_key)
+                        self.client.upload_file(
+                            staged_path, self.bucket, variant_key,
+                            ExtraArgs=_s3_extra_args(variant_key),
+                        )
                     except Exception:
                         self._mc_pipe(staged_path, variant_key)
                     entry[fmt] = variant_key

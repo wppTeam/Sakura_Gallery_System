@@ -148,6 +148,9 @@ template_meta work_id, file_key, format, slides, ratio, fonts[],
 - 存量作品用 `scripts/backfill_variants.py`（幂等，可 `--dry-run`）补齐文件与 `_variants` 元信息
 - 图片不经 Python 流式转发：本地模式返回 `FileResponse`（sendfile/responses 层），
   S3 模式返回 **307 预签名跳转**（`STORAGE_BACKEND=s3`），由对象存储直出带宽
+- S3 上传必须显式写对象元数据 `Content-Type`（boto3 不会按扩展名猜）与
+  `Cache-Control: public, max-age=31536000, immutable`（`storage._s3_extra_args()`）；
+  改存储相关代码后用 `scripts/verify_s3.py` 对着 MinIO 复跑（见 docs/DEPLOY_2C4G.md §6.5）
 - 在线预览响应头 `Cache-Control: public, max-age=31536000, immutable` + ETag/Last-Modified
   （`LocalStorageBackend.build_media_response`）；下载语义改 `private, must-revalidate`
 - 上传时的 Pillow 变体生成与 S3 写入都在 `run_in_threadpool` 里执行，不占事件循环
