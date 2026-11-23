@@ -198,6 +198,33 @@
               </ol>
             </div>
 
+            <div v-if="recentWorks.length" class="recent-card" aria-label="近期发布">
+              <div class="recent-head">
+                <h2 class="recent-title">近期发布</h2>
+                <RouterLink to="/explore" class="recent-more">
+                  去探索
+                  <n-icon :component="ArrowForwardOutline" :size="13" />
+                </RouterLink>
+              </div>
+              <p class="recent-sub">看看大家刚分享的作品，也许能给你一点灵感。</p>
+              <ul class="recent-list">
+                <li v-for="work in recentWorks" :key="work.id">
+                  <RouterLink class="recent-item" :to="`/photo/${work.id}`">
+                    <span class="recent-thumb">
+                      <img :src="work.thumbUrl" :alt="work.title" loading="lazy" decoding="async" />
+                    </span>
+                    <span class="recent-body">
+                      <span class="recent-name">{{ work.title }}</span>
+                      <span class="recent-meta">
+                        <span v-if="work.season" class="recent-season">{{ work.season }}</span>
+                        <span class="recent-author">{{ work.author }}</span>
+                      </span>
+                    </span>
+                  </RouterLink>
+                </li>
+              </ul>
+            </div>
+
             <div v-if="uploading" class="status-card" aria-live="polite">
               <div class="status-head">
                 <span class="status-title">正在上传</span>
@@ -489,6 +516,7 @@ import { useMessage, type UploadCustomRequestOptions } from 'naive-ui'
 import { storeToRefs } from 'pinia'
 import {
   AlertCircleOutline,
+  ArrowForwardOutline,
   CheckmarkCircleOutline,
   CheckmarkOutline,
   CloseOutline,
@@ -498,6 +526,7 @@ import {
 import SiteHeader from '../components/layout/SiteHeader.vue'
 import SiteFooter from '../components/layout/SiteFooter.vue'
 import { useUploadStore, type FileItem } from '../stores/upload'
+import { fetchPublicPhotos, type PublicPhoto } from '../api/public'
 import { getPublicTaxonomy, type TaxonomyFacet } from '../api/taxonomy'
 import { FACET_LABELS, flattenTaxonomyOptions, sanitizeTaxonomySelection } from '../utils/taxonomy'
 import { SEASON_OPTIONS, CATEGORY_OPTIONS, CAMPUS_OPTIONS } from '../constants/options'
@@ -519,6 +548,21 @@ const {
 } = storeToRefs(uploadStore)
 
 const taxonomyFacets = ref<TaxonomyFacet[]>([])
+
+/**
+ * 近期发布：给左列底部补一张紧凑卡，避免桌面右侧长表单旁出现大面积空白。
+ * 拉取失败或没有数据时整卡不渲染（不显示空态/报错）。
+ */
+const recentWorks = ref<PublicPhoto[]>([])
+
+async function loadRecentWorks() {
+  try {
+    const page = await fetchPublicPhotos({ limit: 4, sort_by: 'published_at', sort_order: 'desc' })
+    recentWorks.value = page.items.slice(0, 4)
+  } catch {
+    recentWorks.value = []
+  }
+}
 
 const taxonomyMetadataKeys = [
   'gallery_series',
@@ -746,6 +790,7 @@ function formatFileSize(bytes: number): string {
 }
 
 onMounted(async () => {
+  void loadRecentWorks()
   try {
     taxonomyFacets.value = await getPublicTaxonomy()
   } catch (error) {
@@ -1687,6 +1732,127 @@ onMounted(async () => {
   line-height: 1.7;
 }
 
+/* ── 近期发布（左列底部补位） ─────────────────────────── */
+.recent-card {
+  padding: 16px 18px 12px;
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.recent-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.recent-title {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.recent-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--sakura-deep);
+  font-size: var(--fs-xs);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.recent-more:hover {
+  color: var(--sakura);
+}
+
+.recent-sub {
+  margin: 4px 0 10px;
+  color: var(--faint);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+}
+
+.recent-list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px;
+  border-radius: var(--r-sm, 10px);
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.recent-item:hover,
+.recent-item:focus-visible {
+  background: var(--sakura-wash);
+}
+
+.recent-item:focus-visible {
+  outline: 2px solid var(--sakura-deep);
+  outline-offset: 1px;
+}
+
+.recent-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 50px;
+  height: 50px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--sakura-wash);
+}
+
+.recent-thumb img {
+  width: 100%;
+  height: 100%;
+  /* 缩略图按原始比例完整显示，不裁切 */
+  object-fit: contain;
+}
+
+.recent-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.recent-name {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+  color: var(--faint);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.recent-season {
+  color: var(--sakura-deep);
+}
+
 .legal-tag {
   display: inline-flex;
   align-items: center;
@@ -1835,6 +2001,13 @@ onMounted(async () => {
 @media (max-width: 1100px) {
   .upload-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 移动端隐藏「近期发布」补位卡，避免把页面拉长 */
+@media (max-width: 900px) {
+  .recent-card {
+    display: none;
   }
 }
 
