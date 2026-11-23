@@ -301,7 +301,10 @@ class S3StorageBackend(StorageBackend):
             aws_secret_access_key=settings.S3_SECRET_KEY,
             region_name=settings.S3_REGION,
             use_ssl=settings.S3_USE_SSL,
-            config=BotoConfig(signature_version="s3v4"),
+            config=BotoConfig(
+                signature_version="s3v4",
+                s3={"addressing_style": settings.S3_ADDRESSING_STYLE or "auto"},
+            ),
         )
 
     # ── SSH helpers for write operations ──

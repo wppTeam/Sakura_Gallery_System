@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     S3_SECRET_KEY: str | None = None
     S3_REGION: str | None = None
     S3_USE_SSL: bool = False
+    # boto3 的寻址风格：auto（默认，非 AWS endpoint 用 path-style）/ virtual（bucket.host）
+    # 腾讯 COS / 阿里 OSS 等云厂商的预签名 URL 需要 virtual-style；MinIO 本机用 auto。
+    S3_ADDRESSING_STYLE: str = "auto"
     S3_PRESIGN_EXPIRE_SECONDS: int = 600
     
     # 安全配置

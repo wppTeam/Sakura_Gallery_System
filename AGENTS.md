@@ -166,6 +166,9 @@ template_meta work_id, file_key, format, slides, ratio, fonts[],
 - S3 上传必须显式写对象元数据 `Content-Type`（boto3 不会按扩展名猜）与
   `Cache-Control: public, max-age=31536000, immutable`（`storage._s3_extra_args()`）；
   改存储相关代码后用 `scripts/verify_s3.py` 对着 MinIO 复跑（见 docs/DEPLOY_2C4G.md §6.5）
+- 云端对象存储（腾讯 COS / 阿里 OSS）必须设 `S3_ADDRESSING_STYLE=virtual`：默认 `auto`
+  走 path-style，COS 会 `PathStyleDomainForbidden`、预签名 URL 403；本机 MinIO 保持 `auto`。
+  线上实测（COS）：媒体端点 307 预签名 → 虚拟主机域 → 200；AIGC 下载仍写 XMP。
 - 在线预览响应头 `Cache-Control: public, max-age=31536000, immutable` + ETag/Last-Modified
   （`LocalStorageBackend.build_media_response`）；下载语义改 `private, must-revalidate`
 - 上传时的 Pillow 变体生成与 S3 写入都在 `run_in_threadpool` 里执行，不占事件循环

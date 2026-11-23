@@ -20,7 +20,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.core import config as app_config
-from app.models import Photo, PhotoTag, Tag
+from app.models import ModerationReview, Photo, PhotoTag, Tag
 from app.models.taxonomy import PhotoClassification
 from app.services import auto_tagging, moderation_rules
 from app.services import moderation as moderation_service
@@ -273,10 +273,20 @@ def test_moderate_photo_persists_auto_tags(auto_tag_db, monkeypatch):
                 await session.execute(select(func.count()).select_from(PhotoTag))
             ).scalar_one()
             await session.refresh(photo)
+            # 直接从数据库读回 rules（JSON 列必须真的落库，不能只在 identity map 里可见）
+            stored_rules = (
+                await session.execute(
+                    select(ModerationReview.rules).where(
+                        ModerationReview.id == review.id
+                    )
+                )
+            ).scalar_one()
+            review.rules = stored_rules
             return review, links, photo
 
     review, links, photo = _run(_check())
     assert review.status == "completed"
+    assert "auto_tagging" in review.rules, sorted(review.rules)
     assert review.rules["auto_tagging"]["applied"] is True
     assert review.rules["auto_tagging"]["facets"]["season"] == "春季"
     assert links == 3

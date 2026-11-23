@@ -395,7 +395,11 @@ async def moderate_photo(
     - L0 高置信度且无风险 → photo.status=approved（免审即发）；
     - AI 失败：status=failed 留给 worker 重试，tier 至少 L1，照片保持 pending。
     """
-    review = review or ModerationReview(photo_id=photo.id)
+    if review is None:
+        review = ModerationReview(photo_id=photo.id)
+        # 必须显式 add：直接调用 moderate_photo 时没有外部先把 review 落库，
+        # 否则 flush 不会插入这一行（DB 里查不到审核记录）。
+        db.add(review)
     review.photo_id = photo.id
     review.status = "running"
     review.error = None
@@ -416,7 +420,9 @@ async def moderate_photo(
                 "consent_confirmed": bool(meta.get("consent_confirmed")),
                 "prompt_public": bool(meta.get("prompt_public")),
             }
-        review.rules = rules_payload
+        # JSON 列要存快照副本：之后 rules_payload 还会被原地追加（打标证据），
+        # 若把同一个 dict 对象挂到 ORM 上，脏检查会拿被污染的对象做比较而漏掉 UPDATE。
+        review.rules = dict(rules_payload)
 
         # 第一层直接硬拦：不花模型钱
         if rule_result.blocked:
@@ -444,7 +450,9 @@ async def moderate_photo(
             )
             if tagging_summary.get("applied") or tagging_summary.get("caption"):
                 rules_payload["auto_tagging"] = tagging_summary
-                review.rules = rules_payload
+                # 注意：必须赋一个新 dict。rules 是 JSON 列，若把同一个 dict 对象再赋一次，
+                # SQLAlchemy 对比不到变化（原地改键不会触发脏检查），打标证据不会落库。
+                review.rules = dict(rules_payload)
 
         tier = _merge_tier_from_prefilter(prefilter)
         tier = _apply_aigc_declaration_policy(photo, tier)

@@ -885,8 +885,78 @@ scp scripts/verify_prod.py USER@HOST:/tmp/ && ssh USER@HOST 'python3 /tmp/verify
 作品列表 61 条、缩略图与响应式变体 200 且带 `public, max-age=31536000, immutable`、
 检索 200、公开专题 12 个、匿名访问审核队列/收藏 401、审核员登录后队列 200。
 
-尚未完成：Cloudflare Tunnel 绑定域名（需要 tunnel token 或有效 API token）、
-COS 对象存储切换（需要该桶的 SecretId/SecretKey，切完把 `STORAGE_BACKEND=s3` 并补 CORS）。
+### 15.1 切换腾讯 COS 作为媒体存储（已实测）
+
+服务器 `.env.prod` 加：
+
+```dotenv
+STORAGE_BACKEND=s3
+S3_ENDPOINT=https://cos.ap-beijing.myqcloud.com
+S3_BUCKET=smartphoto-1328781951
+S3_ACCESS_KEY=...          # 建议用只给该桶读写的子账号
+S3_SECRET_KEY=...
+S3_REGION=ap-beijing
+S3_USE_SSL=true
+S3_ADDRESSING_STYLE=virtual   # 关键：COS/OSS 的预签名 URL 必须 virtual-style
+S3_PRESIGN_EXPIRE_SECONDS=600
+```
+
+然后 `up -d --force-recreate backend`。踩到的坑：
+
+- **`S3_ADDRESSING_STYLE` 默认 `auto` 会走 path-style**（`https://cos.../bucket/key`），
+  COS 对 `ListObjectsV2` 直接报 `PathStyleDomainForbidden`，预签名 GET 也会 403。
+  云端对象存储要显式 `virtual`（`https://bucket.cos.../key`）；本机 MinIO 仍用默认 `auto`。
+  这个参数已进 `backend/app/core/config.py` 的 `S3_ADDRESSING_STYLE`。
+- **CORS 配置**：`PutBucketCors` 必须带 `Content-MD5` 头（boto3 可用
+  `before-sign.s3.PutBucketCors` 事件注入），且 `AllowedMethods` 只能写 `GET/HEAD`，
+  带 `OPTIONS` 会 `Invalid Param`。允许来源除本地开发地址外要包含线上域名。
+- **迁移上传**：COS 的 `UploadPart` 不吃 chunked 编码（报 `MissingContentLength`），
+  把 boto3 `TransferConfig(multipart_threshold=8GB)` 调到极大、全部走单次 PUT 即可。
+  小工具见 `.tmp/deploy/cos_migrate.py`（不入库，按相对路径做 key、写
+  `Content-Type` + `Cache-Control: public, max-age=31536000, immutable`、已存在同大小则跳过）。
+- **COST 桶可能是共享的**：本次桶里已有别的项目 2504 个对象（`generated/`、`uploads/` 前缀），
+  迁移脚本只写 `originals/ thumbnails/ compressed/ variants/` 四个前缀，不要清桶。
+- 切完自检：`/image/thumbnail` 与 `/image/variant/640?format=webp` 应返回 **307** 且 Location 的 host
+  是 `bucket.cos...`（virtual-style），跟随后 200 且 `Content-Type` 正确；
+  AIGC 作品 `/download` 仍返回 `X-AIGC-Implicit-Label: xmp` 且字节里能搜到 `sakura:IsAIGC`。
+
+### 15.2 Cloudflare Tunnel 接入（token 已装、DNS 待配）
+
+tunnel token 写进服务器 `.env.prod` 的 `TUNNEL_TOKEN=`，再：
+
+```bash
+docker compose -f deploy/docker-compose.prod.yml -f deploy/docker-compose.server.yml \
+  --env-file deploy/.env.prod --profile tunnel up -d cloudflared
+docker logs --tail 20 sakura-prod-tunnel   # 看到 Registered tunnel connection 即连上
+```
+
+该 token 是**远端管理**的 tunnel：ingress 规则不在本地配置文件里，而要在
+Cloudflare Zero Trust 面板（Networks → Tunnels → 该 tunnel → Public Hostname）添加：
+
+| Public hostname | Service |
+|---|---|
+| `buct-sakura.cn` | `http://nginx:80` |
+| `www.buct-sakura.cn` | `http://nginx:80` |
+
+面板添加时会自动建 CNAME 到 `<tunnel_id>.cfargotunnel.com`。若拿到带
+`Zone:DNS:Edit` + `Account:Cloudflare Tunnel:Edit` 权限的 API token，可一条命令代劳：
+
+```bash
+CF_API_TOKEN=xxx python3 scripts/setup_cloudflare_tunnel.py \
+  --tunnel-token-file .tmp/deploy/tunnel.env \
+  --zone buct-sakura.cn \
+  --hostname buct-sakura.cn --hostname www.buct-sakura.cn \
+  --service http://nginx:80
+```
+
+临时验证公网链路可起一次性 quick tunnel（不依赖账号/域名，URL 随机）：
+
+```bash
+docker run -d --rm --name sakura-quick --network sakura-prod-net \
+  cloudflare/cloudflared:latest tunnel --no-autoupdate --url http://nginx:80
+docker logs sakura-quick 2>&1 | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com'
+# 实测：/healthz 200、/api/v1/photos/public 200、SPA 路由 200（quick tunnel 偶发抖动，重试即可）
+```
 
 ## 附录：与旧方案的对照（避免混用）
 

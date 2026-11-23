@@ -81,6 +81,14 @@ def _get_upload_semaphore() -> asyncio.Semaphore:
 # 《人工智能生成合成内容标识办法》要求：AIGC 投稿必须显式声明并展示角标；
 # 图生图/换脸类还需额外确认被摄者同意，且一律进 L2 前审。
 AIGC_LABEL_TEXT = "AI 生成"
+
+# AIGC 下载副本的扩展名按探测到的真实格式决定
+_MIME_SUFFIX = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
 _AIGC_FACE_SWAP_KEYWORDS = (
     "换脸", "换头", "face swap", "faceswap", "deepfake", "人脸替换",
     "明星脸", "写真生成", "证件照生成", "脱衣", "nudify",
@@ -590,14 +598,7 @@ async def _aigc_download_response(db: AsyncSession, photo: Photo) -> Response:
     packet = build_xmp_packet(photo, creator=creator).encode("utf-8")
     filename = photo.filename or f"{photo.id}"
     stem = Path(filename).stem or photo.id
-    suffix = Path(filename).suffix or ".jpg"
-    ascii_name = f"{photo.id}{suffix}"
-    disposition = (
-        f'attachment; filename="{ascii_name}"; '
-        f"filename*=UTF-8''{quote(filename)}"
-    )
     headers: Dict[str, str] = {
-        "Content-Disposition": disposition,
         "Cache-Control": "private, max-age=0, must-revalidate",
         "X-AIGC-Label": "AIGC",
         "X-AIGC-Work-Id": str(photo.id),
@@ -620,6 +621,15 @@ async def _aigc_download_response(db: AsyncSession, photo: Photo) -> Response:
                 except Exception:  # 记账失败不影响下载本身
                     await db.rollback()
                     logger.warning("AIGC label_written 落库失败 photo=%s", photo.id)
+    # 扩展名与 media_type 都按真实字节判断（上传时声明的 mime 可能是错的，
+    # 例如浏览器把 PNG 报成 image/jpeg）
+    suffix = _MIME_SUFFIX.get(actual_mime or "") or Path(filename).suffix or ".jpg"
+    download_name = f"{stem}{suffix}"
+    ascii_name = f"{photo.id}{suffix}"
+    headers["Content-Disposition"] = (
+        f'attachment; filename="{ascii_name}"; '
+        f"filename*=UTF-8''{quote(download_name)}"
+    )
     return Response(
         content=labeled,
         media_type=actual_mime or "application/octet-stream",
