@@ -186,6 +186,21 @@
       </div>
     </section>
 
+    <section v-if="collectionRefs.length" class="block">
+      <h2 class="block-title">收录于</h2>
+      <div class="collection-links">
+        <RouterLink
+          v-for="collection in collectionRefs"
+          :key="collection.slug"
+          class="collection-link"
+          :to="`/collections/${collection.slug}`"
+        >
+          <n-icon :component="AlbumsOutline" :size="14" />
+          <span>{{ collection.title }}</span>
+        </RouterLink>
+      </div>
+    </section>
+
     <section class="block license-block">
       <h2 class="block-title">授权说明</h2>
       <template v-if="detail.license">
@@ -219,10 +234,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { NIcon, useMessage } from 'naive-ui'
 import { onClickOutside } from '@vueuse/core'
 import {
+  AlbumsOutline,
   AlertCircleOutline,
   ChevronDownOutline,
   ChevronUpOutline,
@@ -238,6 +254,7 @@ import {
 } from '@vicons/ionicons5'
 import { formatDate, formatFileSize, getPhotoUrl } from '../../utils/format'
 import type { WorkDetail } from './workDetail'
+import { fetchPhotoCollections, type PhotoCollectionRef } from '../../api/collections'
 
 const props = defineProps<{
   detail: WorkDetail
@@ -249,6 +266,25 @@ const props = defineProps<{
 defineEmits<{ 'toggle-favorite': [] }>()
 
 const message = useMessage()
+
+// ── 收录于专题（失败/为空时不渲染，不阻塞详情页） ──────────
+const collectionRefs = ref<PhotoCollectionRef[]>([])
+
+async function loadCollectionRefs(workId: string) {
+  if (!workId) {
+    collectionRefs.value = []
+    return
+  }
+  collectionRefs.value = await fetchPhotoCollections(workId)
+}
+
+watch(
+  () => props.detail.id,
+  (id) => {
+    void loadCollectionRefs(id || '')
+  },
+  { immediate: true },
+)
 
 // ── 顶部标签 ────────────────────────────────────────────
 const kindLabel = computed(() => {
@@ -932,6 +968,39 @@ onBeforeUnmount(() => {
 .tag-link:hover {
   background: var(--sakura-pale, #ffe9f0);
   border-color: #f2c9d7;
+}
+
+/* ── 收录于专题 ─────────────────────────────────────── */
+.collection-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.collection-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1px solid var(--line, #f3dde5);
+  border-radius: var(--r-pill, 999px);
+  background: var(--surface, #fff);
+  color: var(--ink, #4a2b35);
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease;
+}
+
+.collection-link:hover {
+  border-color: var(--sakura, #e8628c);
+  background: var(--sakura-wash, #fff6f9);
+  color: var(--sakura-deep, #c93a63);
+}
+
+.collection-link:focus-visible {
+  outline: 3px solid var(--sakura, #e8628c);
+  outline-offset: 2px;
 }
 
 /* ── 授权 ───────────────────────────────────────────── */

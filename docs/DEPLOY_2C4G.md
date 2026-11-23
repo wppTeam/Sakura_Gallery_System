@@ -791,7 +791,8 @@ CPU 份额按 `SIM_BACKEND_CPUS` / `SIM_NGINX_CPUS` / `SIM_PG_CPUS` 分配（默
 ### 14.2 本轮据此落地的优化
 
 1. **nginx 匿名只读微缓存**（`deploy/nginx.prod.conf`）：
-   `/api/v1/photos/public` 缓存 30s、`/api/v1/search` 缓存 10s，`X-Cache-Status` 可观测；
+   `/api/v1/photos/public` 缓存 30s、`/api/v1/search` 缓存 10s、`/api/v1/collections` 缓存 30s，
+   `X-Cache-Status` 可观测；
    带 Authorization 的私有接口不进缓存。代价是审核通过/下架最多延迟一个 TTL，可接受。
 2. **上传处理并发信号量**（`UPLOAD_PROCESS_CONCURRENCY`，默认 1/worker）：
    24MP 单张处理峰值约 +190MB，768m 内存上限下 3 张并发会被 OOM kill；

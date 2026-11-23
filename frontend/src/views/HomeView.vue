@@ -155,6 +155,49 @@
       />
     </section>
 
+    <!-- ============ 主题专题 ============ -->
+    <section
+      v-if="collections.length || collectionsLoading"
+      id="collections"
+      class="section collections-section"
+      aria-labelledby="collections-title"
+    >
+      <div class="wrap">
+        <SectionHeader
+          title-id="collections-title"
+          eyebrow="CURATED COLLECTIONS"
+          title="主题专题"
+          description="年度相册、校园四季，按作者原意策展——一条被认真排过序的观看路线。"
+          more-label="全部专题"
+          more-to="/collections"
+        />
+
+        <div
+          v-if="collectionsLoading && !collections.length"
+          class="collections-rail"
+          aria-hidden="true"
+        >
+          <div
+            v-for="index in 4"
+            :key="index"
+            class="collections-rail-cell"
+          >
+            <div class="collections-skeleton" />
+          </div>
+        </div>
+
+        <ul v-else class="collections-rail" aria-label="主题专题列表" tabindex="0">
+          <li
+            v-for="collection in collections"
+            :key="collection.slug"
+            class="collections-rail-cell"
+          >
+            <CollectionCard :collection="collection" />
+          </li>
+        </ul>
+      </div>
+    </section>
+
     <!-- ============ 北化八景 ============ -->
     <section id="views" class="section views-section" aria-labelledby="views-title">
       <div class="wrap">
@@ -237,11 +280,13 @@ import {
   type SeasonMeta,
 } from '../constants/public'
 import EmptyState from '../components/public/EmptyState.vue'
+import CollectionCard from '../components/public/CollectionCard.vue'
 import MasonryGrid from '../components/public/MasonryGrid.vue'
 import SearchBar from '../components/public/SearchBar.vue'
 import SeasonBand from '../components/public/SeasonBand.vue'
 import SectionHeader from '../components/public/SectionHeader.vue'
 import TopicChip from '../components/public/TopicChip.vue'
+import { fetchCollections, type CollectionSummary } from '../api/collections'
 
 const router = useRouter()
 
@@ -359,9 +404,27 @@ async function loadSeasons() {
 
 const joinPhoto = computed(() => latest.value[0] || null)
 
+/* ---------- 主题专题（策展集合） ---------- */
+const collections = ref<CollectionSummary[]>([])
+const collectionsLoading = ref(true)
+
+async function loadCollections() {
+  collectionsLoading.value = true
+  try {
+    const data = await fetchCollections({ limit: 12 })
+    collections.value = data.items
+  } catch (error) {
+    collections.value = []
+    console.warn('[home] 主题专题加载失败', error)
+  } finally {
+    collectionsLoading.value = false
+  }
+}
+
 onMounted(() => {
   loadFeed()
   loadSeasons()
+  loadCollections()
 })
 </script>
 
@@ -839,6 +902,73 @@ onMounted(() => {
   }
 
   .hero-enter {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   主题专题
+   ============================================================ */
+.collections-section {
+  overflow: hidden;
+}
+
+.collections-rail {
+  display: flex;
+  gap: var(--gap);
+  margin: 0;
+  padding: 4px 4px 12px;
+  overflow-x: auto;
+  list-style: none;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 4px;
+  scrollbar-width: none;
+}
+
+.collections-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.collections-rail::-webkit-scrollbar-thumb {
+  border-radius: var(--r-pill);
+  background: var(--sakura-pale);
+}
+
+.collections-rail-cell {
+  flex: 0 0 clamp(280px, 27vw, 356px);
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.collections-skeleton {
+  height: 306px;
+  border-radius: var(--r-card);
+  background: linear-gradient(100deg, var(--sakura-wash) 20%, var(--sakura-mist) 42%, var(--sakura-wash) 62%);
+  background-size: 220% 100%;
+  animation: collections-shimmer 1.4s linear infinite;
+}
+
+@keyframes collections-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .collections-rail-cell {
+    flex-basis: 78vw;
+  }
+
+  .collections-skeleton {
+    height: 264px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collections-skeleton {
     animation: none;
   }
 }

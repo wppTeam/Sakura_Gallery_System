@@ -52,6 +52,18 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: false },
       },
       {
+        path: 'collections',
+        name: 'Collections',
+        component: () => import('../views/CollectionsIndexView.vue'),
+        meta: { requiresAuth: false },
+      },
+      {
+        path: 'collections/:slug',
+        name: 'CollectionDetail',
+        component: () => import('../views/CollectionView.vue'),
+        meta: { requiresAuth: false },
+      },
+      {
         path: 'search',
         name: 'Search',
         component: () => import('../views/SearchView.vue'),

@@ -4,6 +4,7 @@
     <div
       v-if="detail.thumbUrl"
       class="stage-lqip"
+      :class="{ 'is-gone': loaded }"
       :style="{ backgroundImage: `url('${detail.thumbUrl}')` }"
       aria-hidden="true"
     />
@@ -176,6 +177,21 @@ watch(
   opacity: 0.55;
   transform: scale(1.04);
   z-index: 0;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+}
+
+/* 大图加载完成后彻底退场：不依赖 z-index 兜底，避免无头/特殊合成路径下盖住照片 */
+.stage-lqip.is-gone {
+  opacity: 0;
+}
+
+/* 无障碍/无头浏览器下尊重减少动效：直接切换，不做过渡，避免占位层因动画冻结而残留 */
+@media (prefers-reduced-motion: reduce) {
+  .stage-lqip,
+  .stage-img {
+    transition: none;
+  }
 }
 
 .stage-picture {
