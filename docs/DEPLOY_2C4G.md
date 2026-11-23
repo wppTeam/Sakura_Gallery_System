@@ -813,6 +813,81 @@ CPU 份额按 `SIM_BACKEND_CPUS` / `SIM_NGINX_CPUS` / `SIM_PG_CPUS` 分配（默
 - 已知未覆盖：HTTPS/TLS、对象存储预签名、AVIF/WebP 全量编码的 CPU（本轮采样已含 5 档变体）、
   并发审核（AI 调用是外部延迟，不占本机 CPU）。
 
+## 15. 在已有服务的云主机上部署（实测记录）
+
+目标场景：一台 **2 vCPU / 3.5 GiB 内存 / 60 GB 盘**的腾讯云轻量主机，已经跑着别的业务
+（宿主 nginx 占用 80/443、另有若干容器），部署账号只有普通用户 + docker 权限，**不能改宿主 nginx 配置**。
+
+做法：不碰宿主 nginx 与其它容器，用覆盖文件把本项目收进一个独立 compose project，
+只绑定 `127.0.0.1:18080`，公网入口后续交给 Cloudflare Tunnel（见 §7）。
+
+```bash
+# 服务器上（仓库目录，deploy/.env.prod 已按 .env.prod.example 填好、chmod 600）
+docker compose -f deploy/docker-compose.prod.yml \
+  -f deploy/docker-compose.server.yml --env-file deploy/.env.prod up -d
+```
+
+`deploy/docker-compose.server.yml` 的差异（都可用环境变量覆盖）：
+
+| 项 | 主文件默认 | 服务器覆盖 | 原因 |
+|---|---|---|---|
+| nginx 端口 | `0.0.0.0:80` | `127.0.0.1:18080:80` | 避让宿主 nginx；公网走 tunnel |
+| uvicorn worker | 2 | 1 | 内存优先；审核队列靠 PG `SKIP LOCKED` 保证安全 |
+| PG shared_buffers | 512MB | 128MB | 3.5G 主机，给系统与其它容器留空间 |
+| PG / backend / nginx 内存上限 | 1024m / 1024m / 64m | 384m / 512m / 64m | 与既有服务共存 |
+| 图片解码并发 | 1 | 1 | 20MP+ 上传单张峰值 RSS 约 +190MB |
+
+发布顺序（在开发机执行）：
+
+```bash
+# 1) 代码同步（凭据/数据/构建产物不传）
+rsync -az --exclude '.git' --exclude '.tmp' --exclude '.venv' --exclude 'node_modules' \
+  --exclude 'frontend/dist' --exclude 'backend/uploads' ./ USER@HOST:~/sakura-gallery/
+
+# 2) 镜像本地构建后传（服务器 2 核构建慢且占内存）
+docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod.example build
+docker save sakura-gallery-backend:latest  | gzip -1 > backend.tar.gz
+docker save sakura-gallery-frontend:latest | gzip -1 > frontend.tar.gz
+scp backend.tar.gz frontend.tar.gz USER@HOST:~/sakura-gallery/.tmp/
+ssh USER@HOST 'cd ~/sakura-gallery/.tmp && docker load -i backend.tar.gz && docker load -i frontend.tar.gz'
+
+# 3) 起 PG → 恢复数据 → 起 backend/nginx
+ssh USER@HOST 'cd ~/sakura-gallery && docker compose -f ... up -d postgres'
+pg_dump ... | ssh USER@HOST 'docker exec -i PROJECT-pg pg_restore -U USER -d DB --clean --if-exists'
+ssh USER@HOST 'cd ~/sakura-gallery && docker compose -f ... up -d backend nginx'
+
+# 4) 媒体文件拷进 uploads 卷（本机 local 存储模式）
+ssh USER@HOST 'docker cp ~/sakura-gallery/.tmp/import/uploads/. PROJECT-backend:/app/uploads/'
+
+# 5) 自检
+scp scripts/verify_prod.py USER@HOST:/tmp/ && ssh USER@HOST 'python3 /tmp/verify_prod.py http://127.0.0.1:18080'
+```
+
+踩坑记录：
+
+- **`ALLOWED_ORIGINS` 必须是 JSON 数组字符串**（pydantic-settings 对 list 字段按 JSON 解析）：
+  `ALLOWED_ORIGINS=["https://buct-sakura.cn","https://www.buct-sakura.cn"]`。写成逗号分隔会在
+  容器启动时 `SettingsError: error parsing value for field "ALLOWED_ORIGINS"`，表现为 alembic 迁移失败循环。
+- **改 `.env.prod` 后要 `up -d --force-recreate <service>`**，`docker compose restart` 不会重新读取 env_file。
+- 恢复数据后先 `select version_num from alembic_version` 确认与代码 head 一致，再起 backend（entrypoint 会跑 `alembic upgrade head`）。
+- 服务器 `docker save` 出来的镜像体积可能小于本地（层共享/去重），以 `docker images` 为准即可。
+
+空载实测（本机 compose project，2026-11-24）：
+
+| 服务 | 内存占用 / 上限 |
+|---|---|
+| backend | 110 MiB / 512 MiB |
+| postgres | 30 MiB / 384 MiB |
+| nginx | 7 MiB / 64 MiB |
+| uploads 卷 | 893 MB |
+
+自检结果（`scripts/verify_prod.py`）：首页/SPA 路由 200、`/healthz` 200、
+作品列表 61 条、缩略图与响应式变体 200 且带 `public, max-age=31536000, immutable`、
+检索 200、公开专题 12 个、匿名访问审核队列/收藏 401、审核员登录后队列 200。
+
+尚未完成：Cloudflare Tunnel 绑定域名（需要 tunnel token 或有效 API token）、
+COS 对象存储切换（需要该桶的 SecretId/SecretKey，切完把 `STORAGE_BACKEND=s3` 并补 CORS）。
+
 ## 附录：与旧方案的对照（避免混用）
 
 | 旧文件（未改动） | 新方案 |

@@ -1,0 +1,92 @@
+# =============================================================================
+# 视觉百花 Sakura Gallery — 服务器覆盖文件（与 docker-compose.prod.yml 合并使用）
+# -----------------------------------------------------------------------------
+# 用途：在「已有其它服务的 2C4G 轻量云主机」上跑，避让宿主机既有 nginx(80/443)、
+#      其它容器（new-api 26102 / embodied-web 8001 等），并压低内存占用。
+#
+# 用法（在仓库根执行）：
+#   docker compose \
+#     -f deploy/docker-compose.prod.yml \
+#     -f deploy/docker-compose.server.yml \
+#     --env-file deploy/.env.prod up -d
+#
+# 与主文件的差异：
+#   * nginx 只绑定本机回环 127.0.0.1:18080（公网入口走 Cloudflare Tunnel）
+#   * backend 单 worker（host 内存紧张，SKIP LOCKED 队列保证不重复消费）
+#   * PostgreSQL 内存参数按 2 核/3.5G 主机收紧，mem_limit 384m
+#   * 上传图片解码并发固定 1，避免 24MP 上传把容器撑爆
+#   * 预留 cloudflared 服务（--profile tunnel 时启用，只需 TUNNEL_TOKEN）
+# =============================================================================
+name: ${COMPOSE_PROJECT_NAME:-sakura-prod}
+
+services:
+  postgres:
+    # 主机内存只有 3.5G，shared_buffers 512MB 会把可用内存压到危险区
+    command: !override
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=512MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+      # 1 worker × (pool 10 + overflow 20) = 30，留 10 给迁移/psql/监控
+      - -c
+      - max_connections=40
+      - -c
+      - jit=off
+      - -c
+      - max_parallel_workers_per_gather=0
+      - -c
+      - wal_compression=on
+      - -c
+      - log_min_duration_statement=1000
+    shm_size: 64mb
+    mem_limit: ${PG_MEM_LIMIT:-384m}
+
+  backend:
+    environment:
+      # 单 worker：内存优先；队列与审核 worker 都靠 PG 保证安全
+      UVICORN_WORKERS: "${UVICORN_WORKERS:-1}"
+      UPLOAD_PROCESS_CONCURRENCY: "${UPLOAD_PROCESS_CONCURRENCY:-1}"
+    # 容器内访问宿主机上的 new-api（AI 中转，127.0.0.1:26102）：
+    #   OPENAI_COMPATIBLE_BASE_URL=http://host.docker.internal:26102/v1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    mem_limit: ${BACKEND_MEM_LIMIT:-512m}
+
+  nginx:
+    # !override：替换主文件的 "0.0.0.0:80"，否则会和宿主机 nginx 抢 80 端口
+    ports: !override
+      - "${BIND_ADDR:-127.0.0.1}:${HTTP_PORT:-18080}:80"
+    mem_limit: ${NGINX_MEM_LIMIT:-64m}
+
+  # ---------------------------------------------------------------------------
+  # Cloudflare Tunnel（可选）：不需要公网 IP/端口、不需要 root 改宿主机 nginx。
+  # 在 Cloudflare Zero Trust 面板建 tunnel，拿到 token 后写入 deploy/.env.prod：
+  #   TUNNEL_TOKEN=eyJ...
+  # 启用：docker compose ... --profile tunnel up -d
+  # ingress 建议在面板里配：buct-sakura.cn -> http://nginx:80
+  # ---------------------------------------------------------------------------
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-sakura-prod}-tunnel
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: "${TUNNEL_TOKEN:-}"
+    depends_on:
+      nginx:
+        condition: service_started
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - sakura
