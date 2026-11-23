@@ -14,6 +14,15 @@
           <n-tag v-if="review.finalDecision" size="small" type="info" :bordered="false">
             人工终判：{{ decisionLabel(review.finalDecision) }}
           </n-tag>
+          <n-tag
+            v-if="aigcDeclaration"
+            size="small"
+            :type="aigcTagType"
+            :bordered="false"
+            :title="aigcSummary"
+          >
+            {{ aigcDeclaration.declared ? 'AIGC 已声明' : '声明不含 AIGC' }}
+          </n-tag>
         </div>
         <p class="agent-suggestion">{{ agentSummary(review) }}</p>
       </div>
@@ -213,6 +222,8 @@ import RulesPanel from './RulesPanel.vue'
 import {
   TIER_DESCRIPTIONS,
   agentSummary,
+  aigcDeclarationSummary,
+  aigcDeclarationTagType,
   decisionLabel,
   decisionTagType,
   formatCost,
@@ -241,6 +252,11 @@ const tierKey = computed(() => suggestionTier.value?.toLowerCase() || 'none')
 const prefilter = computed(() => props.review.prefilter)
 const escalation = computed(() => props.review.escalation)
 const flags = computed(() => riskFlags(props.review))
+
+// AIGC 法定标识申报证据（review.rules.aigc_declaration）
+const aigcDeclaration = computed(() => props.review.rules?.aigcDeclaration ?? null)
+const aigcTagType = computed(() => aigcDeclarationTagType(aigcDeclaration.value))
+const aigcSummary = computed(() => aigcDeclarationSummary(aigcDeclaration.value))
 
 const copyrightLabel = computed(() => {
   const risk = prefilter.value?.copyrightRisk || 'unknown'

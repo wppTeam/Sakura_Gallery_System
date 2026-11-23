@@ -141,6 +141,109 @@
               </div>
             </n-card>
 
+            <!-- AIGC 法定声明（《人工智能生成合成内容标识办法》2025-09-01 施行） -->
+            <n-card
+              v-if="fileList.length > 0"
+              title="AI 生成声明（法定要求）"
+              class="aigc-card metadata-card"
+              :bordered="false"
+            >
+              <n-alert type="info" :bordered="false" class="aigc-legal">
+                《人工智能生成合成内容标识办法》要求投稿时声明是否包含 AI 生成合成内容。
+                声明为「是」的作品会在详情页展示「AI 生成」显式角标，下载副本中写入隐藏标识（XMP）；
+                未声明将无法提交。
+              </n-alert>
+
+              <n-form label-placement="left" label-width="120" class="aigc-form">
+                <n-form-item label="包含 AI 生成？" required>
+                  <n-radio-group v-model:value="aigc.declared" class="aigc-radio-group">
+                    <n-space vertical :size="10">
+                      <n-radio :value="false">
+                        否，这是我的原创拍摄 / 设计作品，不含 AI 生成内容
+                      </n-radio>
+                      <n-radio :value="true">
+                        是，包含 AI 生成合成内容（AI 绘图、AI 生成主体、图生图等）
+                      </n-radio>
+                    </n-space>
+                  </n-radio-group>
+                </n-form-item>
+
+                <p v-if="aigc.declared === null" class="aigc-required">
+                  请先选择「是 / 否」，否则无法开始上传。
+                </p>
+
+                <template v-if="aigc.declared === true">
+                  <n-form-item label="生成模型">
+                    <n-input
+                      v-model:value="aigc.model"
+                      maxlength="100"
+                      show-count
+                      placeholder="如 qwen-image-3.0-pro / Midjourney v6 / Stable Diffusion XL"
+                    />
+                  </n-form-item>
+                  <n-form-item label="服务提供方">
+                    <n-input
+                      v-model:value="aigc.provider"
+                      maxlength="100"
+                      show-count
+                      placeholder="如 阿里云百炼 / OpenAI / 本地部署"
+                    />
+                  </n-form-item>
+                  <n-form-item label="生成提示词">
+                    <n-input
+                      v-model:value="aigc.prompt"
+                      type="textarea"
+                      :rows="3"
+                      maxlength="2000"
+                      show-count
+                      placeholder="用于生成该作品的提示词（可留空）"
+                    />
+                  </n-form-item>
+                  <n-form-item label="公开提示词">
+                    <n-space vertical :size="4">
+                      <n-switch v-model:value="aigc.promptPublic" />
+                      <n-text depth="3" class="aigc-field-hint">
+                        开启后提示词会展示在作品详情页，便于他人学习与复现；关闭则仅审核员可见。
+                      </n-text>
+                    </n-space>
+                  </n-form-item>
+                  <n-form-item label="图生图 / 源作品">
+                    <n-space vertical :size="4">
+                      <n-input
+                        v-model:value="aigc.sourceWorkId"
+                        maxlength="36"
+                        placeholder="源作品 ID（作品详情页 URL 末尾），仅图生图时填写"
+                      />
+                      <n-text depth="3" class="aigc-field-hint">
+                        填写后该作品进入 L2 人工前审，并必须确认已获得被摄者书面同意。
+                      </n-text>
+                    </n-space>
+                  </n-form-item>
+                  <n-form-item label="换脸 / 人脸替换">
+                    <n-space vertical :size="4">
+                      <n-switch v-model:value="aigc.faceSwap" />
+                      <n-text depth="3" class="aigc-field-hint">
+                        换脸 / 人脸替换类内容仅允许在获得被摄者书面同意后发布，并强制人工前审（L2）。
+                      </n-text>
+                    </n-space>
+                  </n-form-item>
+                  <n-form-item v-if="aigcConsentRequired" label="被摄者同意" required>
+                    <n-space vertical :size="4">
+                      <n-checkbox v-model:checked="aigc.consentConfirmed">
+                        我确认已获得被摄者书面同意，可发布该图生图 / 换脸内容
+                      </n-checkbox>
+                      <n-text v-if="!aigc.consentConfirmed" type="error" class="aigc-field-hint">
+                        图生图 / 换脸类必须勾选此项，否则后端会拒绝上传。
+                      </n-text>
+                    </n-space>
+                  </n-form-item>
+                  <p class="aigc-summary">
+                    提交后 Agent 会复核该声明；图生图 / 换脸类作品将进入 L2 人工前审后发布。
+                  </p>
+                </template>
+              </n-form>
+            </n-card>
+
             <!-- 元数据设置 -->
             <n-card v-if="fileList.length > 0" title="批量设置" class="metadata-card" :bordered="false">
               <n-form
@@ -203,20 +306,26 @@
             </n-card>
 
             <!-- 操作按钮 -->
-            <div v-if="fileList.length > 0" class="action-buttons">
-              <n-button @click="clearAll" size="large">清空列表</n-button>
-              <n-button
-                type="primary"
-                size="large"
-                :loading="uploading"
-                :disabled="!canUpload"
-                @click="startUpload"
-              >
-                <template #icon>
-                  <n-icon :component="CloudUploadOutline" />
-                </template>
-                开始上传 ({{ pendingCount }}/{{ fileList.length }})
-              </n-button>
+            <div v-if="fileList.length > 0" class="action-area">
+              <p v-if="!aigcReady" class="aigc-block-hint">
+                <n-icon :component="AlertCircleOutline" :size="14" />
+                <span>请先完成 AI 生成声明{{ aigcConsentRequired && !aigc.consentConfirmed ? '，并确认已获得被摄者同意' : '' }}</span>
+              </p>
+              <div class="action-buttons">
+                <n-button @click="clearAll" size="large">清空列表</n-button>
+                <n-button
+                  type="primary"
+                  size="large"
+                  :loading="uploading"
+                  :disabled="!canUpload"
+                  @click="startUpload"
+                >
+                  <template #icon>
+                    <n-icon :component="CloudUploadOutline" />
+                  </template>
+                  开始上传 ({{ pendingCount }}/{{ fileList.length }})
+                </n-button>
+              </div>
             </div>
 
             <!-- 上传完成提示 -->
@@ -254,7 +363,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { storeToRefs } from 'pinia'
-import { CloudUploadOutline, ImageOutline, SyncOutline, CheckmarkOutline, CloseOutline, ArrowBackOutline, ImagesOutline } from '@vicons/ionicons5'
+import { AlertCircleOutline, CloudUploadOutline, ImageOutline, SyncOutline, CheckmarkOutline, CloseOutline, ArrowBackOutline, ImagesOutline } from '@vicons/ionicons5'
 import type { UploadCustomRequestOptions } from 'naive-ui'
 import { useUploadStore } from '../stores/upload'
 import { getPublicTaxonomy, type TaxonomyFacet } from '../api/taxonomy'
@@ -263,7 +372,8 @@ import { FACET_LABELS, flattenTaxonomyOptions, sanitizeTaxonomySelection } from 
 const router = useRouter()
 const message = useMessage()
 const uploadStore = useUploadStore()
-const { fileList, uploading, metadata, pendingCount, successCount, errorCount, canUpload } = storeToRefs(uploadStore)
+const { fileList, uploading, metadata, aigc, aigcReady, aigcConsentRequired, pendingCount, successCount, errorCount, canUpload } =
+  storeToRefs(uploadStore)
 const taxonomyFacets = ref<TaxonomyFacet[]>([])
 
 const taxonomyMetadataKeys = [
@@ -501,6 +611,49 @@ function formatFileSize(bytes: number): string {
   margin-top: 24px;
 }
 
+.aigc-card {
+  border-top: 3px solid #c93a63;
+}
+
+.aigc-legal {
+  margin-bottom: 18px;
+}
+
+.aigc-radio-group {
+  padding-top: 2px;
+}
+
+.aigc-required {
+  margin: -6px 0 14px 120px;
+  color: #d03050;
+  font-size: 13px;
+}
+
+.aigc-field-hint {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.aigc-summary {
+  margin: 4px 0 0 120px;
+  color: var(--muted, #63474f);
+  font-size: 13px;
+}
+
+.aigc-block-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  color: #d03050;
+  font-size: 13px;
+}
+
+.action-area {
+  margin-top: 32px;
+}
+
 .action-buttons {
   margin-top: 32px;
   display: flex;
@@ -516,9 +669,14 @@ function formatFileSize(bytes: number): string {
   .upload-sidebar {
     display: none;
   }
-  
+
   .action-buttons {
     flex-direction: column;
+  }
+
+  .aigc-required,
+  .aigc-summary {
+    margin-left: 0;
   }
 }
 </style>

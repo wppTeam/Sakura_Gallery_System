@@ -152,6 +152,8 @@ class SearchHit:
     description: Optional[str] = None
     created_at: Optional[datetime] = None
     published_at: Optional[datetime] = None
+    is_aigc: bool = False
+    aigc_label: Optional[str] = None
     tags: list[str] = field(default_factory=list)
     classifications: dict[str, str] = field(default_factory=dict)
 
@@ -171,6 +173,9 @@ class SearchHit:
             "campus": self.campus,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "published_at": self.published_at.isoformat() if self.published_at else None,
+            "is_aigc": self.is_aigc,
+            "kind": "aigc" if self.is_aigc else "photo",
+            "aigc_label": self.aigc_label,
             "tags": list(self.tags),
             "classifications": dict(self.classifications),
         }
@@ -800,6 +805,8 @@ async def search_photos(
             description=description,
             created_at=row.get("created_at"),
             published_at=row.get("published_at"),
+            is_aigc=bool(row.get("is_aigc")),
+            aigc_label=row.get("aigc_label"),
             tags=tags,
             classifications=classifications,
         )
@@ -872,7 +879,7 @@ async def get_hits_by_ids(
         )
     sql = (
         "SELECT p.id, p.filename, p.title, p.author, p.width, p.height, p.season, p.category,"
-        " p.campus, p.created_at, p.published_at"
+        " p.campus, p.created_at, p.published_at, p.is_aigc, p.aigc_label"
         f"{detail_columns}"
         f" FROM photos p WHERE p.status = :status AND p.id IN ({', '.join(names)})"
     )
@@ -893,6 +900,8 @@ async def get_hits_by_ids(
             description=row.get("description"),
             created_at=row.get("created_at"),
             published_at=row.get("published_at"),
+            is_aigc=bool(row.get("is_aigc")),
+            aigc_label=row.get("aigc_label"),
             tags=_decode_json_list(row.get("tags_json")),
             classifications=_decode_json_dict(row.get("classifications_json")),
         )
@@ -937,7 +946,7 @@ paged AS (
 )
 SELECT p.id, p.filename, p.title, p.author, p.width, p.height,
        p.season, p.category, p.campus, p.created_at, p.published_at,
-       paged.raw_score{detail_columns}
+       p.is_aigc, p.aigc_label, paged.raw_score{detail_columns}
 FROM paged
 JOIN photos p ON p.id = paged.id
 ORDER BY paged.raw_score DESC, paged.published_at DESC NULLS LAST, paged.created_at DESC
@@ -971,7 +980,7 @@ paged AS (
 )
 SELECT p.id, p.filename, p.title, p.author, p.width, p.height,
        p.season, p.category, p.campus, p.created_at, p.published_at,
-       paged.raw_score{detail_columns}
+       p.is_aigc, p.aigc_label, paged.raw_score{detail_columns}
 FROM paged
 JOIN photos p ON p.id = paged.id
 ORDER BY paged.raw_score DESC, COALESCE(paged.published_at, paged.created_at) DESC

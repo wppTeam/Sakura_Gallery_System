@@ -293,5 +293,8 @@ XMP 字段（自定义命名空间 `https://sakura.buct.edu.cn/ns/aigc/1.0/`）�
   `Content-Disposition: attachment`，字节内含完整 XMP，`label_written=true` 已回写。
 - 单元/集成测试：`backend/tests/test_aigc_labeling.py` 16 passed；全量 `pytest -q` 120 passed。
 
+检索侧同步：`GET /api/v1/search` 的结果项也带 `is_aigc` / `aigc_label` / `kind`（`aigc`），
+Agent 检索卡片能直接显示「AI 生成」角标；`lexical_search.SearchHit` 与两种方言 SQL 均已带上该列。
+
 已知限制：WebP/GIF 暂不支持隐式写入（下载时头标 `unsupported-format`，文件原样）；
 XMP 写入在下载时进行（同一作品重复下载会重新写），未缓存带标识的副本（后续可加派生文件缓存）。

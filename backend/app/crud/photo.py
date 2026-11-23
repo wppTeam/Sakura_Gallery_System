@@ -148,9 +148,12 @@ async def get_photos(
         count_query = count_query.where(Photo.id.in_(campus_subquery))
 
     if exclude_categories:
+        # 用 IS NULL OR != 显式保留 category 为空的照片：SQL 里 NULL != 'Portrait' 是 NULL，
+        # 会把未分类作品从公开列表整批过滤掉（AIGC 演示图曾因此不显示）。
         for exc_cat in exclude_categories:
-            query = query.where(Photo.category != exc_cat)
-            count_query = count_query.where(Photo.category != exc_cat)
+            condition = or_(Photo.category.is_(None), Photo.category != exc_cat)
+            query = query.where(condition)
+            count_query = count_query.where(condition)
 
     if tag:
         tag_subquery = (

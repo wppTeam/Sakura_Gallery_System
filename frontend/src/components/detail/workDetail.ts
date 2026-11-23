@@ -41,6 +41,14 @@ export interface WorkAigcInfo {
   provider: string
   prompt: string
   label: string
+  /** 图生图源作品 id（公开字段，存在即说明是图生图） */
+  sourceWorkId: string
+  /** 是否换脸 / 人脸替换 */
+  faceSwap: boolean
+  /** 提示词是否由作者公开（后端已按开关裁剪，有值即已公开） */
+  promptPublic: boolean
+  /** 声明时间 */
+  declaredAt: string
 }
 
 export interface WorkDetail {
@@ -308,17 +316,21 @@ function normalizeAigc(photo: RawPhoto): WorkAigcInfo | null {
   const meta = isRecord(photo.aigc_meta) ? photo.aigc_meta : isRecord(photo.aigc) ? (photo.aigc as UnknownRecord) : {}
   const model = firstString(meta.model, photo.aigc_model)
   const provider = firstString(meta.provider, photo.aigc_provider)
-  const prompt = firstString(
-    (photo.prompt_public ? photo.prompt : ''),
-    meta.prompt_public, meta.prompt,
-    photo.aigc_prompt,
-  )
-  if (!labeled && !model && !provider && !prompt) return null
+  // 后端 _public_aigc_meta 仅在作者勾选公开时返回 prompt，这里不再二次判断公开开关
+  const prompt = firstString(meta.prompt, photo.aigc_prompt)
+  const sourceWorkId = firstString(meta.source_work_id)
+  const faceSwap = firstBoolean(meta.face_swap)
+  const declaredAt = firstString(meta.declared_at)
+  if (!labeled && !model && !provider && !prompt && !sourceWorkId && !faceSwap) return null
   return {
     model,
     provider,
     prompt,
-    label: typeof labelRaw === 'string' ? labelRaw : '',
+    label: typeof labelRaw === 'string' && labelRaw ? labelRaw : labeled ? 'AI 生成' : '',
+    sourceWorkId,
+    faceSwap,
+    promptPublic: Boolean(prompt),
+    declaredAt,
   }
 }
 

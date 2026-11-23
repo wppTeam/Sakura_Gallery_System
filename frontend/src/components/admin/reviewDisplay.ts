@@ -4,6 +4,7 @@ import {
   DECISION_LABELS,
   REVIEW_STATUS_LABELS,
   RULE_LABELS,
+  type AigcDeclarationEvidence,
   type ModerationDecision,
   type ModerationPhoto,
   type ModerationReview,
@@ -171,6 +172,31 @@ export function agentSummary(review: ModerationReview): string {
   const confidence = review.escalation?.confidence ?? review.prefilter?.confidence ?? null
   const suggestion = tier ? `建议 ${tier}` : '未给出分级'
   return `${source}${suggestion}${confidence !== null ? ` · 置信度 ${percentText(confidence)}` : ''}`
+}
+
+/** AIGC 声明证据（review.rules.aigc_declaration）的标签色 */
+export function aigcDeclarationTagType(decl: AigcDeclarationEvidence | null): TagType {
+  if (!decl) return 'default'
+  if (!decl.declared) return 'warning'
+  if ((decl.faceSwap || decl.sourceWorkId) && !decl.consentConfirmed) return 'error'
+  return 'success'
+}
+
+/** 一句话概括 AIGC 申报，给审核员快速判断 */
+export function aigcDeclarationSummary(decl: AigcDeclarationEvidence | null): string {
+  if (!decl) return '本条审核无 AIGC 声明记录'
+  if (!decl.declared) return '投稿声明不含 AIGC 内容；若模型判断疑似 AIGC，需人工核实'
+  const parts = ['已声明 AI 生成']
+  if (decl.model) parts.push(decl.model)
+  if (decl.faceSwap) parts.push('人脸替换 · L2')
+  else if (decl.sourceWorkId) parts.push('图生图 · L2')
+  return parts.join(' · ')
+}
+
+/** 图生图 / 换脸但未确认被摄者同意：应驳回或挂起补充授权 */
+export function aigcConsentMissing(decl: AigcDeclarationEvidence | null): boolean {
+  if (!decl) return false
+  return decl.declared && (decl.faceSwap || Boolean(decl.sourceWorkId)) && !decl.consentConfirmed
 }
 
 export interface RiskFlag {

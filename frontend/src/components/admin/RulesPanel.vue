@@ -48,6 +48,61 @@
         </div>
       </dl>
 
+      <div v-if="declaration" class="aigc-evidence">
+        <p class="aigc-evidence-head">
+          <span class="aigc-evidence-title">AIGC 声明证据</span>
+          <n-tag size="tiny" :type="declarationTagType" :bordered="false">
+            {{ declaration.declared ? '已声明 AI 生成' : '未声明 AIGC' }}
+          </n-tag>
+          <n-tag
+            v-if="declaration.declared && (declaration.faceSwap || declaration.sourceWorkId)"
+            size="tiny"
+            type="error"
+            :bordered="false"
+          >
+            图生图 / 换脸 · 强制 L2
+          </n-tag>
+        </p>
+        <dl class="aigc-evidence-facts">
+          <div v-if="declaration.label">
+            <dt>显式标识</dt>
+            <dd>{{ declaration.label }}</dd>
+          </div>
+          <div v-if="declaration.model">
+            <dt>生成模型</dt>
+            <dd>{{ declaration.model }}</dd>
+          </div>
+          <div v-if="declaration.provider">
+            <dt>服务提供方</dt>
+            <dd>{{ declaration.provider }}</dd>
+          </div>
+          <div v-if="declaration.sourceWorkId">
+            <dt>图生图源作品</dt>
+            <dd class="mono" :title="declaration.sourceWorkId">{{ shortSourceWork }}</dd>
+          </div>
+          <div>
+            <dt>人脸替换</dt>
+            <dd>{{ declaration.faceSwap ? '是' : '否' }}</dd>
+          </div>
+          <div>
+            <dt>被摄者同意</dt>
+            <dd :class="declaration.consentConfirmed ? 'is-ok' : consentApplies ? 'is-warn' : ''">
+              {{ declaration.consentConfirmed ? '已确认' : consentApplies ? '未确认' : '不适用' }}
+            </dd>
+          </div>
+          <div>
+            <dt>提示词公开</dt>
+            <dd>{{ declaration.promptPublic ? '是' : '否' }}</dd>
+          </div>
+        </dl>
+        <p v-if="consentMissing" class="aigc-evidence-warning">
+          图生图 / 换脸但未确认被摄者同意：应驳回或挂起，要求补充授权材料。
+        </p>
+        <p v-else-if="declaration.declared" class="aigc-evidence-note">
+          下载原图会写入 XMP 隐式标识；请确认详情页显式角标与申报信息一致。
+        </p>
+      </div>
+
       <div v-if="rules.hits.length" class="rule-hits">
         <p class="rule-hits-title">命中 {{ rules.hits.length }} 条规则</p>
         <ul class="rule-hit-list">
@@ -88,7 +143,13 @@ import {
 } from '@vicons/ionicons5'
 import type { RuleResult } from '../../api/moderation'
 import { formatFileSize } from '../../utils/format'
-import { ruleLabel, severityLabel, severityTagType } from './reviewDisplay'
+import {
+  aigcConsentMissing,
+  aigcDeclarationTagType,
+  ruleLabel,
+  severityLabel,
+  severityTagType,
+} from './reviewDisplay'
 
 const props = defineProps<{
   rules: RuleResult | null
@@ -97,6 +158,17 @@ const props = defineProps<{
 const shortHash = computed(() => {
   const hash = props.rules?.dhash || ''
   return hash.length > 18 ? `${hash.slice(0, 18)}…` : hash
+})
+
+const declaration = computed(() => props.rules?.aigcDeclaration ?? null)
+const declarationTagType = computed(() => aigcDeclarationTagType(declaration.value))
+const consentApplies = computed(
+  () => Boolean(declaration.value?.faceSwap || declaration.value?.sourceWorkId),
+)
+const consentMissing = computed(() => aigcConsentMissing(declaration.value))
+const shortSourceWork = computed(() => {
+  const id = declaration.value?.sourceWorkId || ''
+  return id.length > 18 ? `${id.slice(0, 18)}…` : id
 })
 </script>
 
@@ -259,5 +331,74 @@ const shortHash = computed(() => {
   font-size: 12px;
   color: var(--summer, #3b9c80);
   font-weight: 600;
+}
+.aigc-evidence {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm, 10px);
+  border: 1px dashed var(--sakura, #e8628c);
+  background: var(--sakura-wash, #fff0f5);
+}
+
+.aigc-evidence-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.aigc-evidence-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sakura-deep, #c93a63);
+  letter-spacing: 0.02em;
+}
+
+.aigc-evidence-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+}
+
+.aigc-evidence-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.aigc-evidence-facts dt {
+  font-size: 10.5px;
+  color: var(--faint, #97808a);
+}
+
+.aigc-evidence-facts dd {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink, #4a2b35);
+}
+
+.aigc-evidence-facts dd.is-warn {
+  color: var(--autumn, #b5703c);
+}
+
+.aigc-evidence-facts dd.is-ok {
+  color: var(--summer, #3b9c80);
+}
+
+.aigc-evidence-warning {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: #d03050;
+}
+
+.aigc-evidence-note {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted, #63474f);
 }
 </style>

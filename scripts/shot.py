@@ -95,6 +95,11 @@ def main() -> int:
     ap.add_argument("--full", action="store_true", help="截整页（高度自适应）")
     ap.add_argument("--tall", type=int, default=0, help="导航前就把视口设为该高度（懒加载友好，用于整页评审再裁切）")
     ap.add_argument("--token", default=None, help="注入 localStorage.auth_token")
+    ap.add_argument(
+        "--dump-dom",
+        action="store_true",
+        help="不截图，只打印渲染后的 outerHTML（自动化验收用；out 参数可传 -）",
+    )
     args = ap.parse_args()
 
     chrome = shutil.which("google-chrome") or shutil.which("chromium") or shutil.which("chromium-browser")
@@ -177,6 +182,15 @@ def main() -> int:
                 break
             time.sleep(0.3)
         time.sleep(args.wait)
+        if args.dump_dom:
+            html = cdp.eval("document.documentElement.outerHTML")
+            if args.out and args.out != "-":
+                with open(args.out, "w", encoding="utf-8") as fh:
+                    fh.write(html)
+                print(f"saved {args.out} ({len(html)} chars)")
+            else:
+                print(html)
+            return 0
         # 重要：headless=new 的 surface 截图会丢掉图片层（拍到的是背景占位），
         # fromSurface=False 走渲染器渲染，才是页面真实外观。
         shot = cdp._cmd("Page.captureScreenshot", {"format": "png", "fromSurface": False, "captureBeyondViewport": False})

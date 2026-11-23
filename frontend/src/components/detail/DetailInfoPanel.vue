@@ -74,7 +74,10 @@
               <span class="download-label">{{ option.label }}</span>
               <span class="download-note">{{ option.note }}</span>
             </a>
-            <p class="download-tip">原始构图与尺寸不做裁切；转载或商用前请先获得作者授权。</p>
+            <p class="download-tip">
+              <template v-if="detail.aigc">原图下载文件内含「AI 生成」隐藏标识（XMP）；</template>
+              原始构图与尺寸不做裁切；转载或商用前请先获得作者授权。
+            </p>
           </div>
         </Transition>
       </div>
@@ -86,6 +89,10 @@
         <n-icon :component="CopyOutline" :size="18" />
       </button>
     </div>
+    <p v-if="detail.aigc" class="aigc-download-hint">
+      <n-icon :component="ShieldCheckmarkOutline" :size="13" />
+      <span>下载副本带 AI 生成标识：原图文件已写入 XMP 隐式标识。</span>
+    </p>
 
     <section v-if="detail.description" class="block">
       <h2 class="block-title">作品简介</h2>
@@ -122,21 +129,37 @@
     <section v-if="detail.aigc" class="block aigc-block">
       <h2 class="block-title">AI 生成说明</h2>
       <p class="aigc-intro">
-        本作品包含 AI 生成合成内容，已按《人工智能生成合成内容标识办法》在展示页添加显式标识；
-        下载文件中已写入隐式标识。请不要用于伪造真实人物或误导性传播。
+        本作品包含 AI 生成合成内容，已按《人工智能生成合成内容标识办法》在展示页添加显式标识「AI 生成」，
+        并在原图下载文件中写入 XMP 隐式标识。请不要用于伪造真实人物或误导性传播。
       </p>
       <dl class="spec-list">
+        <div v-if="detail.aigc.label" class="spec-row">
+          <dt>显式标识</dt>
+          <dd>{{ detail.aigc.label }}</dd>
+        </div>
         <div v-if="detail.aigc.model" class="spec-row">
           <dt>生成模型</dt>
           <dd>{{ detail.aigc.model }}</dd>
         </div>
         <div v-if="detail.aigc.provider" class="spec-row">
-          <dt>提供方</dt>
+          <dt>服务提供方</dt>
           <dd>{{ detail.aigc.provider }}</dd>
         </div>
-        <div v-if="detail.aigc.label" class="spec-row">
-          <dt>标识</dt>
-          <dd>{{ detail.aigc.label }}</dd>
+        <div v-if="detail.aigc.sourceWorkId" class="spec-row">
+          <dt>图生图源作品</dt>
+          <dd class="mono">{{ detail.aigc.sourceWorkId }}</dd>
+        </div>
+        <div v-if="detail.aigc.faceSwap" class="spec-row">
+          <dt>人脸替换</dt>
+          <dd>是（已确认获得被摄者书面同意）</dd>
+        </div>
+        <div v-if="detail.aigc.declaredAt" class="spec-row">
+          <dt>声明时间</dt>
+          <dd>{{ detail.aigc.declaredAt }}</dd>
+        </div>
+        <div class="spec-row">
+          <dt>隐式标识</dt>
+          <dd>原图下载文件含 XMP 标识</dd>
         </div>
       </dl>
       <div v-if="detail.aigc.prompt" class="prompt-box">
@@ -315,7 +338,7 @@ const downloadOptions = computed<DownloadOption[]>(() => {
     options.push({ label, note, url, filename: `${safeFilename.value}-${suffix}` })
   }
 
-  push('原图', '保留原始尺寸与构图', d.downloadUrl, '原图')
+  push('原图', d.aigc ? '保留原始尺寸与构图；文件含 AI 生成 XMP 标识' : '保留原始尺寸与构图', d.downloadUrl, '原图')
   for (const variant of d.variants) {
     const size = variant.width > 0 ? `长边 ${variant.width}px` : '适配分享'
     push(variant.label, size, variant.url, variant.label)
@@ -776,6 +799,19 @@ onBeforeUnmount(() => {
   border-radius: 14px;
   background: linear-gradient(160deg, #f6f2ff, #fff4f8);
   border: 1px solid #e8ddff;
+}
+
+.aigc-download-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-radius: var(--r-sm, 10px);
+  background: var(--sakura-wash, #fff0f5);
+  color: var(--sakura-deep, #c93a63);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .aigc-intro {

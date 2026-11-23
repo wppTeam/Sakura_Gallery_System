@@ -1,6 +1,33 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { uploadPhoto } from '../api/photo'
+import type { AigcUploadDeclaration } from '../types/photo'
+
+/** 投稿时的 AIGC 声明（法定要求，未选不允许提交） */
+export interface AigcDeclarationState {
+    /** null = 尚未选择，禁止提交 */
+    declared: boolean | null
+    model: string
+    provider: string
+    prompt: string
+    promptPublic: boolean
+    sourceWorkId: string
+    faceSwap: boolean
+    consentConfirmed: boolean
+}
+
+function createAigcState(): AigcDeclarationState {
+    return {
+        declared: null,
+        model: '',
+        provider: '',
+        prompt: '',
+        promptPublic: false,
+        sourceWorkId: '',
+        faceSwap: false,
+        consentConfirmed: false,
+    }
+}
 
 
 export interface FileItem {
@@ -24,6 +51,7 @@ export const useUploadStore = defineStore('upload', () => {
         classifications: {} as Record<string, number | number[]>,
         description: null as string | null,
     })
+    const aigc = ref<AigcDeclarationState>(createAigcState())
 
     // Getters
     const pendingCount = computed(() => {
@@ -38,8 +66,20 @@ export const useUploadStore = defineStore('upload', () => {
         return fileList.value.filter(item => item.status === 'error').length
     })
 
+    /** 图生图 / 换脸类：必须确认已获得被摄者书面同意（后端 400 校验） */
+    const aigcConsentRequired = computed(() => {
+        return aigc.value.declared === true && (aigc.value.faceSwap || aigc.value.sourceWorkId.trim() !== '')
+    })
+
+    /** 是否已满足 AIGC 法定声明要求，可用于提交 */
+    const aigcDeclared = computed(() => aigc.value.declared !== null)
+    const aigcReady = computed(() => {
+        if (aigc.value.declared !== true) return aigc.value.declared === false
+        return !aigcConsentRequired.value || aigc.value.consentConfirmed
+    })
+
     const canUpload = computed(() => {
-        return pendingCount.value > 0 && !uploading.value
+        return pendingCount.value > 0 && !uploading.value && aigcReady.value
     })
 
     // Actions
@@ -75,6 +115,7 @@ export const useUploadStore = defineStore('upload', () => {
             classifications: {},
             description: null,
         }
+        aigc.value = createAigcState()
         uploading.value = false
     }
 
@@ -100,6 +141,34 @@ export const useUploadStore = defineStore('upload', () => {
         }
     }
 
+    /** 组装上传用 AIGC 声明（选「否」时只发 declared=false，不夹带 AI 字段） */
+    function toAigcPayload(): AigcUploadDeclaration {
+        const state = aigc.value
+        if (state.declared !== true) {
+            return { declared: false }
+        }
+        return {
+            declared: true,
+            model: state.model.trim() || undefined,
+            provider: state.provider.trim() || undefined,
+            prompt: state.prompt.trim() || undefined,
+            promptPublic: state.promptPublic,
+            sourceWorkId: state.sourceWorkId.trim() || undefined,
+            faceSwap: state.faceSwap,
+            consentConfirmed: state.consentConfirmed,
+        }
+    }
+
+    // 取消「是」或取消图生图/换脸时，清掉不再需要的同意勾选，避免误提交
+    watch(
+        () => [aigc.value.declared, aigc.value.faceSwap, aigc.value.sourceWorkId],
+        () => {
+            if (aigc.value.declared !== true || !(aigc.value.faceSwap || aigc.value.sourceWorkId.trim())) {
+                if (!aigcConsentRequired.value) aigc.value.consentConfirmed = false
+            }
+        },
+    )
+
     async function uploadSingleFile(item: FileItem) {
         item.status = 'uploading'
         item.progress = 0
@@ -113,6 +182,7 @@ export const useUploadStore = defineStore('upload', () => {
                 metadataToSend.classifications = metadata.value.classifications
             }
             if (metadata.value.description) metadataToSend.description = metadata.value.description
+            metadataToSend.aigc = toAigcPayload()
 
             // Pass progress callback
             await uploadPhoto(item.file, metadataToSend, (progressEvent: any) => {
@@ -154,6 +224,10 @@ export const useUploadStore = defineStore('upload', () => {
         fileList,
         uploading,
         metadata,
+        aigc,
+        aigcDeclared,
+        aigcReady,
+        aigcConsentRequired,
         pendingCount,
         successCount,
         errorCount,

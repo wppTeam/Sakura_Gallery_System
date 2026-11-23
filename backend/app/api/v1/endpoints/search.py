@@ -93,7 +93,7 @@ class SearchPhotoResult(BaseModel):
 
     photo_id: str = Field(..., description="Photo UUID")
     id: str = Field(..., description="Photo UUID（前端卡片直接使用）")
-    kind: str = Field("photo", description="作品类型，当前检索只有 photo")
+    kind: str = Field("photo", description="作品类型：photo / aigc")
     score: float = Field(..., ge=0.0, le=1.0, description="Relevance score (0-1)")
     tags: list[str] = Field(default_factory=list, description="Associated tag names")
     classifications: dict[str, str] = Field(
@@ -112,7 +112,8 @@ class SearchPhotoResult(BaseModel):
     season: Optional[str] = None
     category: Optional[str] = None
     campus: Optional[str] = None
-    is_aigc: bool = Field(False, description="AIGC 标识（当前 photo 表无该列，默认 false）")
+    is_aigc: bool = Field(False, description="是否 AIGC（法定显式标识用）")
+    aigc_label: Optional[str] = Field(None, description="AIGC 显式角标文案（如「AI 生成」）")
     blurhash: Optional[str] = None
     created_at: Optional[datetime] = None
     published_at: Optional[datetime] = None
@@ -192,7 +193,7 @@ def _to_result_item(hit: SearchHit) -> SearchPhotoResult:
     return SearchPhotoResult(
         photo_id=hit.photo_id,
         id=hit.photo_id,
-        kind="photo",
+        kind="aigc" if hit.is_aigc else "photo",
         score=round(max(0.0, min(1.0, float(hit.score or 0.0))), 4),
         tags=list(hit.tags or []),
         classifications=dict(hit.classifications or {}),
@@ -208,7 +209,8 @@ def _to_result_item(hit: SearchHit) -> SearchPhotoResult:
         season=hit.season,
         category=hit.category,
         campus=hit.campus,
-        is_aigc=False,
+        is_aigc=bool(hit.is_aigc),
+        aigc_label=hit.aigc_label,
         blurhash=None,
         created_at=hit.created_at,
         published_at=hit.published_at,

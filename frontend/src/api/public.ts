@@ -35,7 +35,7 @@ export interface PublicPhoto {
   category: string | null
   capturedAt: string | null
   createdAt: string | null
-  /** AIGC 显式角标（法定要求），当前后端无字段，预留 */
+  /** AIGC 显式角标（法定要求）：由后端 is_aigc / kind / aigc_label 归一化 */
   aigc: boolean
   license: string | null
   tags: string[]
@@ -135,7 +135,11 @@ function normalizeDimension(value: number | null | undefined): number {
 
 interface RawPhotoExtra {
   kind?: string
-  aigc_label?: boolean
+  /** 后端 AIGC 法定标识字段（serialize_photo 白名单） */
+  is_aigc?: boolean
+  aigc_label?: string | boolean | null
+  aigc_meta?: Record<string, unknown> | null
+  label_written?: boolean | null
   license?: string
   blurhash?: string | null
   lqip?: string | null
@@ -148,8 +152,13 @@ export function toPublicPhoto(photo: Photo): PublicPhoto {
   const height = normalizeDimension(photo.height)
   const knownRatio = width > 0 && height > 0
   const aspectRatio = knownRatio ? width / height : 4 / 3
+  // AIGC 判定：is_aigc=true 是权威字段；兼容 kind='aigc' 与字符串 aigc_label（"AI 生成"）
+  const aigcDeclared =
+    extra.is_aigc === true ||
+    extra.kind === 'aigc' ||
+    (typeof extra.aigc_label === 'string' && extra.aigc_label.trim() !== '')
   const kind: WorkKind =
-    extra.kind === 'aigc' || extra.kind === 'template' ? extra.kind : 'photo'
+    extra.kind === 'template' ? 'template' : aigcDeclared ? 'aigc' : 'photo'
   const classLandscape = taxonomyName(photo.classifications?.landscape)
   // 后端的分类节点名才是权威中文名（photo.season 等旧列可能仍是英文枚举）
   const season = taxonomyName(photo.classifications?.season) || labelOf(SEASON_LABEL, photo.season)
@@ -175,7 +184,7 @@ export function toPublicPhoto(photo: Photo): PublicPhoto {
     category,
     capturedAt: photo.captured_at,
     createdAt: photo.published_at || photo.created_at,
-    aigc: kind === 'aigc' || extra.aigc_label === true,
+    aigc: aigcDeclared,
     license: extra.license ?? null,
     tags: [...(photo.tags || []), ...(photo.free_tags || [])],
     blurhash: extra.blurhash ?? null,

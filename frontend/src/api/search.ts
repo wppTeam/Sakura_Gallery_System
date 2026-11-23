@@ -325,7 +325,13 @@ function normalizeWork(raw: unknown): SearchWork | null {
     score: firstNumber(outer.score, provider.score, outer.relevance, outer.similarity),
     matchReason,
     publishedAt: firstString(provider.published_at, provider.created_at, outer.published_at, outer.created_at),
-    aigc: firstBoolean(provider.is_aigc, provider.aigc, provider.aigc_label, outer.is_aigc) ?? false,
+    // AIGC 法定标识：is_aigc 布尔 / kind='aigc' / aigc_label 字符串（"AI 生成"）任一命中
+    aigc:
+      firstBoolean(provider.is_aigc, provider.aigc, outer.is_aigc) ||
+      provider.kind === 'aigc' ||
+      outer.kind === 'aigc' ||
+      typeof provider.aigc_label === 'string' ||
+      typeof outer.aigc_label === 'string',
     blurhash: firstString(provider.blurhash, provider.lqip, outer.blurhash),
   }
 }

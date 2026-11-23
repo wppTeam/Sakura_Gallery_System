@@ -3,6 +3,7 @@
  */
 import request from './index'
 import type {
+  AigcUploadDeclaration,
   Photo,
   PhotoListParams,
   PhotoListResponse,
@@ -58,6 +59,10 @@ export function getPublicPhotoById(id: string): Promise<Photo> {
   return request({ url: `/api/v1/photos/public/${id}`, method: 'get' })
 }
 
+/**
+ * 上传照片。`aigc` 为法定强制声明：未传 declared 时后端 400，
+ * 因此这里把 aigc 设为必填（调用方必须明确「是 / 否」）。
+ */
 export function uploadPhoto(
   file: File,
   metadata: {
@@ -66,6 +71,7 @@ export function uploadPhoto(
     category?: string
     campus?: string
     classifications?: Record<string, number | number[]>
+    aigc?: AigcUploadDeclaration
   } = {},
   onProgress?: (progressEvent: any) => void,
 ): Promise<PhotoUploadResponse> {
@@ -77,6 +83,20 @@ export function uploadPhoto(
   if (metadata.campus) formData.append('campus', metadata.campus)
   if (metadata.classifications && Object.keys(metadata.classifications).length) {
     formData.append('classifications', JSON.stringify(metadata.classifications))
+  }
+
+  // —— AIGC 法定标识：显式声明（true/false 字符串，FastAPI Form bool 可解析）——
+  if (metadata.aigc?.declared !== undefined) {
+    formData.append('aigc_declared', metadata.aigc.declared ? 'true' : 'false')
+    if (metadata.aigc.declared) {
+      if (metadata.aigc.model) formData.append('aigc_model', metadata.aigc.model)
+      if (metadata.aigc.provider) formData.append('aigc_provider', metadata.aigc.provider)
+      if (metadata.aigc.prompt) formData.append('aigc_prompt', metadata.aigc.prompt)
+      formData.append('aigc_prompt_public', metadata.aigc.promptPublic ? 'true' : 'false')
+      if (metadata.aigc.sourceWorkId) formData.append('aigc_source_work_id', metadata.aigc.sourceWorkId)
+      formData.append('aigc_face_swap', metadata.aigc.faceSwap ? 'true' : 'false')
+      if (metadata.aigc.consentConfirmed) formData.append('consent_confirmed', 'true')
+    }
   }
 
   return request({

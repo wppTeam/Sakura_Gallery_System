@@ -40,6 +40,20 @@ export interface Photo {
   classifications: Record<string, TaxonomyValue | TaxonomyValue[]>
   uploader_name: string | null
   uploader_student_id: string | null
+  /** AIGC 法定标识：是否包含 AI 生成合成内容（显式角标依据） */
+  is_aigc?: boolean
+  /** works 判别字段：photo | aigc | template */
+  kind?: string
+  /** 显式标识文案，如「AI 生成」；非 AIGC 为 null */
+  aigc_label?: string | null
+  /** AIGC 生成信息（prompt 仅作者勾选公开时返回） */
+  aigc_meta?: Record<string, unknown> | null
+  /** 隐式标识（XMP/EXIF）是否已写入下载文件 */
+  label_written?: boolean | null
+  /** 首页占位（后端 LQIP） */
+  lqip?: string | null
+  lqip_color?: string | null
+  blurhash?: string | null
 }
 
 export interface PhotoUploadResponse {
@@ -51,6 +65,29 @@ export interface PhotoUploadResponse {
   height: number | null
   status: string
   message: string
+  /** AIGC 法定标识：上传响应用于即时反馈显式标识 */
+  is_aigc?: boolean
+  aigc_label?: string | null
+}
+
+/**
+ * 上传时的 AIGC 声明（《人工智能生成合成内容标识办法》第四条：上传时必须声明）。
+ * 后端 /photos/upload 对是否声明强制校验；true 时才接收生成信息字段。
+ */
+export interface AigcUploadDeclaration {
+  /** 必填：是否包含 AI 生成合成内容 */
+  declared: boolean
+  model?: string
+  provider?: string
+  prompt?: string
+  /** 作者是否同意公开提示词（详情页展示） */
+  promptPublic?: boolean
+  /** 图生图源作品 id；填写后强制进入 L2 人工前审 */
+  sourceWorkId?: string
+  /** 换脸 / 人脸替换类内容；强制 L2 前审 */
+  faceSwap?: boolean
+  /** 图生图 / 换脸时必须确认为「已获得被摄者书面同意」 */
+  consentConfirmed?: boolean
 }
 
 export interface PhotoUpdate {

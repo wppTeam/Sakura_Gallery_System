@@ -101,6 +101,23 @@ export interface RuleHit {
   detail: string
 }
 
+/**
+ * 投稿时申报的 AIGC 生成信息（review.rules.aigc_declaration）。
+ * 由后端在规则前置阶段写入，是「AI 生成」法定标识的申报证据。
+ */
+export interface AigcDeclarationEvidence {
+  declared: boolean
+  /** 显式标识文案，如「AI 生成」 */
+  label: string
+  model: string
+  provider: string
+  sourceWorkId: string
+  faceSwap: boolean
+  consentConfirmed: boolean
+  promptPublic: boolean
+  raw: UnknownRecord
+}
+
 export interface RuleResult {
   blocked: boolean
   maxSeverity: RuleSeverity | ''
@@ -111,6 +128,8 @@ export interface RuleResult {
   imageFormat: string
   dhash: string
   hits: RuleHit[]
+  /** AIGC 声明证据（非 AIGC 作品为 null） */
+  aigcDeclaration: AigcDeclarationEvidence | null
 }
 
 export interface PrefilterResult {
@@ -231,6 +250,21 @@ function normalizePhoto(raw: unknown): ModerationPhoto | null {
   }
 }
 
+function normalizeAigcDeclaration(raw: unknown): AigcDeclarationEvidence | null {
+  if (!isRecord(raw) || Object.keys(raw).length === 0) return null
+  return {
+    declared: toBoolean(raw.declared),
+    label: firstString(raw.label),
+    model: firstString(raw.model),
+    provider: firstString(raw.provider),
+    sourceWorkId: firstString(raw.source_work_id, raw.sourceWorkId),
+    faceSwap: toBoolean(raw.face_swap ?? raw.faceSwap),
+    consentConfirmed: toBoolean(raw.consent_confirmed ?? raw.consentConfirmed),
+    promptPublic: toBoolean(raw.prompt_public ?? raw.promptPublic),
+    raw,
+  }
+}
+
 function normalizeRules(raw: unknown): RuleResult | null {
   if (!isRecord(raw) || Object.keys(raw).length === 0) return null
   const hitsRaw = Array.isArray(raw.hits) ? raw.hits : []
@@ -255,6 +289,7 @@ function normalizeRules(raw: unknown): RuleResult | null {
     imageFormat: firstString(raw.image_format, raw.imageFormat),
     dhash: firstString(raw.dhash),
     hits,
+    aigcDeclaration: normalizeAigcDeclaration(raw.aigc_declaration ?? raw.aigcDeclaration),
   }
 }
 
