@@ -65,6 +65,55 @@ class Settings(BaseSettings):
     AI_SEARCH_MODEL_ID: str | None = None
     AI_SEARCH_TIMEOUT: int = 15
 
+    # ---- AI 场景默认模型（审核 / Agent 检索共用，同一 OpenAI 兼容渠道）----
+    # 视觉模型：审核快筛、需要读图的场景
+    AI_VISION_MODEL: str = "qwen3-vl-plus"
+    # 文本/推理模型：难例复核、检索意图解析与结果解释
+    # 注意：deepseek-v4.1-flash 是推理型，max_tokens 必须给足（≥2048），否则可见输出会被思维链吃光
+    AI_TEXT_MODEL: str = "deepseek-v4.1-flash-1017"
+    # 模型价格表（每 1M token，USD），用于成本估算；形如 {"model-id": {"input": 0.1, "output": 0.3}}
+    # 默认值按 2026-11 调研价换算（qwen3-vl-plus 官方 1 元/M 输入、10 元/M 输出 ÷ 7.1；
+    # deepseek-v4.1-flash 走中转站，按便宜档估算）。可在 .env 用 JSON 覆盖。
+    AI_MODEL_PRICES: dict[str, dict[str, float]] = Field(
+        default_factory=lambda: {
+            "qwen3-vl-plus": {"input": 0.14, "output": 1.41},
+            "qwen3-vl": {"input": 0.14, "output": 1.41},
+            "deepseek-v4.1-flash": {"input": 0.10, "output": 0.40},
+            "deepseek-v4-flash": {"input": 0.10, "output": 0.40},
+        }
+    )
+
+    # ---- Agent 审核（moderation）----
+    MODERATION_ENABLED: bool = True
+    MODERATION_PREFILTER_MODEL: str = ""  # 空 → AI_VISION_MODEL
+    MODERATION_ESCALATION_MODEL: str = ""  # 空 → AI_TEXT_MODEL
+    MODERATION_PREFILTER_MAX_TOKENS: int = 1024
+    MODERATION_ESCALATION_MAX_TOKENS: int = 3072  # 推理型模型需要足够预算
+    MODERATION_PREFILTER_IMAGE_MAX_EDGE: int = 1024  # 送 VLM 前压到长边 1024，省带宽与 token
+    MODERATION_PREFILTER_TEMPERATURE: float = 0.1
+    MODERATION_ESCALATION_TEMPERATURE: float = 0.2
+    # 快筛置信度低于该值 → 升级复核
+    MODERATION_ESCALATION_CONFIDENCE: float = 0.6
+    # 规则无硬拦截且快筛判 L0、置信度不低于该值 → 自动放行（免审即发）
+    MODERATION_AUTO_APPROVE_CONFIDENCE: float = 0.8
+    MODERATION_AUTO_APPROVE_L0: bool = True
+    # 每日调用上限（0 = 不限；开发阶段用户明确说不限流）
+    MODERATION_DAILY_CALL_BUDGET: int = 0
+    MODERATION_RETRY: int = 2
+    # 近重复检测的 dhash 汉明距离阈值（越大越宽松）
+    MODERATION_DUPLICATE_HAMMING: int = 5
+
+    # ---- Agent 驱动的图片检索（agent search）----
+    AGENT_SEARCH_ENABLED: bool = True
+    AGENT_SEARCH_MODEL: str = ""  # 空 → AI_TEXT_MODEL
+    AGENT_SEARCH_MAX_STEPS: int = 4
+    AGENT_SEARCH_TIMEOUT: int = 20
+    AGENT_SEARCH_EXPLAIN: bool = True  # 是否生成结果解释（多一次模型调用）
+    AGENT_SEARCH_CLARIFY_ENABLED: bool = True
+    AGENT_SEARCH_TRACE_ENABLED: bool = True
+    AGENT_SEARCH_DAILY_CALL_BUDGET: int = 0  # 0 = 不限
+    AGENT_SEARCH_LIMIT_MAX: int = 100
+
     # 向量搜索 / Milvus 配置
     MILVUS_HOST: str = "localhost"
     MILVUS_PORT: int = 19530

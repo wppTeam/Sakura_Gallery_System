@@ -14,6 +14,9 @@ from app.models.ai_provider import AIProviderConfig, AIProviderType
 from app.models.audit_log import AuditLog
 from app.models.notification import Notification
 from app.models.favorite import Favorite
+from app.models.ai_usage import AIUsageEvent
+from app.models.moderation import ModerationReview
+from app.models.search_trace import AgentSearchTrace
 
 __all__ = [
     "User",
@@ -41,5 +44,8 @@ __all__ = [
     "AuditLog",
     "Notification",
     "Favorite",
+    "AIUsageEvent",
+    "ModerationReview",
+    "AgentSearchTrace",
 ]
 

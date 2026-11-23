@@ -106,3 +106,9 @@ portfolio/
 /assets/
 # 早期安全排查记录，含凭据位置清单，已被 docs/ROADMAP.md M7 取代，仅本地保留
 docs/SAKURA_ROADMAP.md
+
+# local scratch space (agent workspace)
+.tmp/
+
+# agent screenshots / scratch
+.tmp-shots/

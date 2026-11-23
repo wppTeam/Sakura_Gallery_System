@@ -125,7 +125,11 @@ async def setup_database(session_factory: async_sessionmaker, uploads_dir: Path)
 
 
 @pytest.fixture
-def permission_client(tmp_path: Path):
+def permission_client(tmp_path: Path, monkeypatch):
+    # 让媒体响应从临时 uploads 目录读文件（默认指向仓库内 backend/uploads）
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "UPLOAD_DIR", str(tmp_path / "uploads"))
     db_path = tmp_path / "permissions.db"
     engine = create_async_engine(f"sqlite+aiosqlite:///{db_path.as_posix()}", future=True)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
