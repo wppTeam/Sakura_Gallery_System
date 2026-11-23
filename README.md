@@ -242,6 +242,7 @@ cd backend && pytest
 | 隐私修复 | ✅ 公开响应白名单化（学号 / 真实姓名 / 完整 EXIF 不再公开） |
 | 账号 | ✅ 登录支持学号 / 邮箱 / **username**；公开身份仅 username + display_name |
 | 策展专题 | ✅ `collections` / `collection_photos` 两张表 + 公开列表/详情/作品「收录于」接口；12 个真实专题（七乐章 / 校园四季 / 年度精选 / 月度随笔 / 手机摄影），首页横滑卡区与专题详情页由前端消费 |
+| 收藏 | ✅ 详情页收藏按钮 + `GET /photos/favorites/my` 返回可直接渲染的公开作品分页（只含 approved）；前端「我的收藏」页（列表/加载更多/空态）+ 个人中心入口 |
 | Agent 审核 | ✅ 规则前置 + VLM 快筛 + 难例复核 + 自动放行 + 人工队列 API；队列持久化（重启不丢、SKIP LOCKED 防重复领取） |
 | Agent 检索 | ✅ pg_trgm + tsvector + 汉字二元组，意图分解 / 多 facet / 解释 / 澄清追问答 |
 | AIGC 法定标识 | ✅ 上传强制声明 + 显式角标/详情 + 下载 XMP 隐式标识 + 图生图/换脸限制（M2 四件套） |

@@ -1,7 +1,7 @@
 # 视觉北化 API 手册
 
-> 最后更新：2026-05-28
-> 基础路径：`https://tkjs.buct.edu.cn/api/v1`
+> 最后更新：2026-11-24
+> 基础路径：`https://tkjs.buct.edu.cn/api/v1`（本地开发：`http://127.0.0.1:8000/api/v1`）
 
 ---
 
@@ -9,8 +9,10 @@
 
 - [认证](#认证)
 - [照片管理](#照片管理)
-- [标签管理](#标签管理)
+- [策展专题](#策展专题)
+- [收藏](#收藏)
 - [搜索](#搜索)
+- [标签管理](#标签管理)
 - [分类系统](#分类系统)
 - [统计](#统计)
 - [用户管理](#用户管理)
@@ -207,6 +209,48 @@ GET /api/v1/photos/{photo_id}/collections
 现有演示数据：12 个专题（「2024 · 七乐章」32 张、七个乐章单章 3–5 张、
 「校园四季」8、「2023 · 年度精选」5、「2023 · 月度随笔」11、「2023 · 手机摄影」4），
 由 `scripts/seed_collections.py` 幂等生成。
+
+---
+
+## ❤️ 收藏
+
+作品详情页的收藏按钮与「我的收藏」页消费这组接口（均需登录）。
+
+### 切换收藏
+
+```http
+POST /api/v1/photos/{photo_id}/favorite
+```
+
+已收藏则取消、未收藏则收藏，返回 `{ favorited: bool, favorite_count: int }`。
+
+### 收藏状态
+
+```http
+GET /api/v1/photos/{photo_id}/favorite
+```
+
+返回当前用户对该作品的状态：`{ favorited: bool, favorite_count: int }`。
+
+### 我的收藏（分页）
+
+```http
+GET /api/v1/photos/favorites/my?skip=0&limit=20
+```
+
+```json
+{
+  "items": [ "…与 /photos/public 同构的公开安全 PhotoResponse…" ],
+  "photo_ids": ["…"],
+  "total": 2,
+  "returned": 2
+}
+```
+
+- `items` 已是公开安全序列化（可直接渲染卡片），含 `variants` / `lqip` / `thumb_path`；
+- 只含 `approved` 作品（作品下架/退回后不再出现在收藏页），`total` 与 `items` 同口径；
+- `photo_ids` 保留给旧前端兼容；`limit` 上限 100；
+- 未登录返回 401。
 
 ---
 

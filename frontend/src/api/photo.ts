@@ -47,6 +47,18 @@ export function getMySubmissions(params?: PhotoListParams): Promise<PhotoListRes
   return request({ url: '/api/v1/photos/my-submissions', method: 'get', params })
 }
 
+/** 「我的收藏」列表（需登录）：items 与 /photos/public 的 item 同构，仅含 approved 作品 */
+export interface FavoritePage {
+  items: Photo[]
+  photo_ids: string[]
+  total: number
+  returned: number
+}
+
+export function getMyFavorites(params?: { skip?: number; limit?: number }): Promise<FavoritePage> {
+  return request({ url: '/api/v1/photos/favorites/my', method: 'get', params })
+}
+
 export function interpretSearch(query: string): Promise<SearchInterpretation> {
   return request({ url: '/api/v1/photos/interpret-search', method: 'post', data: { query } })
 }

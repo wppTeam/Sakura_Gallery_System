@@ -67,6 +67,7 @@
             </n-gi>
             <n-gi>
               <n-statistic label="收藏数" :value="stats.favorites" />
+              <RouterLink class="favorites-link" to="/favorites">查看我的收藏 →</RouterLink>
             </n-gi>
           </n-grid>
         </n-tab-pane>
@@ -171,6 +172,13 @@ async function loadStats() {
   } catch {
     // 静默失败
   }
+  try {
+    // 收藏数不走投稿接口，单独取一次总数（limit=1 只要 total）
+    const favorites = await photoApi.getMyFavorites({ limit: 1 })
+    stats.favorites = favorites.total || 0
+  } catch {
+    // 静默失败
+  }
 }
 
 onMounted(() => {
@@ -188,5 +196,25 @@ onMounted(() => {
 .profile-form {
   max-width: 480px;
   margin-top: 16px;
+}
+
+.favorites-link {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--sakura-deep, #c93a63);
+  font-size: 13px;
+  text-decoration: none;
+  transition: color var(--dur-fast, 160ms) var(--ease-out, ease);
+}
+
+.favorites-link:hover {
+  color: var(--sakura, #e8628c);
+  text-decoration: underline;
+}
+
+.favorites-link:focus-visible {
+  outline: 3px solid var(--focus-ring, rgba(201, 58, 99, 0.4));
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 </style>

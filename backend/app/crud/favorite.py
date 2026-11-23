@@ -1,9 +1,10 @@
 """
 收藏 CRUD 操作
 """
-from typing import List, Tuple
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete
+
 from app.models.favorite import Favorite
 from app.models.photo import Photo
 
@@ -49,18 +50,25 @@ async def get_user_favorites(
     user_id: str,
     skip: int = 0,
     limit: int = 20,
-) -> Tuple[List[str], int]:
+) -> tuple[list[str], int]:
     """
     获取用户收藏的照片 ID 列表
     """
+    # 只返回仍公开可浏览（approved）的作品：作品被下架/退回后，收藏列表里
+    # 不应再出现它的信息；total 与返回列表口径保持一致，分页不会出现空洞。
     query = (
         select(Favorite.photo_id)
-        .filter(Favorite.user_id == user_id)
+        .join(Photo, Photo.id == Favorite.photo_id)
+        .filter(Favorite.user_id == user_id, Photo.status == "approved")
         .order_by(Favorite.created_at.desc())
         .offset(skip)
         .limit(limit)
     )
-    count_query = select(func.count(Favorite.id)).filter(Favorite.user_id == user_id)
+    count_query = (
+        select(func.count(Favorite.id))
+        .join(Photo, Photo.id == Favorite.photo_id)
+        .filter(Favorite.user_id == user_id, Photo.status == "approved")
+    )
 
     result = await db.execute(query)
     photo_ids = [row[0] for row in result.all()]
