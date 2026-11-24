@@ -20,6 +20,11 @@ export interface User {
   role: UserRole
   is_active: boolean
   created_at: string
+  username?: string | null
+  display_name?: string | null
+  email_verified?: boolean
+  last_login_at?: string | null
+  login_count?: number
 }
 
 export interface LoginRequest {
@@ -38,11 +43,13 @@ export interface LoginResponse {
  * 管理员创建用户请求
  */
 export interface UserCreateRequest {
-  email: string
+  email?: string
   full_name?: string
   password: string
   role?: UserRole
-  student_id?: string  // 学号/工号
+  student_id: string  // 学号/工号
+  username?: string
+  display_name?: string
 }
 
 /**

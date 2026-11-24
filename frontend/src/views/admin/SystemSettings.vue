@@ -41,6 +41,44 @@
         </n-spin>
       </n-card>
 
+      <n-card title="登录与邮件（只读占位）">
+        <n-alert type="info" :bordered="false" class="login-mail-note">
+          以下策略目前由后端环境变量控制，本页暂只读展示；等后端配置接口就绪后再开放编辑。
+        </n-alert>
+        <n-grid :cols="3" :x-gap="16" :y-gap="16" responsive="screen" class="login-mail-grid">
+          <n-grid-item>
+            <n-statistic label="注册方式">
+              <n-text>学号 + 邮箱验证码</n-text>
+            </n-statistic>
+          </n-grid-item>
+          <n-grid-item>
+            <n-statistic label="邮箱发送">
+              <n-tag type="success">已启用（EMAIL_ENABLED）</n-tag>
+            </n-statistic>
+          </n-grid-item>
+          <n-grid-item>
+            <n-statistic label="验证码有效期">
+              <n-text>10 分钟</n-text>
+            </n-statistic>
+          </n-grid-item>
+          <n-grid-item>
+            <n-statistic label="发送冷却">
+              <n-text>60 秒 / 邮箱</n-text>
+            </n-statistic>
+          </n-grid-item>
+          <n-grid-item>
+            <n-statistic label="登录 / 注册限流">
+              <n-text>5–10 次 / 分钟</n-text>
+            </n-statistic>
+          </n-grid-item>
+          <n-grid-item>
+            <n-statistic label="会话策略">
+              <n-text>记住我 30 天，否则关闭浏览器即退出</n-text>
+            </n-statistic>
+          </n-grid-item>
+        </n-grid>
+      </n-card>
+
       <n-card title="内容与访问策略">
         <n-spin :show="loading">
           <n-form label-placement="left" label-width="180" style="max-width: 760px;">
@@ -488,5 +526,13 @@ async function handleTestProvider(provider: AIProviderConfigSummary) {
 .settings-container {
   max-width: 1280px;
   margin: 0 auto;
+}
+
+.login-mail-note {
+  margin-bottom: 16px;
+}
+
+.login-mail-grid {
+  padding: 4px 2px;
 }
 </style>
