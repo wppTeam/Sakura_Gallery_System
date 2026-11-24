@@ -124,6 +124,7 @@ import {
   ImagesOutline,
   KeyOutline,
   LogOutOutline,
+  FlagOutline,
   MenuOutline,
   PeopleOutline,
   PricetagOutline,
@@ -137,6 +138,7 @@ import type { MenuOption } from 'naive-ui'
 import { useAuthStore } from '../stores/auth'
 import ChangePasswordDialog from '../components/common/ChangePasswordDialog.vue'
 import NotificationBell from '../components/common/NotificationBell.vue'
+import { fetchReportStats } from '../api/admin_reports'
 
 const router = useRouter()
 const route = useRoute()
@@ -178,6 +180,7 @@ const avatarText = computed(() => (displayName.value || '?').trim().slice(0, 1).
 const PAGE_TITLES: Record<string, string> = {
   Dashboard: '仪表盘',
   PhotoReview: '照片审核',
+  Reports: '举报处理',
   AiUsage: 'AI 成本',
   TagManagement: '自由标签',
   TaxonomyManagement: '分类治理',
@@ -205,10 +208,13 @@ onMounted(() => {
   mediaQuery = window.matchMedia('(max-width: 900px)')
   syncNarrow(mediaQuery.matches)
   mediaQuery.addEventListener('change', onMediaChange)
+  window.addEventListener('reports:changed', loadReportPendingCount)
+  void loadReportPendingCount()
 })
 
 onBeforeUnmount(() => {
   mediaQuery?.removeEventListener('change', onMediaChange)
+  window.removeEventListener('reports:changed', loadReportPendingCount)
 })
 
 watch(
@@ -216,6 +222,7 @@ watch(
   (name) => {
     if (name) activeKey.value = name.toString()
     document.title = `${currentTitle.value} · 后台管理 · 视觉百花`
+    void loadReportPendingCount()
   },
   { immediate: true },
 )
@@ -224,9 +231,31 @@ function renderMenuIcon(icon: any) {
   return () => h(NIcon, null, { default: () => h(icon) })
 }
 
+const reportPendingCount = ref(0)
+
+function renderReportsLabel() {
+  return h('span', { class: 'menu-label-with-badge' }, [
+    h('span', null, '举报处理'),
+    reportPendingCount.value > 0
+      ? h('span', { class: 'menu-pending-badge' }, String(reportPendingCount.value))
+      : null,
+  ])
+}
+
+async function loadReportPendingCount() {
+  if (!authStore.canReview) return
+  try {
+    const stats = await fetchReportStats(7)
+    reportPendingCount.value = stats.pending
+  } catch {
+    // 角标失败不影响后台使用
+  }
+}
+
 const contentMenuOptions: MenuOption[] = [
   { label: '仪表盘', key: 'Dashboard', icon: renderMenuIcon(BarChartOutline) },
   { label: '照片审核', key: 'PhotoReview', icon: renderMenuIcon(CheckmarkCircleOutline) },
+  { label: renderReportsLabel, key: 'Reports', icon: renderMenuIcon(FlagOutline) },
   { label: '自由标签', key: 'TagManagement', icon: renderMenuIcon(PricetagsOutline) },
   { label: '分类治理', key: 'TaxonomyManagement', icon: renderMenuIcon(GitNetworkOutline) },
   { label: '标注任务', key: 'TaggingTaskManagement', icon: renderMenuIcon(PricetagOutline) },
@@ -379,6 +408,27 @@ function onUserMenuSelect(key: string) {
 
 .admin-menu :deep(.n-menu-item-content--selected .n-menu-item-content-header) {
   font-weight: 600;
+}
+
+.admin-menu :deep(.menu-label-with-badge) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-menu :deep(.menu-pending-badge) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--sakura, #e8628c);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .admin-menu :deep(.n-menu-item-group-title) {

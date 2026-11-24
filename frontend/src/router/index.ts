@@ -156,6 +156,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, requiresAuditor: true },
       },
       {
+        path: 'reports',
+        name: 'Reports',
+        component: () => import('../views/admin/Reports.vue'),
+        meta: { requiresAuth: true, requiresAuditor: true },
+      },
+      {
         path: 'ai-usage',
         name: 'AiUsage',
         component: () => import('../views/admin/AiUsage.vue'),
