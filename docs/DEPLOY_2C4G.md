@@ -934,7 +934,7 @@ S3_PRESIGN_EXPIRE_SECONDS=600
 
 补充（2026-11-24）：存量 64 张作品的 AI 标签已在本机回填（58 张成功 / 3 张空结果 / $0.0363），并以「tags / photo_tags / photo_classifications / photos.exif_data」四组数据同步到生产库；线上检索 `q=樱花` 已能通过标签命中 5 条。
 
-### 15.3 Cloudflare Tunnel 接入（token 已装、连接已注册、待 ingress）
+### 15.3 Cloudflare Tunnel 接入（已上线：https://buct-sakura.cn）
 
 tunnel token 写进服务器 `.env.prod` 的 `TUNNEL_TOKEN=`，再：
 
@@ -979,6 +979,23 @@ docker run -d --rm --name sakura-quick --network sakura-prod-net \
 docker logs sakura-quick 2>&1 | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com'
 # 实测：/healthz 200、/api/v1/photos/public 200、SPA 路由 200（quick tunnel 偶发抖动，重试即可）
 ```
+
+#### 15.3.1 上线实录（2026-11-24）
+
+- ingress 规则（`buct-sakura.cn` / `www.buct-sakura.cn` → `http://nginx:80`）已写入 tunnel
+  `a835caea-15e1-4551-9a7b-69f2cb85726c`，两条 CNAME 指向 `<tunnel_id>.cfargotunnel.com`（proxied）。
+- 公网验证（`scripts/verify_prod.py https://buct-sakura.cn`）**ALL CHECKS PASSED**：
+  `/`、`/explore`、`/healthz`、`/api/v1/photos/public`（61）、缩略图与变体（307 → COS，
+  长缓存）、`/api/v1/search`、`/api/v1/collections/public`（12）、匿名 401。
+- 图片链路：媒体端点 307 → `smartphoto-1328781951.cos.ap-beijing.myqcloud.com`，跟随 200、
+  `image/jpeg|webp`、`cache-control: public, max-age=31536000, immutable`；AIGC 下载仍返回
+  `X-AIGC-Implicit-Label: xmp` 的 PNG。
+- 区设置：`always_use_https=on`（http → 301 https）；CORS 白名单已含线上域名与用户列出的
+  预览来源（`https://5173.ins.chat`、zeabur 预览、`http://152.136.121.153:5173` 等）。
+- 注意：Cloudflare 浏览器完整性检查会拦 `Python-urllib/x` 默认 UA（`error 1010`），
+  自检脚本已带常规 User-Agent；第三方脚本调用 API 时也应设置 UA。
+- Agent 检索在生产可用：`GET /api/v1/search?q=…&mode=agent` 返回 explanation + steps
+  （planner/lexical/facets/vector/explainer），实测约 2.3s。
 
 ## 附录：与旧方案的对照（避免混用）
 

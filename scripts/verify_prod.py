@@ -12,7 +12,10 @@ fails = []
 
 def get(path, expect=200, headers=None, follow=True):
     url = BASE + path
-    req = urllib.request.Request(url, headers=headers or {})
+    # Cloudflare 的浏览器完整性检查会拦 Python-urllib 的默认 UA（error 1010），这里伪装成常规客户端。
+    default_headers = {"User-Agent": "SakuraGalleryVerify/1.0 (+https://buct-sakura.cn)"}
+    default_headers.update(headers or {})
+    req = urllib.request.Request(url, headers=default_headers)
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
             body = r.read()
@@ -70,7 +73,10 @@ if identifier and password:
     req = urllib.request.Request(
         BASE + "/api/v1/auth/login",
         data=json.dumps({"identifier": identifier, "password": password}).encode(),
-        headers={"content-type": "application/json"},
+        headers={
+            "content-type": "application/json",
+            "User-Agent": "SakuraGalleryVerify/1.0 (+https://buct-sakura.cn)",
+        },
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
