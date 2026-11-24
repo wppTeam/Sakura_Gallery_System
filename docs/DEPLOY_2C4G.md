@@ -1181,3 +1181,24 @@ Referrer-Policy: strict-origin-when-cross-origin
 | 备份 cron | 每日 03:17，PG dump + COS 异地上传（30 天保留） |
 | 巡检 cron | 每 5 分钟，异常发信 + 恢复通知 |
 | 恢复演练 | 从 COS 拉回并恢复成功（64/4/12/11） |
+
+### 17.6 匿名只读接口微缓存扩容（2026-11-24）
+
+nginx 已把微缓存从「列表 + 检索 + 专题」扩到**公开作品详情**：
+
+| location | TTL | 说明 |
+|---|---|---|
+| `= /api/v1/photos/public`（列表） | 30s | 首页/探索页首屏 |
+| `^~ /api/v1/photos/public/`（详情） | 30s | 高频分享落地页；带 `Authorization` 时 `BYPASS`，不缓存作者/审核员视图 |
+| `^~ /api/v1/search` | 10s | 检索与 facets |
+| `^~ /api/v1/collections` | 30s | 首页专题横滑 + 专题详情 |
+
+验证（线上实测）：
+
+```bash
+curl -sD- -o /dev/null https://buct-sakura.cn/api/v1/photos/public/<id> | grep -i x-cache-status
+# 第一次 MISS，后续 HIT；加 -H 'Authorization: Bearer …' 返回 BYPASS
+```
+
+注意：`location ^~ /api/` 会跳过正则 location，所以新增缓存点必须用 `^~` 前缀（```
+location ^~ /api/v1/photos/public/```），不能用正则。
