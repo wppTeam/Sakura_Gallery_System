@@ -263,8 +263,51 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """健康检查端点"""
+    """存活检查（进程在跑就返回 200，不触达数据库/存储）"""
     return {"status": "healthy"}
+
+
+@app.get("/health/ready", include_in_schema=False)
+async def readiness_check():
+    """就绪检查：数据库可达 + 存储后端可用（供监控/编排系统使用）。
+
+    - 数据库不可达 → 503（服务无法正常工作）
+    - 存储探测失败只降级为 warning 状态，不影响 200（避免对象存储抖动把整站判死）
+    """
+    from app.services.storage import get_storage
+
+    checks = {"database": False, "storage": "unknown"}
+    healthy = False
+    try:
+        async with AsyncSessionLocal() as db:
+            await db.execute(select(1))
+        checks["database"] = True
+        healthy = True
+    except Exception as exc:  # pragma: no cover - 需要真实故障演练
+        logger.error("readiness: 数据库不可用: %s", exc)
+
+    try:
+        storage = get_storage()
+        if settings.STORAGE_BACKEND == "s3":
+            await asyncio.to_thread(storage.client.head_bucket, Bucket=settings.S3_BUCKET)
+        else:
+            upload_dir = settings.UPLOAD_DIR
+            ok = os.path.isdir(upload_dir) and os.access(upload_dir, os.W_OK)
+            if not ok:
+                raise RuntimeError(f"upload dir 不可写: {upload_dir}")
+        checks["storage"] = "ok"
+    except Exception as exc:
+        logger.warning("readiness: 存储探测失败（不阻塞就绪）: %s", exc)
+        checks["storage"] = "error"
+
+    payload = {
+        "status": "ready" if healthy else "not_ready",
+        "checks": checks,
+        "version": settings.APP_VERSION,
+    }
+    if not healthy:
+        return JSONResponse(payload, status_code=503)
+    return payload
 
 
 # ────────────────────────────────────────────────────────────

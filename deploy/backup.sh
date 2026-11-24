@@ -12,6 +12,9 @@
 #   ENV_FILE（默认 <repo>/deploy/.env.prod）
 #   BACKUP_UPLOADS（auto|1|0，默认 auto：local→备份，s3→跳过）
 #
+# 异地备份：STORAGE_BACKEND=s3 且有 S3_ACCESS_KEY 时，PG 备份会自动再上传到
+#   对象存储 backups/ 前缀（详见步骤 2.5；可用 BACKUP_REMOTE=0 关闭）。
+#
 # 手动执行：
 #   sudo bash deploy/backup.sh
 # 定时执行（crontab -e，每日 03:17，避开整点）：
@@ -91,6 +94,47 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# 2.5) 对象存储异地备份（COS/R2/MinIO）：把 PG 备份上传到桶内 backups/ 前缀
+#      备份写在本机同一块盘上不算备份；对象存储侧建议再开版本控制/生命周期。
+#      实现：借 backend 容器内已安装的 boto3 + 容器内 S3_* 配置，宿主机不装依赖。
+#      可覆盖：BACKUP_REMOTE=auto|1|0、BACKUP_REMOTE_PREFIX=backups、
+#              BACKUP_REMOTE_KEEP_DAYS=30
+# ---------------------------------------------------------------------------
+REMOTE_BACKUP="${BACKUP_REMOTE:-auto}"
+REMOTE_PREFIX="${BACKUP_REMOTE_PREFIX:-backups}"
+REMOTE_KEEP_DAYS="${BACKUP_REMOTE_KEEP_DAYS:-30}"
+if [ "$REMOTE_BACKUP" = "auto" ]; then
+  storage_backend="$(grep -E '^STORAGE_BACKEND=' "$ENV_FILE" 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '[:space:]' || true)"
+  s3_key="$(grep -E '^S3_ACCESS_KEY=' "$ENV_FILE" 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '[:space:]' || true)"
+  if [ "$storage_backend" = "s3" ] && [ -n "$s3_key" ]; then
+    REMOTE_BACKUP=1
+  else
+    REMOTE_BACKUP=0
+  fi
+fi
+
+if [ "$REMOTE_BACKUP" = "1" ]; then
+  log "上传 PG 备份到对象存储 ${REMOTE_PREFIX}/ ..."
+  BACKEND_CID="$(compose ps -q backend 2>/dev/null | head -1 || true)"
+  if [ -z "$BACKEND_CID" ]; then
+    log "警告：backend 容器未运行，跳过对象存储备份（本地备份仍在 $PG_DUMP）"
+  else
+    REMOTE_NAME="$(basename "$PG_DUMP")"
+    # 用 docker cp 传脚本（小文件），dump 走 stdin，避免容器内 uid 不同导致的权限问题
+    docker cp "$ROOT/deploy/backup_upload.py" "$BACKEND_CID:/tmp/backup_upload.py" >/dev/null
+    if cat "$PG_DUMP" | docker exec -i "$BACKEND_CID" python /tmp/backup_upload.py \
+        --file - \
+        --key "${REMOTE_PREFIX}/${REMOTE_NAME}" \
+        --keep-days "$REMOTE_KEEP_DAYS"; then
+      log "对象存储备份完成：s3://<bucket>/${REMOTE_PREFIX}/${REMOTE_NAME}"
+    else
+      log "警告：对象存储上传失败（本地备份仍在 $PG_DUMP）"
+    fi
+    docker exec "$BACKEND_CID" rm -f /tmp/backup_upload.py >/dev/null 2>&1 || true
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # 3) 清理过期备份（只动本脚本产物的文件名模式，绝不 rm -rf 目录）
 # ---------------------------------------------------------------------------
 if [ "$KEEP_DAYS" -gt 0 ] 2>/dev/null; then
@@ -102,8 +146,3 @@ fi
 
 log "备份结束：$(date '+%F %T %Z')；当前目录占用 $(du -sh "$BACKUP_DIR" | cut -f1)"
 
-# ---------------------------------------------------------------------------
-# 4) 可选：异机/对象存储备份（备份在同一块盘上不算备份）
-#    rclone copy "$BACKUP_DIR" r2:sakura-backups/$(hostname)/ --include "pg-*.dump"
-#    aws s3 cp "$PG_DUMP" "s3://sakura-backups/$(hostname)/" --endpoint-url https://... 
-# ---------------------------------------------------------------------------

@@ -1109,3 +1109,75 @@ curl -s -X POST https://buct-sakura.cn/api/v1/auth/email-code \
 
 安全约定：验证码只存 HMAC 哈希；60s 冷却、每小时 10 次、5 次尝试上限；
 `forgot` 对未注册邮箱返回相同提示（防枚举）；重置密码后 `token_version++` 旧 token 失效。
+
+## 17. 生产可靠性：就绪检查 / 异地备份 / 可用性巡检（2026-11-24 落地）
+
+### 17.1 就绪检查 `/health/ready`
+
+`/healthz` 是 nginx 静态 200（只证明容器活着，不碰数据库）；真正的就绪检查走后端：
+
+```bash
+curl -s https://buct-sakura.cn/health/ready
+# {"status":"ready","checks":{"database":true,"storage":"ok"},"version":"1.0.0"}
+```
+
+- 数据库 `SELECT 1` 失败 → HTTP **503**（`status=not_ready`），监控/编排应据此摘流；
+- 对象存储探测失败只把 `checks.storage` 标为 `error`，**不阻塞就绪**——避免 COS 抖动把整站判死；
+- nginx 已加 `location = /health/ready` 反代（`access_log off`，重复声明安全头），服务器本地监控不走公网也能查后端。
+
+### 17.2 异地备份到对象存储（COS）
+
+`deploy/backup.sh` 现在会在本地 `pg_dump` 后自动把备份上传到桶内 `backups/` 前缀：
+
+```bash
+# 生产实测（STORAGE_BACKEND=s3 时自动启用；BACKUP_REMOTE=0 可关）
+BACKUP_DIR=~/sakura-backups bash deploy/backup.sh
+# [backup] uploaded s3://smartphoto-1328781951/backups/pg-20261124-212135.dump (184303 bytes)
+# [backup] remote prune: deleted=0 (keep_days=30)
+```
+
+- 实现：`deploy/backup_upload.py` 在 backend 容器内执行（复用容器里的 boto3 与 `S3_*` 环境），宿主机无需装依赖；dump 通过 **stdin** 传入，避免 `docker cp` 的 uid 权限问题；
+- 远端保留 `BACKUP_REMOTE_KEEP_DAYS`（默认 30 天），按前缀 `backups/` 清理过期对象；
+- **恢复演练（从对象存储拉回，2026-11-24 实测）**：容器内 `download_file` → 恢复到临时库 `sakura_remote_restore` → `photos=64 / users=4 / collections=12 / moderation_reviews=11` → 删库清理，全流程通过；
+- COS 侧踩坑：① `put_object` 需关掉 AWS 新版默认流式 CRC 校验（`request_checksum_calculation="when_required"`），否则 `UnseekableStreamError`；② 用 `ContentLength` 显式给长度；
+- 媒体（S3 模式）不随数据库走 tar 备份，请在 COS 桶上开启 **版本控制 + 生命周期规则** 作为媒体侧保护（见 §6.4）。
+
+### 17.3 可用性巡检与告警
+
+`deploy/uptime_check.py`（仅标准库）检查三项：`/healthz`、`/api/v1/photos/public?limit=1`、`/sitemap.xml`；失败重试一次，仍失败则通过 **Resend** 发告警邮件：
+
+- 同一故障 `ALERT_COOLDOWN_MINUTES`（默认 30）分钟内只告警一次，恢复时发一封「已恢复」；
+- 收件人 `ALERT_EMAIL_TO`（未设置则只记日志），发信配置读同目录 `.env.prod` 的 `RESEND_API_KEY/RESEND_FROM`；
+- 状态文件默认 `<repo>/.tmp/sakura-uptime-state.json`（写失败自动落 `/tmp`）。
+
+```bash
+# 手动巡检
+python3 deploy/uptime_check.py
+# [+] 巡检通过：https://buct-sakura.cn
+# 生产 cron（2026-11-24 已安装，每 5 分钟）
+*/5 * * * * cd $HOME/sakura-gallery && ALERT_EMAIL_TO=<你的邮箱> python3 deploy/uptime_check.py >> $HOME/sakura-uptime.log 2>&1
+```
+
+### 17.4 安全响应头（HSTS）
+
+站点由 Cloudflare 提供 HTTPS（`always_use_https=on`），源站 nginx 现在同时下发：
+
+```
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Referrer-Policy: strict-origin-when-cross-origin
+```
+
+注意 nginx `add_header` 的继承规则：location 里一旦声明 `add_header`，server 级头不再继承，因此每个自定义 location 都重复声明（已在配置里逐处补齐）。
+
+### 17.5 当前生产状态（2026-11-24 21:26 验证）
+
+| 项目 | 状态 |
+|---|---|
+| `https://buct-sakura.cn/healthz` | 200 `ok` |
+| `/health/ready` | 200 `ready`（database true / storage ok） |
+| HSTS 与安全头 | 已下发（`curl -I` 实测） |
+| 备份 cron | 每日 03:17，PG dump + COS 异地上传（30 天保留） |
+| 巡检 cron | 每 5 分钟，异常发信 + 恢复通知 |
+| 恢复演练 | 从 COS 拉回并恢复成功（64/4/12/11） |

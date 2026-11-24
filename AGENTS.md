@@ -344,6 +344,8 @@ Body: {"model":"qwen-image-3.0-pro",
 - AIGC 作品不带显式与隐式标识就放行
 - 把 Milvus / torch 变成必装依赖
 - 用 `{**model.__dict__}` 构造公开响应
+- 生产备份只留在与站点同一块磁盘上（必须异地对象存储；恢复演练见 `docs/DEPLOY_2C4G.md` §17）
+- 巡检/告警静默失败（监控必须能发出异常与恢复通知）
 - 在 async 端点/后台任务里直接执行 Pillow、boto3、同步文件 IO 等阻塞调用
 - 在 `main.ts` 里 `app.use(naive)` 全量注册组件（会打爆首屏体积）
 
