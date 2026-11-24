@@ -11,6 +11,7 @@ import { taxonomyValueName } from '../../types/photo'
 import { displayPhotoAuthor, displayPhotoTitle } from '../../utils/photoDisplay'
 import { getPhotoDownloadUrl, getPhotoUrl, formatDate, formatFileSize } from '../../utils/format'
 import { getPublicPhotoById, getPhotoById, getPublicPhotos } from '../../api/photo'
+import { fetchSimilarPhotos, type PublicPhoto } from '../../api/public'
 import type { SearchWork } from '../../api/search'
 
 type UnknownRecord = Record<string, unknown>
@@ -470,10 +471,50 @@ export interface RelatedWork {
   thumbUrl: string
   aspectRatio: string
   meta: string
+  /** 视觉相似理由（后端 reasons，最多展示 2 条；季节/分类兜底时为空） */
+  reasons?: string[]
+  /** 是否 AI 生成作品（卡片展示 AIGC 角标） */
+  aigc?: boolean
 }
 
-/** 相关作品：优先同季，其次同类，最后最新 */
+/** 把视觉相似接口返回的作品映射成卡片模型 */
+function similarToRelatedWork(photo: PublicPhoto, detailId: string, reasons: string[]): RelatedWork | null {
+  if (!photo.id || photo.id === detailId) return null
+  const width = photo.width || 0
+  const height = photo.height || 0
+  return {
+    id: photo.id,
+    title: photo.title || '未命名作品',
+    author: photo.author || '',
+    thumbUrl: photo.thumbUrl,
+    aspectRatio: width > 0 && height > 0 ? `${width} / ${height}` : '4 / 3',
+    meta: [photo.season, photo.category].filter(Boolean).join(' · '),
+    reasons: reasons.slice(0, 2),
+    aigc: Boolean(photo.aigc),
+  }
+}
+
+/** 视觉相似推荐；接口失败或结果为空时返回空数组，由调用方回退 */
+async function fetchSimilarWorks(detail: WorkDetail, limit: number): Promise<RelatedWork[]> {
+  try {
+    const similar = await fetchSimilarPhotos(detail.id, limit)
+    return similar
+      .map((item) => similarToRelatedWork(item.photo, detail.id, item.reasons))
+      .filter((work): work is RelatedWork => Boolean(work))
+      .slice(0, limit)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * 相关作品：优先「视觉相似」接口（带理由），失败/空结果时回退
+ * 旧逻辑（同季 → 同类 → 最新），保证区块不空。
+ */
 export async function fetchRelatedWorks(detail: WorkDetail, limit = 8): Promise<RelatedWork[]> {
+  const similar = await fetchSimilarWorks(detail, limit)
+  if (similar.length > 0) return similar
+
   const attempts: Array<Record<string, string>> = []
   if (detail.season) attempts.push({ season: detail.season })
   if (detail.category) attempts.push({ category: detail.category })
@@ -495,6 +536,8 @@ export async function fetchRelatedWorks(detail: WorkDetail, limit = 8): Promise<
             thumbUrl: getPhotoUrl(item.id, 'thumbnail'),
             aspectRatio: width > 0 && height > 0 ? `${width} / ${height}` : '4 / 3',
             meta: [seasonLabel(item as RawPhoto), categoryLabel(item as RawPhoto)].filter(Boolean).join(' · '),
+            reasons: [],
+            aigc: Boolean(item.is_aigc || item.kind === 'aigc'),
           }
         })
       if (works.length > 0) return works

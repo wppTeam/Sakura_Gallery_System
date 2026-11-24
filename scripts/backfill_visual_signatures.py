@@ -36,6 +36,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BACKEND_DIR = REPO_ROOT / "backend"
+if not (BACKEND_DIR / "app").is_dir():
+    # 容器内 backend/ 被拷成 /app，脚本从 /tmp 运行时回退到当前工作目录
+    BACKEND_DIR = Path.cwd()
 os.chdir(BACKEND_DIR)
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))

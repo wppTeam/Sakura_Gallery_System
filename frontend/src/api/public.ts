@@ -285,6 +285,38 @@ export async function fetchPublicPhotos(query: PublicPhotoQuery = {}): Promise<P
   }
 }
 
+/** 视觉相似推荐：一条 = 作品 + 相似度 + 中文理由（后端 reasons 最多 3 条） */
+export interface SimilarPhoto {
+  photo: PublicPhoto
+  similarity: number
+  reasons: string[]
+}
+
+/**
+ * 视觉相似作品（GET /api/v1/photos/{id}/similar）。
+ * 目标不存在/未公开 → 抛错，由调用方决定回退策略。
+ */
+export async function fetchSimilarPhotos(photoId: string, limit = 8): Promise<SimilarPhoto[]> {
+  const data = await request.get<{ items?: unknown[]; total?: number }>(
+    `/api/v1/photos/${encodeURIComponent(photoId)}/similar`,
+    { params: { limit } },
+  )
+  const items = Array.isArray(data?.items) ? data.items : []
+  const results: SimilarPhoto[] = []
+  for (const raw of items) {
+    if (!raw || typeof raw !== 'object') continue
+    const item = raw as Record<string, unknown> & Photo
+    const photo = toPublicPhoto(item)
+    if (!photo.id) continue
+    const reasons = Array.isArray(item.reasons)
+      ? item.reasons.filter((reason): reason is string => typeof reason === 'string' && reason.trim() !== '').slice(0, 3)
+      : []
+    const similarity = typeof item.similarity === 'number' ? item.similarity : 0
+    results.push({ photo, similarity, reasons })
+  }
+  return results
+}
+
 /** 公开分类法（季节 / 校区 / 取景地 / 植物等筛选来源） */
 export async function fetchPublicTaxonomy(): Promise<PublicTaxonomyFacet[]> {
   return request.get<PublicTaxonomyFacet[]>('/api/v1/taxonomy/public')
