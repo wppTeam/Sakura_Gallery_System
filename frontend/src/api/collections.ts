@@ -339,6 +339,58 @@ function toSpectrumPalette(raw: unknown): SpectrumPalette {
   }
 }
 
+/* ============ 光的一日（今日之光） ============ */
+
+/** 一个光时段：晨 / 昼 / 暮 / 夜（固定顺序，空时段 photos=[]） */
+export interface LightPeriod {
+  key: string
+  slug: string
+  label: string
+  timeRange: string
+  title: string
+  subtitle: string
+  intro: string
+  photoCount: number
+  photos: PublicPhoto[]
+}
+
+export interface LightPeriodsResponse {
+  periods: LightPeriod[]
+  total: number
+}
+
+function toLightPeriod(raw: unknown): LightPeriod {
+  const item = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const photos = Array.isArray(item.photos)
+    ? (item.photos as Photo[]).map(toPublicPhoto)
+    : []
+  return {
+    key: textOf(item.key),
+    slug: textOf(item.slug),
+    label: textOf(item.label),
+    timeRange: textOf(item.time_range) || textOf(item.timeRange),
+    title: textOf(item.title),
+    subtitle: textOf(item.subtitle),
+    intro: textOf(item.intro),
+    photoCount: numOf(item.photo_count ?? item.photoCount, photos.length),
+    photos,
+  }
+}
+
+/** 今日之光：固定 晨/昼/暮/夜 四时段，每段最多 perPeriod 张公开作品 */
+export async function fetchLightPeriods(perPeriod = 4): Promise<LightPeriodsResponse> {
+  const raw = await request.get<Record<string, unknown>>('/api/v1/collections/light', {
+    params: { per_period: perPeriod },
+  })
+  const rawObj = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const list = Array.isArray(rawObj.periods) ? rawObj.periods : []
+  const periods = list.map(toLightPeriod).filter((item) => item.key)
+  return {
+    periods,
+    total: numOf(rawObj.total) || periods.reduce((sum, item) => sum + item.photoCount, 0),
+  }
+}
+
 /** 樱色光谱：5 个色卡（固定顺序，slug 可能为 null） */
 export async function fetchSpectrum(): Promise<SpectrumResponse> {
   const raw = await request.get<Record<string, unknown>>('/api/v1/collections/spectrum')

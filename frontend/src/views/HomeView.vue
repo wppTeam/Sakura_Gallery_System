@@ -51,18 +51,12 @@
           </p>
         </div>
 
-        <figure class="hero-figure hero-enter" style="--enter: 100ms">
-          <img
-            class="hero-img"
-            src="/art/hero.webp"
-            alt="樱花落在北化校园的插画：粉色花枝与教学楼"
-            width="1440"
-            height="810"
-            fetchpriority="high"
-            decoding="async"
-          />
-          <figcaption class="hero-credit">视觉百花 主视觉 · 项目自制</figcaption>
-        </figure>
+        <TodayLightHero
+          class="hero-enter"
+          style="--enter: 100ms"
+          :periods="lightPeriods"
+          :loading="lightLoading"
+        />
       </div>
     </section>
 
@@ -208,43 +202,16 @@
           more-to="/collections"
         />
 
-        <ul v-if="lightLoading && !lightCollections.length" class="light-grid" aria-hidden="true">
-          <li v-for="index in 4" :key="index" class="light-card light-card--skeleton" />
+        <ul v-if="lightLoading && !lightPeriods.length" class="light-grid" aria-hidden="true">
+          <li v-for="index in 4" :key="index" class="light-skeleton" />
         </ul>
 
-        <ul v-else class="light-grid">
-          <li v-for="card in lightCards" :key="card.slug">
-            <component
-              :is="card.collection ? RouterLink : 'div'"
-              class="light-card"
-              :class="{ 'is-pending': !card.collection }"
-              :to="card.collection ? `/collections/${card.collection.slug}` : undefined"
-            >
-              <span class="light-cover">
-                <img
-                  v-if="card.collection?.cover"
-                  class="light-cover-img"
-                  :src="card.collection.cover.thumbUrl"
-                  :alt="`${card.collection.title} 封面`"
-                  width="640"
-                  height="426"
-                  loading="lazy"
-                  decoding="async"
-                />
-                <span v-else class="light-cover-token" aria-hidden="true">{{ card.token }}</span>
-                <span class="light-token" aria-hidden="true">{{ card.token }}</span>
-              </span>
-              <span class="light-body">
-                <span class="light-name">{{ card.collection?.title || card.title }}</span>
-                <span class="light-hint">{{ card.hint }}</span>
-                <span class="light-meta">
-                  <template v-if="card.collection">{{ card.collection.photoCount }} 件作品</template>
-                  <template v-else>整理中 · 暂无作品</template>
-                </span>
-              </span>
-            </component>
+        <ul v-else class="light-grid" aria-label="今日之光四个时段">
+          <li v-for="period in lightCards" :key="period.key">
+            <LightCard :period="period" :current="period.key === currentPeriodKey" />
           </li>
         </ul>
+
       </div>
     </section>
 
@@ -349,12 +316,22 @@ import {
 } from '../constants/public'
 import EmptyState from '../components/public/EmptyState.vue'
 import CollectionCard from '../components/public/CollectionCard.vue'
+import LightCard from '../components/public/LightCard.vue'
+import TodayLightHero from '../components/home/TodayLightHero.vue'
 import MasonryGrid from '../components/public/MasonryGrid.vue'
 import SearchBar from '../components/public/SearchBar.vue'
 import SeasonBand from '../components/public/SeasonBand.vue'
 import SectionHeader from '../components/public/SectionHeader.vue'
 import TopicChip from '../components/public/TopicChip.vue'
-import { fetchCollections, fetchSpectrum, type CollectionSummary, type SpectrumPalette } from '../api/collections'
+import {
+  fetchCollections,
+  fetchLightPeriods,
+  fetchSpectrum,
+  type CollectionSummary,
+  type LightPeriod,
+  type SpectrumPalette,
+} from '../api/collections'
+import { LIGHT_PERIOD_META, currentLightKey } from '../components/home/period'
 
 const router = useRouter()
 
@@ -489,32 +466,35 @@ async function loadCollections() {
   }
 }
 
-/* ---------- 光的一日 ---------- */
-const LIGHT_DEFS = [
-  { slug: 'light-dawn', token: '晨', title: '晨 · 还没醒的校园', hint: '六点到九点，光比人先到' },
-  { slug: 'light-noon', token: '昼', title: '昼 · 光在正上方', hint: '十点到十五点，影子最短' },
-  { slug: 'light-dusk', token: '暮', title: '暮 · 一日将尽', hint: '十五点以后，光开始变软' },
-  { slug: 'light-night', token: '夜', title: '夜 · 灯与星', hint: '十九点以后，另一种校园' },
-] as const
-
-const lightCollections = ref<CollectionSummary[]>([])
+/* ---------- 光的一日（今日之光，真实接口） ---------- */
+const lightPeriods = ref<LightPeriod[]>([])
 const lightLoading = ref(true)
+const currentPeriodKey = computed(() => currentLightKey())
 
-const lightCards = computed(() =>
-  LIGHT_DEFS.map((def) => ({
-    ...def,
-    collection: lightCollections.value.find((item) => item.slug === def.slug) ?? null,
-  })),
-)
+const lightCards = computed<LightPeriod[]>(() => {
+  if (lightPeriods.value.length) return lightPeriods.value
+  // 接口失败/全空：仍渲染四张占位卡，hero 自动降级为插画
+  return LIGHT_PERIOD_META.map((meta) => ({
+    key: meta.key,
+    slug: `light-${meta.key}`,
+    label: meta.label,
+    timeRange: meta.timeRange,
+    title: `${meta.label} · 整理中`,
+    subtitle: '',
+    intro: '',
+    photoCount: 0,
+    photos: [],
+  }))
+})
 
-async function loadLightCollections() {
+async function loadLightPeriods() {
   lightLoading.value = true
   try {
-    const data = await fetchCollections({ limit: 50 })
-    lightCollections.value = data.items.filter((item) => item.slug.startsWith('light-'))
+    const data = await fetchLightPeriods(4)
+    lightPeriods.value = data.periods
   } catch (error) {
-    lightCollections.value = []
-    console.warn('[home] 光的一日加载失败', error)
+    lightPeriods.value = []
+    console.warn('[home] 今日之光加载失败', error)
   } finally {
     lightLoading.value = false
   }
@@ -541,7 +521,7 @@ onMounted(() => {
   loadFeed()
   loadSeasons()
   loadCollections()
-  loadLightCollections()
+  loadLightPeriods()
   loadSpectrum()
 })
 </script>
@@ -792,118 +772,19 @@ onMounted(() => {
   list-style: none;
 }
 
-.light-card {
+.light-grid > li {
   display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
+  min-width: 0;
+}
+
+.light-grid > li > * {
+  flex: 1;
+}
+
+.light-skeleton {
+  min-height: 300px;
   border: 1px solid var(--line);
   border-radius: var(--r-card);
-  background: var(--surface);
-  text-decoration: none;
-  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
-}
-
-.light-card:hover {
-  border-color: var(--sakura-pale);
-  box-shadow: var(--shadow-soft);
-}
-
-.light-card:focus-visible {
-  outline: 3px solid var(--sakura-deep);
-  outline-offset: 3px;
-}
-
-.light-cover {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  aspect-ratio: 4 / 3;
-  padding: 12px;
-  background: var(--sakura-wash);
-  overflow: hidden;
-}
-
-.light-cover-img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  border-radius: var(--r-sm);
-  transition: transform 180ms var(--ease-out);
-}
-
-.light-card:hover .light-cover-img,
-.light-card:focus-visible .light-cover-img {
-  transform: scale(1.015);
-}
-
-.light-cover-token {
-  color: var(--sakura);
-  font-family: var(--display);
-  font-size: 52px;
-  line-height: 1;
-  opacity: 0.72;
-}
-
-.light-token {
-  position: absolute;
-  top: 10px;
-  left: 12px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--sakura-deep);
-  font-family: var(--display);
-  font-size: 15px;
-  line-height: 1;
-}
-
-.light-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px 16px;
-}
-
-.light-name {
-  color: var(--ink);
-  font-family: var(--font);
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 1.3;
-  letter-spacing: 0.01em;
-}
-
-.light-hint {
-  color: var(--muted);
-  font-size: var(--fs-xs);
-  line-height: 1.6;
-}
-
-.light-meta {
-  margin-top: 2px;
-  color: var(--faint);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-}
-
-.light-card.is-pending {
-  border-style: dashed;
-  background: color-mix(in srgb, var(--surface) 70%, var(--ground));
-}
-
-.light-card.is-pending .light-cover {
-  background: var(--ground-deep);
-}
-
-.light-card--skeleton {
-  min-height: 280px;
-  border: 1px solid var(--line);
   background: linear-gradient(100deg, var(--sakura-wash) 20%, var(--sakura-mist) 42%, var(--sakura-wash) 62%);
   background-size: 220% 100%;
   animation: collections-shimmer 1.4s linear infinite;
@@ -1045,19 +926,8 @@ onMounted(() => {
     gap: 10px;
   }
 
-  .light-body {
-    padding: 11px 12px 13px;
-  }
 
-  .light-name {
-    font-size: 15px;
-  }
 
-  .light-token {
-    width: 24px;
-    height: 24px;
-    font-size: 13px;
-  }
 
   .join-card {
     padding: 22px 18px;
