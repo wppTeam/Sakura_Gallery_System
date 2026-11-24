@@ -21,6 +21,7 @@ from app.services.ai_client import (
 )
 from app.services.agent_search.types import PlanOutcome, SearchIntent, SearchStep
 from app.services.lexical_search import build_search_terms
+from app.services.light_of_day import normalize_period
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -45,6 +46,7 @@ ALLOWED_FILTER_KEYS: frozenset[str] = frozenset(
         "award_level",
         "source_type",
         "landmark",
+        "period",
     }
 )
 
@@ -73,6 +75,11 @@ filters 可选 key 与取值（不确定就不要填，宁缺毋滥）：
 - building: 楼宇名，如 第一教学楼 / 图书馆 / 体育馆
 - landscape / facility / plant / animal / natural_phenomenon / photo_type / technique
 - gallery_series / gallery_year / award_level / source_type
+- period: 拍摄时段，只能是 dawn / noon / dusk / night 之一
+  - 清晨 / 早晨 / 早上 / 日出 → dawn
+  - 中午 / 正午 / 白天 → noon
+  - 黄昏 / 傍晚 / 日落 → dusk
+  - 夜晚 / 晚上 / 深夜 → night
 
 规则：
 1. 泛化词（照片、图片、校园、北化）不要放进 keywords。
@@ -152,8 +159,14 @@ def parse_planner_data(data: Any, query: str) -> Optional[SearchIntent]:
             if not isinstance(value, str):
                 continue
             text = value.strip()
-            if text:
-                filters[key_text] = text[:40]
+            if not text:
+                continue
+            if key_text == "period":
+                canonical = normalize_period(text)
+                if canonical:
+                    filters[key_text] = canonical
+                continue
+            filters[key_text] = text[:40]
 
     if not keywords and not filters:
         return None

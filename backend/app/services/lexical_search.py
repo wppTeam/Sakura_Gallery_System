@@ -26,6 +26,7 @@ from typing import Any, Mapping, Optional, Sequence
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.light_of_day import PERIOD_HOUR_RANGES, normalize_period
 from app.services.search_text import build_or_tsquery
 
 logger = logging.getLogger(__name__)
@@ -343,6 +344,13 @@ def normalize_filters(filters: Optional[Mapping[str, Any]]) -> dict[str, Any]:
         values = [item for item in values if item]
         if not values:
             continue
+        if real_key == "period":
+            # 拍摄时段（晨/昼/暮/夜）：中英文口语都收敛到一个规范 key；
+            # 无法识别的值直接丢弃，避免静默返回全量结果。
+            canonical = normalize_period(values[0])
+            if canonical:
+                normalized["period"] = canonical
+            continue
         if real_key in {"season", "category", "campus"}:
             expanded: list[str] = []
             for item in values:
@@ -358,7 +366,7 @@ def normalize_filters(filters: Optional[Mapping[str, Any]]) -> dict[str, Any]:
 
 
 def _build_filter_sql(
-    filters: Mapping[str, Any], params: dict[str, Any]
+    filters: Mapping[str, Any], params: dict[str, Any], caps: "_DialectCaps"
 ) -> list[str]:
     """构造结构化过滤 SQL 片段（照片列等值 + tag + taxonomy facet + 时间区间）。
 
@@ -367,6 +375,31 @@ def _build_filter_sql(
     conditions: list[str] = []
     idx = 0
     for key, value in filters.items():
+        if key == "period":
+            # 本地拍摄小时落在哪个时段。夜跨零点，因此走「>= start 或 < end」。
+            period_key = normalize_period(value)
+            if not period_key:
+                continue
+            start, end = PERIOD_HOUR_RANGES[period_key]
+            name = f"ph{idx}"
+            idx += 1
+            params[f"{name}_start"] = start
+            params[f"{name}_end"] = end
+            hour_sql = (
+                "EXTRACT(HOUR FROM p.captured_at)"
+                if caps.is_postgres
+                else "CAST(strftime('%H', p.captured_at) AS INTEGER)"
+            )
+            if start <= end:
+                conditions.append(
+                    f"p.captured_at IS NOT NULL AND {hour_sql} >= :{name}_start AND {hour_sql} < :{name}_end"
+                )
+            else:
+                conditions.append(
+                    f"p.captured_at IS NOT NULL AND ({hour_sql} >= :{name}_start OR {hour_sql} < :{name}_end)"
+                )
+            continue
+
         if key in _TIME_RANGE_COLUMNS:
             column, operator = _TIME_RANGE_COLUMNS[key]
             name = f"tf{idx}"
@@ -701,7 +734,7 @@ def _prepare_query(
     full_query = (query or "").strip() or (terms[0] if terms else "")
 
     params: dict[str, Any] = {"status": APPROVED_STATUS}
-    conditions = _build_filter_sql(normalized_filters, params)
+    conditions = _build_filter_sql(normalized_filters, params, caps)
 
     tsquery: Optional[str] = None
     if terms:

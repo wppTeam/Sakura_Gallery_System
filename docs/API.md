@@ -135,6 +135,7 @@ GET /api/v1/photos/public
 | `page` | int | 页码 | `1` |
 | `page_size` | int | 每页数量 | `30` |
 | `season` | string | 季节筛选 | `秋季` |
+| `period` | string | 拍摄时段：晨/昼/暮/夜（dawn/noon/dusk/night） | `黄昏` |
 | `campus` | string | 校区筛选 | `昌平校区` |
 | `building` | string | 楼宇筛选 | `图书馆` |
 | `gallery_series` | string | 专题筛选 | `昌平校区摄影大赛` |
@@ -414,6 +415,7 @@ GET /api/v1/search?q={query}&mode=agent|fast
 | `mode` | string | `agent`（默认，意图分解 + 解释）或 `fast`（纯词法，21–50ms） |
 | `limit` / `offset` | int | 分页，limit ≤ 100 |
 | `season` / `category` / `campus` / `tag` | string | 结构化过滤 |
+| `period` | string | 拍摄时段 `dawn` / `noon` / `dusk` / `night`（也接受 晨/昼/暮/夜、黄昏、清晨等口语） |
 
 **响应**（节选）：
 

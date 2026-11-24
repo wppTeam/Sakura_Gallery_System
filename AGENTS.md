@@ -271,6 +271,12 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
 - API：`GET /api/v1/search?q=&mode=agent|fast`、`/search/facets`、`/search/suggest`、
   `/search/traces/{trace_id}`（仅 admin）
 - 实测：fast 端到端 21–50ms；agent「校园里春季开的花」2.2s（planner ≈2.0s，解释常被预算跳过）
+- **按光找图（`period` 过滤）**：`/search` 与 `/photos/public` 都接受
+  `period=dawn|noon|dusk|night`（也接受 晨/昼/暮/夜、清晨、黄昏、傍晚、夜晚 等口语）；
+  小时区间与「光的一日」策展共用 `backend/app/services/light_of_day.py` 的
+  `PERIOD_HOUR_RANGES`（夜跨零点按 `>=19 或 <5`），SQL 用 PG `EXTRACT(HOUR …)`、
+  SQLite `strftime('%H')`；planner 的 filters 白名单含 `period`，用户说「黄昏的校园」
+  会自动落成 `period=dusk`，无需前端额外传参
 - **视觉相似**（`backend/app/services/visual_similarity.py`）：上传时对缩略图算 16×16 dhash
   写入 `exif_data["_dhash"]`，与光谱色卡 / 构图比例 / 标签 / 季节 / 校区加权（缺 dhash 的老图按可用
   信号归一化权重）；候选集只含已发布且非敏感作品，Python 内打分（`MAX_CANDIDATES=800`），

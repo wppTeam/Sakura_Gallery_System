@@ -13,6 +13,7 @@ from app.models.photo import Photo
 from app.models.tag import PhotoTag, Tag
 from app.models.taxonomy import PhotoClassification, TaxonomyAlias, TaxonomyFacet, TaxonomyNode
 from app.schemas.photo import PhotoUpdate
+from app.services.light_of_day import PERIOD_HOUR_RANGES, normalize_period
 
 if TYPE_CHECKING:
     from app.services.search_interpreter import SearchInterpretation
@@ -93,6 +94,7 @@ async def get_photos(
     award_level: Optional[str] = None,
     photo_type: Optional[str] = None,
     documentary_topic: Optional[str] = None,
+    period: Optional[str] = None,
     interpretation: Optional["SearchInterpretation"] = None,
 ) -> tuple[List[Photo], int]:
     query = select(Photo)
@@ -105,6 +107,22 @@ async def get_photos(
     if status:
         query = query.where(Photo.status == status)
         count_query = count_query.where(Photo.status == status)
+
+    if period:
+        # 拍摄时段（晨/昼/暮/夜）：与「光的一日」策展同一份小时区间。
+        # SQLAlchemy 的 extract 在 PG / SQLite 都会编译成对应方言的实现。
+        period_key = normalize_period(period)
+        if period_key:
+            start, end = PERIOD_HOUR_RANGES[period_key]
+            hour_expr = func.extract("hour", Photo.captured_at)
+            if start <= end:
+                hour_filter = and_(hour_expr >= start, hour_expr < end)
+            else:
+                # 夜跨零点：19:00–05:00
+                hour_filter = or_(hour_expr >= start, hour_expr < end)
+            period_condition = and_(Photo.captured_at.is_not(None), hour_filter)
+            query = query.where(period_condition)
+            count_query = count_query.where(period_condition)
 
     if season:
         season_names = {season}

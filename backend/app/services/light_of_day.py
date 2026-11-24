@@ -29,15 +29,68 @@ LIGHT_PERIODS: tuple[LightPeriod, ...] = (
 LIGHT_SLUGS: tuple[str, ...] = tuple(period.slug for period in LIGHT_PERIODS)
 LIGHT_PERIOD_BY_SLUG: dict[str, LightPeriod] = {p.slug: p for p in LIGHT_PERIODS}
 
+# 小时区间：左闭右开；start >= end 表示跨零点（夜 19:00–05:00）。
+# 与上面的 time_range 文案必须保持一致，检索层的 period 过滤直接读这张表，
+# 避免「时段过滤」与「策展分桶」在边界上各写一套。
+PERIOD_HOUR_RANGES: dict[str, tuple[int, int]] = {
+    "dawn": (5, 9),
+    "noon": (9, 15),
+    "dusk": (15, 19),
+    "night": (19, 5),
+}
+
+# 用户口语 / 英文 key → 规范 period key。检索层与 planner 共用。
+PERIOD_ALIASES: dict[str, str] = {
+    "dawn": "dawn",
+    "晨": "dawn",
+    "清晨": "dawn",
+    "早晨": "dawn",
+    "早上": "dawn",
+    "拂晓": "dawn",
+    "黎明": "dawn",
+    "日出": "dawn",
+    "noon": "noon",
+    "昼": "noon",
+    "白天": "noon",
+    "中午": "noon",
+    "正午": "noon",
+    "午间": "noon",
+    "dusk": "dusk",
+    "暮": "dusk",
+    "傍晚": "dusk",
+    "黄昏": "dusk",
+    "日落": "dusk",
+    "日暮": "dusk",
+    "night": "night",
+    "夜": "night",
+    "夜晚": "night",
+    "晚上": "night",
+    "夜间": "night",
+    "深夜": "night",
+    "午夜": "night",
+}
+
+
+def normalize_period(value: object) -> str | None:
+    """把中文/英文时段写法规范成 dawn / noon / dusk / night，无法识别返回 None。"""
+    if value is None:
+        return None
+    key = str(value).strip().lower()
+    if not key:
+        return None
+    return PERIOD_ALIASES.get(key)
+
 
 def period_for_hour(hour: int) -> LightPeriod:
     """按本地小时返回当前时段：05–09 晨 / 09–15 昼 / 15–19 暮 / 其余夜。"""
-    if 5 <= hour < 9:
-        return LIGHT_PERIODS[0]
-    if 9 <= hour < 15:
-        return LIGHT_PERIODS[1]
-    if 15 <= hour < 19:
-        return LIGHT_PERIODS[2]
+    hour = hour % 24
+    for period in LIGHT_PERIODS:
+        start, end = PERIOD_HOUR_RANGES[period.key]
+        if start <= end:
+            if start <= hour < end:
+                return period
+        elif hour >= start or hour < end:
+            return period
     return LIGHT_PERIODS[3]
 
 
