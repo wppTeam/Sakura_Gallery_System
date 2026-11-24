@@ -469,6 +469,92 @@ export async function getSearchSuggestions(q: string): Promise<string[]> {
 }
 
 // ────────────────────────────────────────────────────────────
+// 以图搜图（POST /api/v1/search/visual）
+// ────────────────────────────────────────────────────────────
+
+/** 探针图解析结果（后端只在内存计算，不落盘） */
+export interface VisualSearchQuery {
+  filename: string
+  width: number
+  height: number
+  aspectRatio: number
+  palette: string
+  paletteName: string
+  paletteHex: string
+}
+
+/** 以图搜图结果：items 与文本检索同构，直接复用 WorkCard / ResultMasonry */
+export interface VisualSearchResponse {
+  works: SearchWork[]
+  total: number
+  queryTimeMs: number
+  query: VisualSearchQuery | null
+}
+
+function normalizeVisualQuery(raw: unknown): VisualSearchQuery | null {
+  const record = firstRecord(raw)
+  if (!record) return null
+  const palette = firstString(record.palette)
+  const filename = firstString(record.filename)
+  if (!palette && !filename && firstNumber(record.width) === null) return null
+  return {
+    filename,
+    width: firstNumber(record.width) ?? 0,
+    height: firstNumber(record.height) ?? 0,
+    aspectRatio: firstNumber(record.aspect_ratio, record.aspectRatio) ?? 0,
+    palette,
+    paletteName: firstString(record.palette_name, record.paletteName) || palette,
+    paletteHex: firstString(record.palette_hex, record.paletteHex),
+  }
+}
+
+/**
+ * 以图搜图：上传一张探针图，返回站内视觉相似作品。
+ * 上传图只在后端内存里算 dhash + 光谱色卡，不落盘、无 AI 成本。
+ */
+export async function searchByImage(
+  file: File,
+  limit = 12,
+  onProgress?: (percent: number) => void,
+): Promise<VisualSearchResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('limit', String(Math.min(Math.max(Math.round(limit), 1), 30)))
+  const raw = await request.post<unknown>('/api/v1/search/visual', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000,
+    onUploadProgress: (event: { loaded: number; total?: number }) => {
+      if (!onProgress) return
+      const total = Number(event.total || 0)
+      if (total > 0) onProgress(Math.min(99, Math.round((event.loaded / total) * 100)))
+    },
+  })
+  const normalized = normalizeSearchResponse(raw)
+  const root = firstRecord(raw) ?? {}
+  return {
+    works: normalized.works,
+    total: normalized.total,
+    queryTimeMs: normalized.queryTimeMs,
+    query: normalizeVisualQuery(root.query),
+  }
+}
+
+/** 以图搜图的错误 → 面向用户的中文提示（优先用后端 detail） */
+export function visualSearchErrorMessage(error: unknown): string {
+  const response = (error as { response?: { status?: number; data?: unknown } })?.response
+  if (!response) return '网络连接失败，请检查网络后重试'
+  const data = response.data
+  let detail = ''
+  if (isRecord(data)) detail = firstString(data.detail, data.message)
+  const status = response.status
+  if (status === 429) return '太快了，稍等一分钟再试'
+  if (detail) return detail
+  if (status === 413) return '图片不能超过 8MB，请压缩后再试'
+  if (status === 400) return '图片无法解析，请换一张试试'
+  return '以图搜图失败，请稍后重试'
+}
+
+// ────────────────────────────────────────────────────────────
 // 旧接口（GalleryView 仍在用，保持兼容，新页面不要使用）
 // ────────────────────────────────────────────────────────────
 

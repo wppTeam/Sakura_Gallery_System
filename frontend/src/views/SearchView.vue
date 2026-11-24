@@ -6,6 +6,7 @@ import { onClickOutside, useDebounceFn } from '@vueuse/core'
 import {
   ArrowUpOutline,
   FlashOutline,
+  ImageOutline,
   SearchOutline,
   SparklesOutline,
 } from '@vicons/ionicons5'
@@ -17,10 +18,12 @@ import {
   type SearchFacets,
   type SearchMode,
   type SearchWork,
+  type VisualSearchResponse,
 } from '../api/search'
 import SkeletonCard from '../components/public/SkeletonCard.vue'
 import ClarifyCard from '../components/search/ClarifyCard.vue'
 import FacetChips from '../components/search/FacetChips.vue'
+import ImageSearchPanel from '../components/search/ImageSearchPanel.vue'
 import ResultMasonry from '../components/search/ResultMasonry.vue'
 import SearchEmptyState from '../components/search/SearchEmptyState.vue'
 import SearchStepsTimeline from '../components/search/SearchStepsTimeline.vue'
@@ -91,6 +94,11 @@ const showBackToTop = ref(false)
 const history = ref<string[]>(readHistory())
 const emptySuggestions = ref<string[]>([])
 const activeResultIndex = ref(-1)
+
+// 以图搜图（独立于文本检索的模式，不写入 URL）
+const imagePanelOpen = ref(false)
+const visualResult = ref<VisualSearchResponse | null>(null)
+const imageTrigger = ref<HTMLElement | null>(null)
 
 let searchSeq = 0
 let suggestSeq = 0
@@ -260,6 +268,7 @@ async function performSearch() {
     resetToIdle()
     return
   }
+  visualResult.value = null
   const seq = ++searchSeq
   loading.value = true
   loadingMore.value = false
@@ -302,6 +311,7 @@ async function performSearch() {
 
 function resetToIdle() {
   searchSeq += 1
+  visualResult.value = null
   activeResultIndex.value = -1
   emptySuggestions.value = []
   loading.value = false
@@ -582,6 +592,49 @@ watch(queryInput, (value) => {
 // 生命周期
 // ────────────────────────────────────────────────────────────
 
+// ────────────────────────────────────────────────────────────
+// 以图搜图
+// ────────────────────────────────────────────────────────────
+
+const visualQueryText = computed(() => {
+  const query = visualResult.value?.query
+  if (!query) return ''
+  const parts: string[] = []
+  if (query.paletteName) {
+    const palette = query.paletteName
+    parts.push(palette.endsWith('色') ? `${palette}调` : `${palette}色调`)
+  }
+  if (query.width > 0 && query.height > 0) parts.push(`${query.width}×${query.height}`)
+  return parts.length ? ` · ${parts.join(' · ')}` : ''
+})
+
+const visualTotalText = computed(() => {
+  const total = visualResult.value?.total ?? 0
+  return `找到 ${formatCount(total)} 件相近作品`
+})
+
+function openImageSearch() {
+  closeSuggestions()
+  imagePanelOpen.value = true
+}
+
+function onImageResult(response: VisualSearchResponse) {
+  visualResult.value = response
+  imagePanelOpen.value = false
+  void nextTick(() => {
+    document.querySelector('.visual-summary')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
+}
+
+function clearVisualSearch() {
+  visualResult.value = null
+  void nextTick(() => imageTrigger.value?.focus())
+}
+
+function retryImageSearch() {
+  imagePanelOpen.value = true
+}
+
 function onScroll() {
   showBackToTop.value = window.scrollY > window.innerHeight * 2
 }
@@ -639,8 +692,24 @@ onBeforeUnmount(() => {
               </template>
             </n-input>
             <button type="submit" class="search-submit">检索</button>
+            <button
+              ref="imageTrigger"
+              type="button"
+              class="image-search-trigger"
+              :aria-expanded="imagePanelOpen"
+              aria-haspopup="dialog"
+              title="上传一张图，找站内视觉相似的作品"
+              @click="openImageSearch"
+            >
+              <n-icon :component="ImageOutline" :size="16" />
+              <span>以图搜图</span>
+            </button>
           </form>
           <span class="search-kbd" aria-hidden="true"><kbd>/</kbd> 按 / 搜索</span>
+          <button type="button" class="image-search-trigger image-search-trigger--mobile" @click="openImageSearch">
+            <n-icon :component="ImageOutline" :size="16" />
+            <span>以图搜图</span>
+          </button>
 
           <ul
             v-if="suggestionsOpen && suggestions.length"
@@ -695,7 +764,7 @@ onBeforeUnmount(() => {
       </header>
 
       <FacetChips
-        v-if="hasFacets"
+        v-if="hasFacets && !visualResult"
         :facets="facets"
         :season="season"
         :category="category"
@@ -707,10 +776,10 @@ onBeforeUnmount(() => {
         @clear="clearFilters"
       />
 
-      <SearchStepsTimeline v-if="result && !loading" :result="result" />
+      <SearchStepsTimeline v-if="result && !loading && !visualResult" :result="result" />
 
       <ClarifyCard
-        v-if="result?.clarify && !loading"
+        v-if="result?.clarify && !loading && !visualResult"
         :question="result.clarify"
         :options="result.clarifyOptions"
         :has-results="total > 0"
@@ -718,7 +787,7 @@ onBeforeUnmount(() => {
       />
 
       <n-alert
-        v-if="fallbackNotice && !loading && !fallbackDismissed"
+        v-if="fallbackNotice && !loading && !fallbackDismissed && !visualResult"
         class="search-fallback"
         :type="fallbackTone"
         :bordered="false"
@@ -728,8 +797,26 @@ onBeforeUnmount(() => {
         {{ fallbackNotice }}
       </n-alert>
 
-      <section class="search-results" aria-label="检索结果">
-        <div v-if="loading || (searched && works.length)" class="results-head">
+      <section class="search-results" :aria-label="visualResult ? '以图搜图结果' : '检索结果'">
+        <div v-if="visualResult" class="visual-summary" role="status">
+          <span
+            class="visual-summary__dot"
+            :style="visualResult.query?.paletteHex ? { background: visualResult.query.paletteHex } : undefined"
+            aria-hidden="true"
+          />
+          <div class="visual-summary__text">
+            <p class="visual-summary__title">以图找图{{ visualQueryText }}</p>
+            <p class="visual-summary__meta">
+              {{ visualTotalText }}
+              <span v-if="visualResult.queryTimeMs > 0"> · 用时 {{ Math.round(visualResult.queryTimeMs) }} ms</span>
+            </p>
+          </div>
+          <button type="button" class="visual-summary__clear" @click="clearVisualSearch">
+            清除以图搜图
+          </button>
+        </div>
+
+        <div v-if="!visualResult && (loading || (searched && works.length))" class="results-head">
           <div class="results-summary" role="status">
             <span class="results-count">{{ totalText }}</span>
             <span v-if="result && !loading" class="results-meta">{{ resultMeta }}</span>
@@ -739,7 +826,7 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
-        <div v-if="showSkeleton" class="search-skeleton" aria-busy="true" aria-label="正在检索">
+        <div v-if="showSkeleton && !visualResult" class="search-skeleton" aria-busy="true" aria-label="正在检索">
           <SkeletonCard
             v-for="(shape, index) in SKELETON_SHAPES"
             :key="index"
@@ -748,7 +835,7 @@ onBeforeUnmount(() => {
         </div>
 
         <SearchEmptyState
-          v-if="error && !loading"
+          v-if="error && !loading && !visualResult"
           :variant="errorKind"
           :message="error"
           :retrying="retrying"
@@ -756,7 +843,7 @@ onBeforeUnmount(() => {
         />
 
         <SearchEmptyState
-          v-else-if="!loading && searched && works.length === 0"
+          v-else-if="!visualResult && !loading && searched && works.length === 0"
           variant="empty"
           :query="q"
           :can-clear="hasActiveFilters"
@@ -768,7 +855,7 @@ onBeforeUnmount(() => {
         />
 
         <section
-          v-if="!loading && !searched && hasHistory"
+          v-if="!visualResult && !loading && !searched && hasHistory"
           class="search-history"
           aria-label="最近搜索"
         >
@@ -794,21 +881,30 @@ onBeforeUnmount(() => {
         </section>
 
         <SearchEmptyState
-          v-else-if="!loading && !searched"
+          v-else-if="!visualResult && !loading && !searched"
           variant="idle"
           :suggestions="IDLE_SUGGESTIONS"
           @pick="submitSearch"
         />
 
-        <ResultMasonry
-          v-if="works.length"
-          :works="works"
-          :loading="loading"
-          :loading-more="loadingMore"
-          :skeleton-count="8"
+        <SearchEmptyState
+          v-else-if="visualResult && visualResult.works.length === 0"
+          variant="empty"
+          message="没有找到足够相近的作品"
+          action-label="换一张试试"
+          @retry="retryImageSearch"
         />
 
-        <div v-if="works.length && !loading" class="results-foot">
+        <ResultMasonry
+          v-if="visualResult ? visualResult.works.length > 0 : works.length > 0"
+          :works="visualResult ? visualResult.works : works"
+          :loading="visualResult ? false : loading"
+          :loading-more="visualResult ? false : loadingMore"
+          :skeleton-count="8"
+          :score-hint="visualResult ? '与上传图的视觉相似度' : undefined"
+        />
+
+        <div v-if="!visualResult && works.length && !loading" class="results-foot">
           <button
             v-if="hasMore"
             type="button"
@@ -823,6 +919,8 @@ onBeforeUnmount(() => {
       </section>
     </div>
 
+    <ImageSearchPanel v-model:show="imagePanelOpen" @result="onImageResult" />
+
     <Transition name="backtop">
       <button
         v-if="showBackToTop"
@@ -836,3 +934,147 @@ onBeforeUnmount(() => {
     </Transition>
   </div>
 </template>
+
+<style scoped>
+/* 以图搜图入口：桌面在搜索框内右侧，移动端单独一行 */
+.image-search-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: none;
+  height: 46px;
+  padding: 0 16px;
+  border: 1px solid var(--line-strong, #e6c6d2);
+  border-radius: var(--r-pill, 999px);
+  background: var(--surface, #fff);
+  color: var(--sakura-deep, #c93a63);
+  font-family: var(--font, 'Noto Sans SC', sans-serif);
+  font-size: var(--fs-sm, 14px);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color 160ms var(--ease-out, ease),
+    background 160ms var(--ease-out, ease),
+    color 160ms var(--ease-out, ease);
+}
+
+.image-search-trigger:hover {
+  border-color: var(--sakura, #e8628c);
+  background: var(--sakura-wash, #fff0f5);
+}
+
+.image-search-trigger:focus-visible {
+  outline: 3px solid var(--sakura, #e8628c);
+  outline-offset: 2px;
+}
+
+.image-search-trigger--mobile {
+  display: none;
+  margin-top: 10px;
+}
+
+/* 以图搜图结果摘要 */
+.visual-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 4px 0 20px;
+  padding: 14px 18px;
+  border: 1px solid var(--line, #f3dde5);
+  border-radius: var(--r-card, 20px);
+  background:
+    radial-gradient(120% 140% at 0% 0%, var(--sakura-wash, #fff0f5) 0%, transparent 62%),
+    var(--surface, #fff);
+  box-shadow: var(--shadow-soft, 0 6px 24px rgba(201, 58, 99, 0.1));
+}
+
+.visual-summary__dot {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--sakura, #e8628c);
+  box-shadow: 0 0 0 4px var(--sakura-mist, #fff2f7);
+}
+
+.visual-summary__text {
+  min-width: 0;
+  flex: 1;
+}
+
+.visual-summary__title {
+  margin: 0;
+  font-size: var(--fs-body, 16px);
+  font-weight: 600;
+  color: var(--ink, #4a2b35);
+}
+
+.visual-summary__meta {
+  margin: 2px 0 0;
+  font-size: var(--fs-sm, 14px);
+  color: var(--muted, #63474f);
+  font-variant-numeric: tabular-nums;
+}
+
+.visual-summary__clear {
+  flex: none;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--line, #f3dde5);
+  border-radius: var(--r-pill, 999px);
+  background: var(--surface, #fff);
+  color: var(--muted, #63474f);
+  font-size: var(--fs-sm, 14px);
+  cursor: pointer;
+  transition:
+    border-color 160ms var(--ease-out, ease),
+    color 160ms var(--ease-out, ease);
+}
+
+.visual-summary__clear:hover {
+  border-color: var(--sakura, #e8628c);
+  color: var(--sakura-deep, #c93a63);
+}
+
+.visual-summary__clear:focus-visible {
+  outline: 3px solid var(--sakura, #e8628c);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .image-search-trigger:not(.image-search-trigger--mobile) {
+    display: none;
+  }
+
+  .image-search-trigger--mobile {
+    display: inline-flex;
+    width: 100%;
+  }
+
+  .visual-summary {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .visual-summary__clear {
+    width: 100%;
+  }
+}
+
+@media (pointer: coarse) {
+  .image-search-trigger,
+  .visual-summary__clear {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image-search-trigger,
+  .visual-summary__clear {
+    transition: none;
+  }
+}
+</style>

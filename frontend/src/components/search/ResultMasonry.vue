@@ -9,8 +9,9 @@ const props = withDefaults(
     loading?: boolean
     loadingMore?: boolean
     skeletonCount?: number
+    scoreHint?: string
   }>(),
-  { loading: false, loadingMore: false, skeletonCount: 8 },
+  { loading: false, loadingMore: false, skeletonCount: 8, scoreHint: '' },
 )
 
 const GAP = 20
@@ -118,7 +119,7 @@ const displayColumns = computed<ColumnEntry[][]>(() => {
   >
     <div v-for="(column, columnIndex) in displayColumns" :key="`col-${columnIndex}`" class="masonry-col">
       <template v-for="entry in column" :key="entry.key">
-        <WorkCard v-if="entry.work" :work="entry.work" />
+        <WorkCard v-if="entry.work" :work="entry.work" :score-hint="scoreHint || undefined" />
         <div v-else class="masonry-item skeleton-card" :class="`skeleton-card--${entry.variant}`" aria-hidden="true">
           <div class="skeleton-media" />
           <div class="skeleton-body">

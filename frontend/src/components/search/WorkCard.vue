@@ -5,7 +5,14 @@ import { NIcon } from 'naive-ui'
 import { ArrowForwardOutline, ImageOutline, SparklesOutline } from '@vicons/ionicons5'
 import type { SearchWork } from '../../api/search'
 
-const props = defineProps<{ work: SearchWork }>()
+const props = withDefaults(
+  defineProps<{
+    work: SearchWork
+    /** 相似度徽标的 tooltip 文案：文本检索 / 以图搜图语义不同 */
+    scoreHint?: string
+  }>(),
+  { scoreHint: '与检索意图的相关度' },
+)
 
 const router = useRouter()
 const imageFailed = ref(false)
@@ -48,6 +55,15 @@ const scoreText = computed(() => {
 
 const visibleTags = computed(() => props.work.tags.slice(0, 3))
 
+/** match_reason 用「；」分隔多个理由，最多取 2 条作为 chip */
+const reasonChips = computed(() =>
+  String(props.work.matchReason || '')
+    .split(/[；;]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 2),
+)
+
 function open() {
   void router.push(`/photo/${props.work.id}`)
 }
@@ -86,7 +102,7 @@ function open() {
         <n-icon :component="SparklesOutline" :size="12" />
         AI 生成
       </span>
-      <span v-if="scoreText" class="work-card__score" title="与检索意图的相关度">{{ scoreText }}</span>
+      <span v-if="scoreText" class="work-card__score" :title="scoreHint">{{ scoreText }}</span>
 
       <div class="work-card__actions" aria-hidden="true">
         <span>查看作品</span>
@@ -98,7 +114,9 @@ function open() {
       <h3 class="work-card__title">{{ title }}</h3>
       <p class="work-card__author">{{ author }}</p>
       <p v-if="metaLine" class="work-card__meta">{{ metaLine }}</p>
-      <p v-if="work.matchReason" class="work-card__reason">{{ work.matchReason }}</p>
+      <ul v-if="reasonChips.length" class="work-card__reasons">
+        <li v-for="reason in reasonChips" :key="reason" class="work-card__reason">{{ reason }}</li>
+      </ul>
       <ul v-if="visibleTags.length" class="work-card__tags">
         <li v-for="tag in visibleTags" :key="tag"># {{ tag }}</li>
       </ul>
@@ -257,18 +275,27 @@ function open() {
   white-space: nowrap;
 }
 
-.work-card__reason {
+.work-card__reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin: 8px 0 0;
-  padding: 7px 10px;
-  border-radius: var(--r-sm, 10px);
-  background: var(--sakura-mist, #fff2f7);
-  color: var(--ink-soft, #563842);
-  font-size: 12px;
-  line-height: 1.6;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  padding: 0;
+  list-style: none;
+}
+
+.work-card__reason {
+  max-width: 100%;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 3px 9px;
+  border-radius: var(--r-pill, 999px);
+  background: var(--sakura-mist, #fff2f7);
+  border: 1px solid var(--sakura-pale, #ffe9f0);
+  color: var(--ink-soft, #563842);
+  font-size: 11px;
+  line-height: 1.6;
 }
 
 .work-card__tags {
