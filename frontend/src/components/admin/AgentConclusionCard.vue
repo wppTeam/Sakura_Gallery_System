@@ -154,6 +154,8 @@
       </template>
     </section>
 
+    <AutoTaggingCard v-if="autoTagging" :suggestion="autoTagging" class="agent-layer" />
+
     <section class="agent-layer layer-escalation">
       <header class="layer-head">
         <div class="panel-heading">
@@ -219,6 +221,7 @@ import {
 } from '@vicons/ionicons5'
 import type { ModerationReview } from '../../api/moderation'
 import RulesPanel from './RulesPanel.vue'
+import AutoTaggingCard from './AutoTaggingCard.vue'
 import {
   TIER_DESCRIPTIONS,
   agentSummary,
@@ -233,6 +236,7 @@ import {
   percentText,
   reviewStatusLabel,
   reviewStatusTagType,
+  resolveAutoTagging,
   riskFlags,
   tierLabel,
   tierShort,
@@ -257,6 +261,9 @@ const flags = computed(() => riskFlags(props.review))
 const aigcDeclaration = computed(() => props.review.rules?.aigcDeclaration ?? null)
 const aigcTagType = computed(() => aigcDeclarationTagType(aigcDeclaration.value))
 const aigcSummary = computed(() => aigcDeclarationSummary(aigcDeclaration.value))
+
+// 「审核即打标」证据（rules.auto_tagging；老数据回退 prefilter）
+const autoTagging = computed(() => resolveAutoTagging(props.review))
 
 const copyrightLabel = computed(() => {
   const risk = prefilter.value?.copyrightRisk || 'unknown'

@@ -42,6 +42,8 @@
         </n-tag>
       </div>
 
+      <p v-if="caption" class="queue-caption" :title="caption">{{ caption }}</p>
+
       <p class="queue-summary" :title="agentSummary(review)">{{ agentSummary(review) }}</p>
 
       <div class="queue-meta">
@@ -70,6 +72,7 @@ import { ChevronForwardOutline, ImageOutline } from '@vicons/ionicons5'
 import type { ModerationReview } from '../../api/moderation'
 import {
   agentSummary,
+  autoTaggingCaption,
   decisionLabel,
   decisionTagType,
   formatDateTime,
@@ -96,6 +99,9 @@ const emit = defineEmits<{
 const thumbFailed = ref(false)
 
 const photoTitle = computed(() => props.review.photo?.title || '未命名作品')
+
+/** 队列卡片一行 AI 画面描述（有才渲染，便于快速扫读） */
+const caption = computed(() => autoTaggingCaption(props.review))
 
 const confidence = computed(() => {
   const value = props.review.escalation?.confidence ?? props.review.prefilter?.confidence ?? null
@@ -207,6 +213,17 @@ const confidence = computed(() => {
   font-size: 12px;
   color: var(--muted, #63474f);
 }
+
+.queue-caption {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--faint, #97808a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 
 .queue-meta {
   display: flex;

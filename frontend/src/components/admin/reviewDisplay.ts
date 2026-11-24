@@ -5,6 +5,7 @@ import {
   REVIEW_STATUS_LABELS,
   RULE_LABELS,
   type AigcDeclarationEvidence,
+  type AutoTaggingSuggestion,
   type ModerationDecision,
   type ModerationPhoto,
   type ModerationReview,
@@ -197,6 +198,96 @@ export function aigcDeclarationSummary(decl: AigcDeclarationEvidence | null): st
 export function aigcConsentMissing(decl: AigcDeclarationEvidence | null): boolean {
   if (!decl) return false
   return decl.declared && (decl.faceSwap || Boolean(decl.sourceWorkId)) && !decl.consentConfirmed
+}
+
+/** taxonomy facet 键 → 中文名（未知键原样展示） */
+export const FACET_LABELS: Record<string, string> = {
+  season: '季节',
+  campus: '校区',
+  photo_type: '题材',
+  plant: '植物',
+  natural_phenomenon: '自然现象',
+  landscape: '景观地点',
+  building: '楼宇',
+  technique: '表现手法',
+  animal: '动物',
+  facility: '设施',
+  campus_area: '校区区域',
+  event: '活动',
+  person: '人物',
+  architecture: '建筑',
+}
+
+export function facetLabel(key: string): string {
+  return FACET_LABELS[key] || key
+}
+
+export interface FacetRow {
+  key: string
+  label: string
+  value: string
+}
+
+export function facetRows(facets: Record<string, string>): FacetRow[] {
+  return Object.entries(facets || {})
+    .filter(([key, value]) => Boolean(key) && Boolean(value))
+    .map(([key, value]) => ({ key, label: facetLabel(key), value }))
+}
+
+/**
+ * 取本次审核的打标证据：优先 rules.auto_tagging；
+ * 老数据没有该键时回退 prefilter.caption/tags/facets（此时 applied=null → 「快筛建议」）。
+ */
+export function resolveAutoTagging(review: ModerationReview): AutoTaggingSuggestion | null {
+  const direct = review.rules?.autoTagging ?? null
+  if (direct) return direct
+  const prefilter = review.prefilter
+  if (!prefilter) return null
+  const facets = prefilter.facets || {}
+  if (!prefilter.caption && prefilter.tags.length === 0 && Object.keys(facets).length === 0) return null
+  return {
+    caption: prefilter.caption,
+    tags: prefilter.tags,
+    requestedTags: [],
+    facets,
+    applied: null,
+    error: '',
+    raw: {},
+  }
+}
+
+/** 队列卡片一行 caption（AI 画面描述），没有就返回空串 */
+export function autoTaggingCaption(review: ModerationReview): string {
+  return resolveAutoTagging(review)?.caption || ''
+}
+
+export interface AutoTaggingStatus {
+  label: string
+  tone: TagType
+  hint: string
+}
+
+/** 「AI 打标建议」状态徽标：已写入 / 未写入（含原因）/ 建议 */
+export function autoTaggingStatus(suggestion: AutoTaggingSuggestion | null): AutoTaggingStatus {
+  if (!suggestion) return { label: '无打标记录', tone: 'default', hint: '本次审核没有产生打标建议' }
+  if (suggestion.applied === true) {
+    return { label: '已写入作品', tone: 'success', hint: '标签与分类已随审核写入作品' }
+  }
+  if (suggestion.applied === false && suggestion.error) {
+    return { label: `未写入：${suggestion.error}`, tone: 'warning', hint: suggestion.error }
+  }
+  if (suggestion.applied === false) {
+    const hasWrites = suggestion.tags.length > 0 || Object.keys(suggestion.facets).length > 0
+    if (hasWrites) {
+      return {
+        label: '已写入作品 · 本次无新增',
+        tone: 'success',
+        hint: '作品此前已有这些标签/分类，本次审核幂等跳过；下列为模型输出与实际命中的分类',
+      }
+    }
+    return { label: '仅画面描述', tone: 'info', hint: '本次只产出画面描述，没有可写入的标签或分类' }
+  }
+  return { label: '快筛建议', tone: 'info', hint: '老审核记录只有快筛建议，未记录写入状态' }
 }
 
 export interface RiskFlag {

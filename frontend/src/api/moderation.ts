@@ -118,6 +118,23 @@ export interface AigcDeclarationEvidence {
   raw: UnknownRecord
 }
 
+/**
+ * 审核即打标（review.rules.auto_tagging）：同一次快筛 VLM 调用顺带产出的
+ * caption / tags / facets。tags/facets 是实际写入作品标签与分类的内容，
+ * requested_tags 是模型原始建议（可能包含未通过清洗的名字）。
+ * 老数据没有该键，此时可由 prefilter.tags/facets 回退展示。
+ */
+export interface AutoTaggingSuggestion {
+  caption: string
+  tags: string[]
+  requestedTags: string[]
+  facets: Record<string, string>
+  /** true=已写入作品；false=未写入；null=后端未给该字段（老数据/建议态） */
+  applied: boolean | null
+  error: string
+  raw: UnknownRecord
+}
+
 export interface RuleResult {
   blocked: boolean
   maxSeverity: RuleSeverity | ''
@@ -130,6 +147,8 @@ export interface RuleResult {
   hits: RuleHit[]
   /** AIGC 声明证据（非 AIGC 作品为 null） */
   aigcDeclaration: AigcDeclarationEvidence | null
+  /** 审核即打标证据（老数据为 null） */
+  autoTagging: AutoTaggingSuggestion | null
 }
 
 export interface PrefilterResult {
@@ -142,6 +161,10 @@ export interface PrefilterResult {
   suggestedTier: ModerationTier | null
   confidence: number | null
   reason: string
+  /** 审核即打标：老数据的回退来源（与 rules.auto_tagging 同名字段） */
+  caption: string
+  tags: string[]
+  facets: Record<string, string>
 }
 
 export interface EscalationResult {
@@ -265,6 +288,51 @@ function normalizeAigcDeclaration(raw: unknown): AigcDeclarationEvidence | null 
   }
 }
 
+function stringList(value: unknown): string[] {
+  const list = Array.isArray(value) ? value : typeof value === 'string' ? [value] : []
+  const result: string[] = []
+  for (const item of list) {
+    const text = isRecord(item)
+      ? firstString(item.name, item.tag, item.value, item.label)
+      : textOf(item)
+    if (text && !result.includes(text)) result.push(text)
+  }
+  return result
+}
+
+function normalizeFacetMap(value: unknown): Record<string, string> {
+  if (!isRecord(value)) return {}
+  const result: Record<string, string> = {}
+  for (const [key, item] of Object.entries(value)) {
+    const text = isRecord(item)
+      ? firstString(item.node_name, item.name, item.label, item.value, item.node_key)
+      : textOf(item)
+    if (key && text) result[key] = text
+  }
+  return result
+}
+
+function normalizeAutoTagging(raw: unknown): AutoTaggingSuggestion | null {
+  if (!isRecord(raw) || Object.keys(raw).length === 0) return null
+  const tags = stringList(raw.tags)
+  const requestedTags = stringList(raw.requested_tags ?? raw.requestedTags ?? raw.suggested_tags)
+  const facets = normalizeFacetMap(raw.facets ?? raw.classifications)
+  const caption = firstString(raw.caption, raw.description, raw.summary)
+  if (!caption && tags.length === 0 && requestedTags.length === 0 && Object.keys(facets).length === 0) {
+    return null
+  }
+  const appliedRaw = raw.applied ?? raw.written ?? raw.persisted
+  return {
+    caption,
+    tags,
+    requestedTags,
+    facets,
+    applied: typeof appliedRaw === 'boolean' ? appliedRaw : toBoolean(appliedRaw) ? true : null,
+    error: firstString(raw.error, raw.applied_error, raw.failure),
+    raw,
+  }
+}
+
 function normalizeRules(raw: unknown): RuleResult | null {
   if (!isRecord(raw) || Object.keys(raw).length === 0) return null
   const hitsRaw = Array.isArray(raw.hits) ? raw.hits : []
@@ -290,6 +358,7 @@ function normalizeRules(raw: unknown): RuleResult | null {
     dhash: firstString(raw.dhash),
     hits,
     aigcDeclaration: normalizeAigcDeclaration(raw.aigc_declaration ?? raw.aigcDeclaration),
+    autoTagging: normalizeAutoTagging(raw.auto_tagging ?? raw.autoTagging),
   }
 }
 
@@ -305,6 +374,9 @@ function normalizePrefilter(raw: unknown): PrefilterResult | null {
     suggestedTier: normalizeTier(raw.suggested_tier ?? raw.suggestedTier),
     confidence: typeof raw.confidence === 'number' ? raw.confidence : null,
     reason: firstString(raw.reason, raw.explanation),
+    caption: firstString(raw.caption, raw.description),
+    tags: stringList(raw.tags),
+    facets: normalizeFacetMap(raw.facets ?? raw.classifications),
   }
 }
 
