@@ -1087,6 +1087,44 @@ curl -s 'https://<domain>/api/v1/photos/<photo_id>/similar?limit=6' \
 - 换机器或重跑只需再执行一次；`--force` 可强制重算，`--limit/--only` 便于抽查。
 - 验收：`pytest tests/test_visual_similarity.py -q` = 7 passed。
 
+### 15.8 AI 创作台上线（2026-11-25 实跑）
+
+站内「AI 创作台」调阿里云百炼直连异步生图（`qwen-image-3.0-pro`，单张约 50–60s），
+草稿图只落 `uploads/generated/`，作者确认后走普通上传接口发布为待审 AIGC 作品。
+
+1. **渠道密钥**：服务器 `deploy/.env.prod` 需要 `DASHSCOPE_API_KEY`（已有则不用动，**不要回显**）。
+   其余用代码默认值：`AIGC_GENERATION_ENABLED=true`、`AIGC_IMAGE_DAILY_LIMIT=5`、
+   `AIGC_IMAGE_PRICE_USD=0`（按实际渠道价填，用于成本观测图标；不填只是成本显示为 0）。
+2. **部署**：重建 backend 镜像 → `docker save | gzip -1` → scp → 服务器 `docker load` →
+   `docker compose -f deploy/docker-compose.prod.yml -f deploy/docker-compose.server.yml \
+     --env-file deploy/.env.prod up -d --force-recreate backend`；
+   容器 entrypoint 自动 `alembic upgrade head`（迁移 `a7b8c9d0e1f2`）。
+3. **验收（2026-11-25 实测）**：
+
+```bash
+curl -s https://<domain>/api/v1/aigc/config          # enabled=true, 三档尺寸, daily_limit=5
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://<domain>/api/v1/aigc/generations  # 401（匿名）
+
+# 用本人 token 发起并轮询（token 在容器内 mint，不要在日志里回显）
+curl -s -X POST https://<domain>/api/v1/aigc/generations \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"prompt":"黄昏的校园，樱花与红砖教学楼，暖色逆光","size":"landscape"}'
+# → 202 queued/running → succeeded（实测 61.3s，latency_ms=61304）
+curl -s -o /tmp/aigc.png -w '%{http_code} %{content_type} %{size_download}\n' \
+  https://<domain>/api/v1/aigc/generations/<id>/image -H "Authorization: Bearer $TOKEN"
+# → 200 image/png 2804906（1664×928）
+
+curl -s -o /dev/null -w '%{http_code}\n' -X DELETE \
+  https://<domain>/api/v1/aigc/generations/<id> -H "Authorization: Bearer $TOKEN"   # 204
+```
+
+4. 注意事项：
+   - 生成是**后台任务**（`BackgroundTasks`），请求超时设置别卡在 60s 以下；
+   - 服务重启会打断 in-flight 任务，状态接口按 `AIGC_IMAGE_TIMEOUT+120s` 自动标 failed，用户可重新生成；
+   - 每日额度按东八区自然日、只计非 failed 记录；失败/删除会释放额度；
+   - 生成图不写 `ai_usage_events` 的 token，只记 `operation=aigc.generate` + `cost_usd`（按 `AIGC_IMAGE_PRICE_USD`）；
+   - 验收后记得 `DELETE` 测试记录，避免占用额度与磁盘。
+
 ## 16. SEO 与站点元信息（2026-11-24 落地）
 
 站点公开后需要被搜索引擎与社交平台正确索引/预览：

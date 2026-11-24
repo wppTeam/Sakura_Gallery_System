@@ -58,6 +58,8 @@ export interface WorkAigcInfo {
 export interface WorkDetail {
   id: string
   kind: string
+  /** 作品状态：approved / pending / rejected 等；作者查看自己的待审稿件时用来提示 */
+  status: string
   title: string
   author: string
   description: string
@@ -396,6 +398,7 @@ export function normalizeWorkDetail(raw: RawPhoto): WorkDetail {
   return {
     id,
     kind: textOf(raw.kind) || 'photo',
+    status: textOf(raw.status) || 'approved',
     title,
     author,
     description: textOf(raw.description),

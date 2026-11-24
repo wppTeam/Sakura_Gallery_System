@@ -259,6 +259,11 @@ cd backend && pytest
 | Agent 检索 | ✅ pg_trgm + tsvector + 汉字二元组，意图分解 / 多 facet / 解释 / 澄清追问答 |
 | 审核即打标 | ✅ 复用快筛同一次 VLM 输出落 `tags`/`photo_tags` 与 `photo_classifications`（分类目录约束 + 幂等 + 失败不影响审核）；存量回填脚本 `scripts/backfill_auto_tags.py` |
 | AIGC 法定标识 | ✅ 上传强制声明 + 显式角标/详情 + 下载 XMP 隐式标识 + 图生图/换脸限制（M2 四件套） |
+| 视觉相似 / 以图搜图 | ✅ 2026-11-25 dhash + 光谱色卡 + 构图/标签/季节/校区加权，详情页「视觉相似」带中文理由；`POST /api/v1/search/visual` 上传图内存算签名直接搜（不落盘/不花 AI 钱） |
+| 按光找图 | ✅ 2026-11-25 `/search` 与 `/photos/public` 接受 `period=dawn|noon|dusk|night`，探索页「光」筛选条与 URL 同步，agent 能识别「黄昏/清晨」等口语 |
+| AI 策展助手 | ✅ 2026-11-25 一句话主题 → 从作者自己的 approved 作品里挑 3–24 张、按观展顺序给理由，返回可编辑专辑提案（不落库，编辑页确认后创建） |
+| 策展自动归档 | ✅ 2026-11-25 过审/自动放行自动加入「光的一日」「樱色光谱」，驳回/下架自动移出；敏感作品不归档；`scripts/sync_curation_membership.py` 幂等回填 |
+| AI 创作台 | ✅ 2026-11-25 站内提示词生图（百炼 qwen-image-3.0-pro，约 50–60s/张）→ 草稿预览 → 用普通上传发布为待审 AIGC 作品；每日额度、3/min 限流、草稿不对外公开 |
 | 2c4g 部署包 / 云主机上线 | ✅ compose / Dockerfile / nginx / env 模板 / 迁移入口 / 备份脚本；**已在腾讯云 2C4G 云主机上线**（Docker + 腾讯 COS + Cloudflare Tunnel + 自带域名，见 docs §15）；**容量已用 cgroup 模拟 2 vCPU 压测**（混合读 49→301 req/s，上传峰值 472MB，见 docs §14）；**S3/COS 路径已全链路验证**（307 预签名 + 对象元数据 + AIGC 下载写 XMP，见 docs §6.5） |
 | 生产可靠性 | ✅ 2026-11-24 就绪检查 `/health/ready`（DB 不可达 503）；COS 异地备份 + 从对象存储恢复演练通过；每 5 分钟可用性巡检（异常/恢复邮件告警）；HSTS 等安全响应头 |
 | 旧版单类型系统 | ✅ 摄影类型下可用，admin 后台保留 |

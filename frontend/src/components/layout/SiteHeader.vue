@@ -15,6 +15,7 @@
         <RouterLink class="nav-link" :class="{ 'is-active': isExplore }" to="/explore">探索</RouterLink>
         <RouterLink class="nav-link" :to="{ path: '/', hash: '#seasons' }">四季</RouterLink>
         <RouterLink class="nav-link" to="/spectrum">光谱</RouterLink>
+        <RouterLink class="nav-link" :class="{ 'is-active': isCreate }" to="/create">创作</RouterLink>
       </nav>
 
       <div class="header-actions">
@@ -119,8 +120,11 @@
           <RouterLink class="drawer-link" to="/spectrum" @click="closeDrawer">
             <span class="drawer-num">03</span>光谱
           </RouterLink>
+          <RouterLink class="drawer-link" to="/create" @click="closeDrawer">
+            <span class="drawer-num">04</span>创作
+          </RouterLink>
           <RouterLink class="drawer-link" to="/upload" @click="closeDrawer">
-            <span class="drawer-num">04</span>投稿
+            <span class="drawer-num">05</span>投稿
           </RouterLink>
         </nav>
 
@@ -174,6 +178,7 @@ const menuTriggerRef = ref<HTMLElement | null>(null)
 const drawerEl = ref<HTMLElement | null>(null)
 
 const isExplore = computed(() => route.path.startsWith('/explore'))
+const isCreate = computed(() => route.path.startsWith('/create'))
 const userName = computed(() => auth.user?.full_name || auth.user?.email?.split('@')[0] || '同学')
 const userInitial = computed(() => userName.value.slice(0, 1))
 

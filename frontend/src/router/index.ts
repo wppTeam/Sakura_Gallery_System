@@ -111,6 +111,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../views/CollectionEditorView.vue'),
         meta: { requiresAuth: true },
       },
+      {
+        path: 'create',
+        name: 'Create',
+        component: () => import('../views/CreateView.vue'),
+        meta: { requiresAuth: true },
+      },
     ],
   },
   {
@@ -239,6 +245,7 @@ const ROUTE_TITLES: Record<string, string> = {
   Favorites: '我的收藏 · 视觉百花',
   MyCollections: '我的策展 · 视觉百花',
   CollectionEdit: '编辑策展 · 视觉百花',
+  Create: 'AI 创作 · 视觉百花',
   Upload: '投稿 · 视觉百花',
   MySubmissions: '我的投稿 · 视觉百花',
   Profile: '个人中心 · 视觉百花',

@@ -15,6 +15,14 @@
         </div>
       </nav>
 
+      <div v-if="detail && detail.status === 'pending'" class="work-status-banner" role="status">
+        <n-icon :component="HourglassOutline" :size="18" />
+        <div class="work-status-copy">
+          <b>待审核</b>
+          <span>作品已提交，审核通过后会公开展示；审核期间只有你自己能看到这张作品。</span>
+        </div>
+      </div>
+
       <DetailSkeleton v-if="loading" />
 
       <DetailErrorState
@@ -92,7 +100,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NIcon, useMessage } from 'naive-ui'
-import { ArrowBackOutline, ArrowUpOutline } from '@vicons/ionicons5'
+import { ArrowBackOutline, ArrowUpOutline, HourglassOutline } from '@vicons/ionicons5'
 import { useAuthStore } from '../stores/auth'
 import { incrementView } from '../api/stats'
 import DetailImageStage from '../components/detail/DetailImageStage.vue'
@@ -294,3 +302,49 @@ onBeforeUnmount(() => {
   window.removeEventListener('scroll', onScroll)
 })
 </script>
+
+<style scoped>
+/* 作者查看自己的待审稿件时的状态提示（AI 创作台发布后跳转到此页） */
+.work-status-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 4px 0 16px;
+  padding: 14px 18px;
+  border-radius: var(--r-card, 16px);
+  border: 1px solid color-mix(in srgb, var(--sakura-deep, #c93a63) 22%, var(--line, #f3dde5));
+  background: var(--sakura-wash, #fff0f5);
+  color: var(--ink, #4a2b35);
+}
+
+.work-status-banner :deep(.n-icon) {
+  margin-top: 1px;
+  color: var(--sakura-deep, #c93a63);
+  flex-shrink: 0;
+}
+
+.work-status-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.work-status-copy b {
+  font-size: 14px;
+  color: var(--sakura-deep, #c93a63);
+}
+
+.work-status-copy span {
+  color: var(--muted, #63474f);
+}
+
+@media (max-width: 640px) {
+  .work-status-banner {
+    margin-top: 0;
+    padding: 12px 14px;
+  }
+}
+</style>
