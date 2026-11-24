@@ -932,7 +932,9 @@ S3_PRESIGN_EXPIRE_SECONDS=600
 
 结论：**上传 → 变体生成 → COS 落盘 → 审核/打标 → 预签名出图**全链路在云主机上跑通。
 
-### 15.2 Cloudflare Tunnel 接入（token 已装、DNS 待配）
+补充（2026-11-24）：存量 64 张作品的 AI 标签已在本机回填（58 张成功 / 3 张空结果 / $0.0363），并以「tags / photo_tags / photo_classifications / photos.exif_data」四组数据同步到生产库；线上检索 `q=樱花` 已能通过标签命中 5 条。
+
+### 15.3 Cloudflare Tunnel 接入（token 已装、DNS 待配）
 
 tunnel token 写进服务器 `.env.prod` 的 `TUNNEL_TOKEN=`，再：
 
