@@ -71,12 +71,9 @@
           <span class="cl-works-hint">按策展顺序排列 · 共 {{ detail.photoCount }} 张</span>
         </div>
 
-        <MasonryGrid
-          v-if="detail.photos.length"
-          :items="detail.photos"
-          :max-columns="3"
-          :skeleton-rows="2"
-        />
+        <div v-if="detail.photos.length" class="cl-works-grid" @click.capture="handleWorkClick">
+          <MasonryGrid :items="detail.photos" :max-columns="3" :skeleton-rows="2" />
+        </div>
         <div v-else class="cl-state">
           <EmptyState
             title="这个专题还没有公开的作品"
@@ -142,6 +139,25 @@ const notFound = ref(false)
 const coverLoaded = ref(false)
 
 const slug = computed(() => String(route.params.slug || ''))
+
+/**
+ * 作品卡默认链到 /photo/:id；从专题进入时补上 ?from=collection:<slug>，
+ * 详情页据此展示「观展导航」与灯箱胶片条。用捕获阶段拦截，避免改公共组件。
+ */
+function handleWorkClick(event: MouseEvent) {
+  if (!detail.value) return
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+  const target = event.target as HTMLElement | null
+  const anchor = target?.closest<HTMLAnchorElement>('a[href^="/photo/"]')
+  if (!anchor) return
+  if (anchor.target === '_blank') return
+  const href = anchor.getAttribute('href') || ''
+  const matched = href.match(/^\/photo\/([^/?#]+)/)
+  if (!matched) return
+  event.preventDefault()
+  event.stopPropagation()
+  void router.push({ path: `/photo/${matched[1]}`, query: { from: `collection:${detail.value.slug}` } })
+}
 
 const isUserCollection = computed(() => detail.value?.kind === 'user')
 const authorHandle = computed(() => {

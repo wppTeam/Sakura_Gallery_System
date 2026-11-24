@@ -7,7 +7,12 @@
     <main id="main" class="public-main" tabindex="-1">
       <RouterView v-slot="{ Component, route }">
         <Transition name="page" mode="out-in">
-          <component :is="Component" :key="route.path" />
+          <!--
+            详情页在不同作品之间切换时保持同一个组件实例（key 固定），
+            这样观展模式的上一张/下一张是原地替换，灯箱不会「关→开」重挂载。
+            其它路由仍然按 path 重挂载，保留页面转场。
+          -->
+          <component :is="Component" :key="route.name === 'PhotoDetail' ? 'photo-detail' : route.path" />
         </Transition>
       </RouterView>
     </main>

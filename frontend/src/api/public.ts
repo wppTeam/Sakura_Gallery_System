@@ -338,3 +338,131 @@ export async function fetchPublicFacetNodes(
     return []
   }
 }
+
+/* ---------------- 详情页观展导航（上一张 / 下一张） ---------------- */
+
+/** 序列来源：最新发布流或某个策展专题 */
+export type PhotoNavContextKind = 'latest' | 'collection'
+
+export interface PhotoNeighborsContext {
+  kind: PhotoNavContextKind
+  slug: string | null
+  title: string
+  /** 当前作品在序列中的位置（从 1 起） */
+  position: number
+  total: number
+}
+
+/** 胶片条单项：只带缩略与角标所需字段，避免整份 EXIF 进入灯箱 */
+export interface PhotoNeighborItem {
+  id: string
+  title: string
+  width: number
+  height: number
+  aspectRatio: number
+  isAigc: boolean
+  aigcLabel: string
+  lqipColor: string
+  thumbUrl: string
+}
+
+export interface PhotoNeighbors {
+  context: PhotoNeighborsContext | null
+  items: PhotoNeighborItem[]
+  /** 当前作品在 items 中的下标（服务端给不到时按 id 兜底） */
+  index: number
+  prev: string | null
+  next: string | null
+}
+
+export interface PhotoNeighborsOptions {
+  /** latest 或 collection:<slug>；省略时后端按最新流处理 */
+  context?: string | null
+  before?: number
+  after?: number
+}
+
+function textOfValue(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+/**
+ * 读取当前作品在序列中的前后邻居。
+ * 匿名可读；失败时返回 null，由详情页静默降级（不打断正文阅读）。
+ */
+export async function fetchPhotoNeighbors(
+  photoId: string,
+  options: PhotoNeighborsOptions = {},
+): Promise<PhotoNeighbors | null> {
+  if (!photoId) return null
+  try {
+    const data = await request.get<Record<string, unknown>>(
+      `/api/v1/photos/${encodeURIComponent(photoId)}/neighbors`,
+      {
+        params: {
+          context: options.context || undefined,
+          before: options.before ?? 5,
+          after: options.after ?? 5,
+        },
+      },
+    )
+    if (!data || typeof data !== 'object') return null
+
+    let context: PhotoNeighborsContext | null = null
+    const rawContext = data.context
+    if (rawContext && typeof rawContext === 'object') {
+      const c = rawContext as Record<string, unknown>
+      const kind = textOfValue(c.kind) === 'collection' ? 'collection' : 'latest'
+      const total = typeof c.total === 'number' && c.total > 0 ? c.total : 0
+      const position = typeof c.position === 'number' && c.position > 0 ? c.position : 0
+      if (total > 0 && position > 0) {
+        context = {
+          kind,
+          slug: textOfValue(c.slug) || null,
+          title: textOfValue(c.title) || (kind === 'collection' ? '专题' : '最新发布'),
+          position,
+          total,
+        }
+      }
+    }
+
+    const rawItems = Array.isArray(data.items) ? data.items : []
+    const items: PhotoNeighborItem[] = []
+    for (const raw of rawItems) {
+      if (!raw || typeof raw !== 'object') continue
+      const item = raw as Record<string, unknown>
+      const id = textOfValue(item.id)
+      if (!id) continue
+      const width = typeof item.width === 'number' && item.width > 0 ? item.width : 0
+      const height = typeof item.height === 'number' && item.height > 0 ? item.height : 0
+      const rawAspect = typeof item.aspect_ratio === 'number' ? item.aspect_ratio : 0
+      let aspectRatio = rawAspect > 0 ? rawAspect : 0
+      if (!aspectRatio && width > 0 && height > 0) aspectRatio = width / height
+      const thumb = textOfValue(item.thumb_url)
+      items.push({
+        id,
+        title: textOfValue(item.title) || '未命名作品',
+        width,
+        height,
+        aspectRatio: aspectRatio > 0 ? aspectRatio : 1,
+        isAigc: item.is_aigc === true || textOfValue(item.aigc_label) !== '',
+        aigcLabel: textOfValue(item.aigc_label) || 'AI 生成',
+        lqipColor: textOfValue(item.lqip_color),
+        thumbUrl: thumb ? getImageUrl(thumb) : '',
+      })
+    }
+    if (!items.length) return null
+
+    const rawIndex = typeof data.index === 'number' ? data.index : -1
+    const index = rawIndex >= 0 && rawIndex < items.length ? rawIndex : items.findIndex((item) => item.id === photoId)
+    return {
+      context,
+      items,
+      index,
+      prev: textOfValue(data.prev) || null,
+      next: textOfValue(data.next) || null,
+    }
+  } catch {
+    return null
+  }
+}
