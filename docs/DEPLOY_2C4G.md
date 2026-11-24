@@ -997,6 +997,31 @@ docker logs sakura-quick 2>&1 | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com'
 - Agent 检索在生产可用：`GET /api/v1/search?q=…&mode=agent` 返回 explanation + steps
   （planner/lexical/facets/vector/explainer），实测约 2.3s。
 
+### 15.4 人像隐私分级上线（2026-11-24 实测）
+
+迁移 `d3e4f5a6b7c8_add_portrait_privacy` 在容器 entrypoint 自动执行到 head；上线步骤：
+
+1. 本地重建 backend 镜像（含 privacy 代码）→ `docker save | gzip` → scp → `docker load`；
+2. `up -d --force-recreate backend`（entrypoint 跑 `alembic upgrade head`）；
+3. 本地 `scripts/backfill_portrait_privacy.py` 生成 8 张作品的脱敏图（`uploads/redacted/`），
+   用 `.tmp/deploy/upload_redacted.py` 以 `redacted/` 前缀上传 COS（写 ContentType + 长缓存），
+   同时生成 `UPDATE photos SET privacy_level='sensitive', redacted_path=…, redacted_thumb_path=…`；
+4. 服务器 `psql < privacy_mark.sql` 标记 8 行（生产 photos：normal 56 / sensitive 8）。
+
+验证（容器内脚本直连 `http://nginx`，临时 JWT 由 SECRET_KEY 签发，临时 viewer 用后即删）：
+
+| 检查 | 结果 |
+|---|---|
+| 匿名 `GET /photos/public` | total **56**（61 approved − 5 approved sensitive） |
+| 匿名 `GET /photos/public/{sensitive}` | **404** |
+| 管理员 `include_sensitive=true` | total **61**，sensitive 详情 200、`is_redacted=false`（看原图） |
+| 非作者登录用户 | total 61，详情 200、`is_redacted=true`、`thumb_path=redacted/…`、`variants=null` |
+| 非作者缩略图 | 307 → COS `redacted/…_redacted_thumb.jpg`，跟随 200 `image/jpeg` |
+| 非作者原图 / 下载 | **403** / **403** |
+
+注意：公开详情路由是 `/api/v1/photos/public/{id}`；`/api/v1/photos/{id}` 是「作者/审核员」鉴权路由，
+非作者访问会 403，不要拿它验证公共端行为。
+
 ## 附录：与旧方案的对照（避免混用）
 
 | 旧文件（未改动） | 新方案 |
