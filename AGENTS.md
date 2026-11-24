@@ -214,6 +214,23 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
   管理后台 `/admin/reports` 举报处理页。
 - 约定：举报记录只存投诉文本与联系方式，不存证据文件；公开响应不返回投诉人联系方式（仅管理端可见）。
 
+### 审核复核（申诉）通道（2026-11-25 落地）
+
+被驳回的作品，作者有**一次**申诉机会，形成「驳回 → 申诉 → 人工复核 → 回到审核队列 / 维持驳回」闭环：
+
+- **作者提交**：`POST /api/v1/photos/{photo_id}/appeal`，body `{reason: 10–2000 字}`；
+  仅作者本人（403）、仅 `status=rejected` 的作品（400）、同一作品只允许一条 `pending`
+  申请（PG 部分唯一索引 + 代码 409）、限流 5 次/小时/IP。
+  `GET /api/v1/photos/{photo_id}/appeal` 返回最近一条申请（没有则 `null`），作者本人或 admin/auditor 可读。
+- **管理端受理**：`GET /api/v1/admin/appeals`（待处理优先）、`GET /api/v1/admin/appeals/stats`、
+  `POST /api/v1/admin/appeals/{id}/resolve`（`decision: accept|reject`，`note` 会展示给作者）。
+  `accept` → 作品 `status = pending` 并 `enqueue_moderation(force=True)` 重新进审核队列，
+  作者收 `photo_appeal_accepted` 通知；`reject` → 保持 rejected，作者收 `photo_appeal_rejected`。
+  受理写 `audit_logs`（`appeal.accept` / `appeal.reject`）；重复受理 409。
+- 实现：`backend/app/models/appeal.py`、`backend/app/api/v1/endpoints/appeals.py`（管理端）、
+  `backend/app/api/v1/endpoints/photos.py`（作者端点）、迁移 `b8c9d0e1f2a3`；
+  前端：详情页作者视角的驳回横幅 + 申诉弹窗，后台 `/admin/appeals` 复核处理页。
+
 ### 人像隐私分级（2026-11-24 落地）
 
 - `photos.privacy_level`：`normal` | `sensitive`。审核快筛/复核命中

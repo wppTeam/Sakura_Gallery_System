@@ -7,6 +7,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     admin_ai,
+    appeals,
     aigc,
     admin_audit,
     admin_config,
@@ -51,6 +52,7 @@ api_router.include_router(admin_ai.router, prefix="/admin", tags=["AI 成本"])
 api_router.include_router(moderation_api.router, prefix="/admin", tags=["AI 审核"])
 api_router.include_router(reports.router, prefix="", tags=["举报"])
 api_router.include_router(reports.admin_router, prefix="/admin", tags=["举报"])
+api_router.include_router(appeals.admin_router, prefix="/admin", tags=["审核复核"])
 
 # Collections（策展专题，公开）
 api_router.include_router(collections.router, prefix="/collections", tags=["Collections"])

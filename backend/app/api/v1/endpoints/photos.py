@@ -29,10 +29,12 @@ from app.crud import permission as permission_crud
 from app.crud import photo as photo_crud
 from app.crud import tag as tag_crud
 from app.models.ai_analysis import AIAnalysisTask
+from app.models.appeal import PhotoAppeal
 from app.models.photo import Photo
 from app.models.system_config import PortraitVisibility
 from app.models.user import User
 from app.schemas.ai_analysis import AIAnalysisTaskCreate, AIAnalysisTaskResponse, AIApplyResponse
+from app.schemas.appeal import AppealCreate, AppealReceipt, AppealResponse
 from app.schemas.photo import (
     PhotoListResponse,
     PhotoNeighborItem,
@@ -59,6 +61,8 @@ from app.services.storage import cleanup_staged_files, get_storage, stage_photo_
 from app.services import privacy
 from app.services.visual_similarity import find_similar_photos
 from app.services.photo_navigation import get_neighbors
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from starlette.concurrency import run_in_threadpool
 
 from app.services.moderation_worker import enqueue_moderation
@@ -74,6 +78,9 @@ from app.services.audit import log_audit
 from app.services.notification import notify_user as send_notification
 
 settings = get_settings()
+
+# 申诉提交限流：防止刷接口（同一作者同一作品另有 pending 唯一约束兜底）。
+_appeal_limiter = Limiter(key_func=get_remote_address)
 
 
 # 进程内上传处理信号量：每 worker 同时只处理 N 张原图（见 settings.UPLOAD_PROCESS_CONCURRENCY）。
@@ -1077,6 +1084,111 @@ def _neighbor_item(photo: Photo) -> PhotoNeighborItem:
         aigc_label=photo.aigc_label,
         lqip_color=exif.get("_lqip_color"),
         thumb_url=f"/api/v1/photos/{photo.id}/image/thumbnail",
+    )
+
+
+@router.post(
+    "/{photo_id}/appeal",
+    response_model=AppealReceipt,
+    status_code=status.HTTP_201_CREATED,
+    summary="对被驳回的作品申请复核",
+)
+@_appeal_limiter.limit("5/hour")
+async def create_photo_appeal(
+    photo_id: str,
+    payload: AppealCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """作者本人对 status=rejected 的作品提交一次复核申请。
+
+    - 只有作品作者可以申请（403）
+    - 只有被驳回的作品可以申请（400）
+    - 同一作品同时只允许一条 pending 申请（409）
+    """
+    photo = await db.get(Photo, photo_id)
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    if photo.uploader_id != current_user.id:
+        raise HTTPException(status_code=403, detail="只能对自己的作品申请复核")
+    if photo.status != "rejected":
+        raise HTTPException(status_code=400, detail="只有被驳回的作品可以申请复核")
+
+    existing = (
+        await db.execute(
+            select(PhotoAppeal.id).where(
+                PhotoAppeal.photo_id == photo_id,
+                PhotoAppeal.status == "pending",
+            )
+        )
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=409, detail="已有待处理的复核申请，请等待受理")
+
+    appeal = PhotoAppeal(
+        photo_id=photo_id,
+        user_id=current_user.id,
+        reason=payload.reason.strip(),
+        status="pending",
+    )
+    db.add(appeal)
+    await db.flush()
+    await log_audit(
+        db,
+        user_id=current_user.id,
+        action="appeal.create",
+        resource_type="photo_appeal",
+        resource_id=appeal.id,
+        detail=json.dumps({"photo_id": photo_id}, ensure_ascii=False),
+        request=request,
+    )
+    await db.commit()
+
+    return AppealReceipt(
+        ok=True,
+        id=appeal.id,
+        status=appeal.status,
+        message="已提交复核申请，我们会在 3 个工作日内处理",
+    )
+
+
+@router.get(
+    "/{photo_id}/appeal",
+    response_model=Optional[AppealResponse],
+    summary="查看自己对某张作品的复核申请",
+)
+async def get_photo_appeal(
+    photo_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """作者本人（或管理员）查看最近一条复核申请；没有则返回 null。"""
+    photo = await db.get(Photo, photo_id)
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    is_admin = current_user.role in ("admin", "auditor")
+    if photo.uploader_id != current_user.id and not is_admin:
+        raise HTTPException(status_code=403, detail="只能查看自己的复核申请")
+
+    appeal = (
+        await db.execute(
+            select(PhotoAppeal)
+            .where(PhotoAppeal.photo_id == photo_id)
+            .order_by(PhotoAppeal.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if appeal is None:
+        return None
+    return AppealResponse(
+        id=appeal.id,
+        photo_id=appeal.photo_id,
+        status=appeal.status,
+        reason=appeal.reason,
+        note=appeal.note,
+        created_at=appeal.created_at,
+        handled_at=appeal.handled_at,
     )
 
 

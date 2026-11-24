@@ -20,6 +20,7 @@ from app.models.collection import Collection, CollectionPhoto
 from app.models.search_trace import AgentSearchTrace
 from app.models.email_code import EmailVerificationCode
 from app.models.report import Report
+from app.models.appeal import PhotoAppeal
 from app.models.aigc_generation import AIGCGeneration
 
 __all__ = [
@@ -54,5 +55,6 @@ __all__ = [
     "EmailVerificationCode",
     "Report",
     "AIGCGeneration",
+    "PhotoAppeal",
 ]
 

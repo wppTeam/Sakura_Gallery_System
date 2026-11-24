@@ -383,6 +383,20 @@ GET /api/v1/photos/{photo_id}/collections
 |------|------|------|
 | POST | `/api/v1/search/visual` | `multipart/form-data`：`file`（JPEG / PNG / WebP，≤8MB，≤4000 万像素）+ 可选 `limit`（1–30，默认 12）。返回 `{results[], total, query_time_ms, mode:"visual", query:{filename,width,height,aspect_ratio,palette,palette_name,palette_hex}}`；非图片/过小 → 400，超过 8MB 或像素上限 → 413；与上传图近重复（汉明 ≤3）的作品不返回；按 IP 限流 10 次/分钟 |
 
+## 📝 审核复核（申诉，需登录）
+
+被驳回作品的作者可提交一次复核申请；管理员受理后接受则作品回到 pending 重新审核。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/photos/{photo_id}/appeal` | 作者本人提交，body `{reason}`（10–2000 字）；只有 rejected 作品、无 pending 申请，5 次/小时/IP |
+| GET | `/api/v1/photos/{photo_id}/appeal` | 查看最近一条申请（作者本人或 admin/auditor），无则 `null` |
+| GET | `/api/v1/admin/appeals` | 管理端列表，`?status=pending|accepted|rejected&limit=&offset=`（待处理优先） |
+| GET | `/api/v1/admin/appeals/stats` | 概览 `{total,pending,accepted,rejected,last_7_days}` |
+| POST | `/api/v1/admin/appeals/{id}/resolve` | `{decision:"accept"|"reject", note?}`；accept 作品回到 pending 并重新审核；重复受理 409 |
+
+作者提交回执：`{ok,id,status,message}`。受理后会向作者发送站内通知。
+
 ## 👁 视觉相似（公开）
 
 上传时记录 dhash 感知哈希 + 光谱色卡；按「构图 / 色调 / 标签 / 季节 / 校区」加权排序。
