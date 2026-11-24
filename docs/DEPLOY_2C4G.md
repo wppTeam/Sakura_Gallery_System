@@ -494,55 +494,56 @@ HSTS 头已在 `nginx.prod.conf` 里注释好，确认 HTTPS 稳定一周后再�
 
 ## 8. 备份与恢复
 
-**备份同一块盘不算备份**：每天本地备份 + 每周异地（rclone 到 R2/另一台机器）。备份文件含用户数据，脚本已 `umask 077`。
+**备份同一块盘不算备份**：每天本地备份 + 每周异地（rclone 到 R2 / 另一台机器 / 拉到本机）。备份文件含用户数据，脚本已 `umask 077`（600/700）。
 
-### 8.1 手动 / 定时备份
+### 8.1 手动 / 定时备份（2026-11-24 已在生产实测）
 
 ```bash
-# 手动
-sudo BACKUP_DIR=/var/backups/sakura-gallery bash deploy/backup.sh
-
-# 定时（每日 03:17，避开整点）
-sudo crontab -u deployer -e
-17 3 * * * cd /opt/sakura-gallery && BACKUP_DIR=/var/backups/sakura-gallery bash deploy/backup.sh >> /var/log/sakura-backup.log 2>&1
+# 生产（服务器 ~/sakura-gallery；脚本会自动叠加 deploy/docker-compose.server.yml）
+cd ~/sakura-gallery && BACKUP_DIR=$HOME/sakura-backups bash deploy/backup.sh
 ```
 
-产出：`pg-YYYYmmdd-HHMMSS.dump`（`pg_dump -Fc`）+ `uploads-YYYYmmdd-HHMMSS.tar.gz`，默认保留 7 天。
+产出 `pg-YYYYmmdd-HHMMSS.dump`（`pg_dump -Fc`，可精确到表/行恢复）。
+**`STORAGE_BACKEND=s3` 时脚本自动跳过 uploads 卷**（媒体在 COS，本地卷只是暂存；用 COS 版本控制/生命周期备份），
+local 模式才会打 `uploads-*.tar.gz`；也可用 `BACKUP_UPLOADS=1|0` 强制。
+
+定时（`crontab -e`，每日 03:17，避开整点）：
+
+```cron
+17 3 * * * cd $HOME/sakura-gallery && BACKUP_DIR=$HOME/sakura-backups bash deploy/backup.sh >> $HOME/sakura-backup.log 2>&1
+```
+
 异地（可选，推荐）：
 
 ```bash
-# 安装 rclone 并配置 R2 remote 后
-rclone copy /var/backups/sakura-gallery r2:sakura-backups/$(hostname)/ --include 'pg-*.dump' --max-age 8d
+rclone copy ~/sakura-backups r2:sakura-backups/$(hostname)/ --include 'pg-*.dump' --max-age 8d
 ```
 
-### 8.2 恢复 PostgreSQL
+### 8.2 恢复 PostgreSQL（演练步骤，2026-11-24 已在生产验证）
+
+先恢复到**临时库**验证可恢复性（不影响线上）：
 
 ```bash
-cd /opt/sakura-gallery
-# 1) 停应用，避免恢复期间写入
-sakura stop backend nginx
-
-# 2) 用备份覆盖（--clean 会先 DROP 再重建，恢复完是备份时刻的完整状态）
-cat /var/backups/sakura-gallery/pg-YYYYmmdd-HHMMSS.dump | \
-  sakura exec -T postgres pg_restore -U sakura -d sakura_gallery --clean --if-exists --no-owner
-
-# 3) 校验版本与数据
-sakura exec backend alembic current
-sakura exec postgres psql -U sakura -d sakura_gallery -c "SELECT count(*) FROM works;"
-
-sakura up -d
+DUMP=$(ls -t ~/sakura-backups/pg-*.dump | head -1)
+docker exec -i sakura-prod-pg psql -U sakura -d postgres -c "DROP DATABASE IF EXISTS sakura_restore_test;"
+docker exec -i sakura-prod-pg psql -U sakura -d postgres -c "CREATE DATABASE sakura_restore_test OWNER sakura;"
+docker exec -i sakura-prod-pg pg_restore -U sakura -d sakura_restore_test --no-owner --no-privileges < "$DUMP"
+docker exec -i sakura-prod-pg psql -U sakura -d sakura_restore_test -tAc "select count(*) from photos; select count(*) from users; select count(*) from collections;"
+docker exec -i sakura-prod-pg psql -U sakura -d postgres -c "DROP DATABASE sakura_restore_test;"
 ```
 
-### 8.3 恢复 uploads
+实测（2026-11-24）：dump 180K → 恢复后 `photos=64 / users=4 / collections=12 / moderation_reviews=11`，与线上一致。
 
-```bash
-# 解包回命名卷（一次性容器，不影响正在运行的服务）
-cat /var/backups/sakura-gallery/uploads-YYYYmmdd-HHMMSS.tar.gz | \
-  sakura run --rm -T --no-deps --entrypoint sh backend -c 'tar xzf - -C /app'
-sakura exec backend sh -c 'du -sh /app/uploads && ls /app/uploads | head'
-```
+真正回滚线上时：先停 backend/nginx，恢复进 `sakura_gallery`（加 `--clean --if-exists`），再启动并 `alembic current` 校验。
 
-> 恢复演练：每季度在测试机实际恢复一次；只看「备份成功」不等于「备份可用」。
+> 注意：`docker exec` 用 `-i`（不要 `-T`，`-T` 只有 `docker compose exec` 支持）。
+
+### 8.3 媒体（COS）恢复
+
+S3/COS 模式没有 uploads 卷备份：请在 COS 控制台开启**版本控制**（误删可恢复）并配置**生命周期 / 跨地域复制**；
+迁移或回滚时以对象存储为准，DB 里的 key 路径必须一致（`originals/…`、`thumbnails/…`、`compressed/…`、`variants/…`、`redacted/…`）。
+
+> 恢复演练：每季度实际恢复一次；只看「备份成功」不等于「备份可用」。
 
 ---
 

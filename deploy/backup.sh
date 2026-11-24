@@ -4,11 +4,13 @@
 # -----------------------------------------------------------------------------
 # 备份内容：
 #   1) PostgreSQL 全库逻辑备份（pg_dump -Fc，可 pg_restore 精确到表/行恢复）
-#   2) uploads 数据卷（STORAGE_BACKEND=local 时的原图与变体）
+#   2) uploads 数据卷（仅 STORAGE_BACKEND=local 时有意义；S3/COS 模式下自动跳过，
+#      媒体请用对象存储的版本控制/生命周期规则做备份）
 # 默认保留 7 天，可用环境变量覆盖：
 #   BACKUP_DIR（默认 /var/backups/sakura-gallery）
 #   BACKUP_KEEP_DAYS（默认 7）
 #   ENV_FILE（默认 <repo>/deploy/.env.prod）
+#   BACKUP_UPLOADS（auto|1|0，默认 auto：local→备份，s3→跳过）
 #
 # 手动执行：
 #   sudo bash deploy/backup.sh
@@ -22,9 +24,11 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="$ROOT/deploy/docker-compose.prod.yml"
+SERVER_OVERRIDE="$ROOT/deploy/docker-compose.server.yml"
 ENV_FILE="${ENV_FILE:-$ROOT/deploy/.env.prod}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/sakura-gallery}"
 KEEP_DAYS="${BACKUP_KEEP_DAYS:-7}"
+BACKUP_UPLOADS="${BACKUP_UPLOADS:-auto}"
 
 log() { printf '[backup] %s\n' "$*" >&2; }
 die() { log "错误：$*"; exit 1; }
@@ -33,7 +37,22 @@ die() { log "错误：$*"; exit 1; }
 [ -f "$ENV_FILE" ] || die "找不到 $ENV_FILE（先 cp deploy/.env.prod.example deploy/.env.prod 并填写）"
 command -v docker >/dev/null 2>&1 || die "未安装 docker"
 
-compose() { docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"; }
+# 服务器部署用 prod + server 两个 compose 文件叠加；本地单文件也能跑。
+COMPOSE_ARGS=(-f "$COMPOSE_FILE")
+if [ -f "$SERVER_OVERRIDE" ]; then
+  COMPOSE_ARGS+=(-f "$SERVER_OVERRIDE")
+fi
+compose() { docker compose "${COMPOSE_ARGS[@]}" --env-file "$ENV_FILE" "$@"; }
+
+# 判断是否要备份 uploads：S3/COS 模式下媒体在对象存储，本地卷只是暂存，跳过省空间。
+if [ "$BACKUP_UPLOADS" = "auto" ]; then
+  storage_backend="$(grep -E '^STORAGE_BACKEND=' "$ENV_FILE" 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '[:space:]' || true)"
+  if [ "$storage_backend" = "s3" ]; then
+    BACKUP_UPLOADS=0
+  else
+    BACKUP_UPLOADS=1
+  fi
+fi
 
 umask 077
 mkdir -p "$BACKUP_DIR"
@@ -58,6 +77,7 @@ log "PG 备份完成：$PG_DUMP ($(du -h "$PG_DUMP" | cut -f1))"
 #    --no-owner/--no-privileges 只影响 SQL 对象属主，数据本身完整
 # ---------------------------------------------------------------------------
 UPLOADS_TAR="$BACKUP_DIR/uploads-$TS.tar.gz"
+if [ "$BACKUP_UPLOADS" = "1" ]; then
 log "打包 uploads 数据卷 ..."
 if ! compose exec -T backend tar czf - -C /app uploads > "$UPLOADS_TAR" 2>/dev/null; then
   log "backend 未运行，改用一次性容器读取 uploads 卷 ..."
@@ -66,6 +86,9 @@ if ! compose exec -T backend tar czf - -C /app uploads > "$UPLOADS_TAR" 2>/dev/n
 fi
 [ -s "$UPLOADS_TAR" ] || { rm -f "$UPLOADS_TAR"; die "uploads 打包失败"; }
 log "uploads 备份完成：$UPLOADS_TAR ($(du -h "$UPLOADS_TAR" | cut -f1))"
+else
+  log "STORAGE_BACKEND=s3，跳过 uploads（媒体在对象存储，请用 COS 版本控制/生命周期备份）"
+fi
 
 # ---------------------------------------------------------------------------
 # 3) 清理过期备份（只动本脚本产物的文件名模式，绝不 rm -rf 目录）
