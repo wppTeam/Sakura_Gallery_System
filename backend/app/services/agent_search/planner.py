@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,7 +21,7 @@ from app.services.ai_client import (
 )
 from app.services.agent_search.types import PlanOutcome, SearchIntent, SearchStep
 from app.services.lexical_search import build_search_terms
-from app.services.light_of_day import normalize_period
+from app.services.light_of_day import PERIOD_ALIASES, normalize_period
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -48,6 +48,25 @@ ALLOWED_FILTER_KEYS: frozenset[str] = frozenset(
         "landmark",
         "period",
     }
+)
+
+# 多轮追问：只带最近 3 轮、每轮最多 200 字，避免 prompt 膨胀与旧话题污染。
+MAX_HISTORY_TURNS = 3
+MAX_HISTORY_CHARS = 200
+
+# 省略式追问的开头标记；出现这些词时，规则兜底才把上一轮的关键词并进来。
+_FOLLOW_UP_PREFIXES = (
+    "那",
+    "还有",
+    "再",
+    "换成",
+    "改成",
+    "也",
+    "同样",
+    "顺便",
+    "这个",
+    "那个",
+    "刚刚",
 )
 
 PLANNER_SYSTEM_PROMPT = """你是「视觉百花 / Sakura Gallery」校园摄影站的检索意图解析器。
@@ -85,7 +104,10 @@ filters 可选 key 与取值（不确定就不要填，宁缺毋滥）：
 1. 泛化词（照片、图片、校园、北化）不要放进 keywords。
 2. 用户明确说出的筛选条件才放进 filters；从「樱花」推断「春季」这类推断只写进 assumed，不要写 filters。
 3. 查询很短且明确（如「樱花」）时 keywords 就是原词本身。
-4. 只有真的无法判断用户想找什么（如「好看的照片」）才 needs_clarification=true。"""
+4. 只有真的无法判断用户想找什么（如「好看的照片」）才 needs_clarification=true。
+5. 若 user 消息里带「对话上下文」，仅在当前查询是省略式追问（如「那黄昏呢」「还有春天的吗」「换成教学楼」）时，
+   才把上文条件合并进来；当前查询是新话题时忽略上文。合并时本轮显式条件优先于上文条件，
+   并在 assumed 里写「承接上一轮提问」。"""
 
 
 def _ai_timeout() -> float:
@@ -96,16 +118,86 @@ def _ai_timeout() -> float:
     return max(2.0, min(configured, 8.0))
 
 
-def heuristic_intent(query: str) -> SearchIntent:
-    """规则兜底：只做关键词切分，不猜 filters（避免错误过滤导致空结果）。"""
+def normalize_history(
+    history: Optional[Sequence[str]], *, exclude: Optional[str] = None
+) -> list[str]:
+    """清洗对话历史：去空、去重、截断，只保留最近 ``MAX_HISTORY_TURNS`` 轮。"""
+    if not history:
+        return []
+    excluded = (exclude or "").strip()
+    seen: set[str] = set()
+    items: list[str] = []
+    for entry in history:
+        if not isinstance(entry, str):
+            continue
+        text = " ".join(entry.split()).strip()[:MAX_HISTORY_CHARS]
+        if not text or text == excluded or text in seen:
+            continue
+        seen.add(text)
+        items.append(text)
+    return items[-MAX_HISTORY_TURNS:]
+
+
+def _period_hint(text: str) -> Optional[str]:
+    """从查询里认出时段口语（「黄昏」→ dusk）。长别名优先，避免「晨」抢在「清晨」前面。"""
+    lowered = (text or "").strip().lower()
+    if not lowered:
+        return None
+    for alias in sorted(PERIOD_ALIASES, key=len, reverse=True):
+        if alias and alias in lowered:
+            return PERIOD_ALIASES[alias]
+    return None
+
+
+def _looks_like_follow_up(text: str) -> bool:
+    """省略式追问的粗略判断：句末「呢/吗」或以「那 / 还有 / 换成…」开头。"""
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return False
+    if cleaned.endswith(("呢", "吗")):
+        return True
+    return any(cleaned.startswith(prefix) for prefix in _FOLLOW_UP_PREFIXES)
+
+
+def heuristic_intent(
+    query: str, history: Optional[Sequence[str]] = None
+) -> SearchIntent:
+    """规则兜底：切关键词 + 认时段；不猜其它 filters（避免错误过滤导致空结果）。
+
+    带 ``history`` 且当前问题像省略式追问时，把上一轮的关键词并进来，
+    让「那黄昏呢」这类追问在模型不可用时也能落到上一轮的话题上。
+    """
     cleaned = (query or "").strip()
     terms = build_search_terms(cleaned)
+    filters: dict[str, str] = {}
+    assumed: list[str] = []
+    semantic_query = cleaned
+
+    period = _period_hint(cleaned)
+    if period:
+        filters["period"] = period
+
+    previous = normalize_history(history, exclude=cleaned)
+    if previous and _looks_like_follow_up(cleaned):
+        last = previous[-1]
+        merged: list[str] = []
+        for term in [*terms, *build_search_terms(last)]:
+            if term and term not in merged:
+                merged.append(term)
+        terms = merged[:6]
+        semantic_query = f"{last} {cleaned}".strip()
+        assumed.append("承接上一轮提问")
+        if not filters:
+            prev_period = _period_hint(last)
+            if prev_period:
+                filters["period"] = prev_period
+
     return SearchIntent(
         query=cleaned,
-        keywords=terms,
-        filters={},
-        semantic_query=cleaned,
-        assumed=[],
+        keywords=terms[:6],
+        filters=filters,
+        semantic_query=semantic_query,
+        assumed=assumed,
         confidence=0.3,
         source="heuristic",
     )
@@ -221,8 +313,21 @@ def parse_planner_data(data: Any, query: str) -> Optional[SearchIntent]:
     )
 
 
-def _planner_user_message(query: str, explicit_filters: Optional[dict[str, Any]] = None) -> str:
+def _planner_user_message(
+    query: str,
+    explicit_filters: Optional[dict[str, Any]] = None,
+    history: Optional[Sequence[str]] = None,
+) -> str:
     lines = [f"用户查询：{query}"]
+    context = normalize_history(history, exclude=query)
+    if context:
+        lines.append("对话上下文（从早到晚，均为用户之前问过的）：")
+        for item in context:
+            lines.append(f"- 用户曾问：「{item}」")
+        lines.append(
+            "说明：如果当前查询是省略式追问，请结合上文补全省略的条件；"
+            "如果当前查询是新话题，请忽略上文。"
+        )
     if explicit_filters:
         lines.append(f"用户在界面上已显式选择的筛选条件（无需重复解析）：{explicit_filters}")
     return "\n".join(lines)
@@ -233,10 +338,16 @@ async def plan_query(
     query: str,
     *,
     explicit_filters: Optional[dict[str, Any]] = None,
+    history: Optional[Sequence[str]] = None,
 ) -> PlanOutcome:
-    """调用一次模型解析意图；任何异常都回退到规则意图。"""
+    """调用一次模型解析意图；任何异常都回退到规则意图。
+
+    ``history`` 是最近几轮的用户提问（前端在连续追问时传入）。只在当前问题
+    是省略式追问时由模型/规则借上文补全；新话题不受影响。
+    """
     started = time.perf_counter()
-    fallback = heuristic_intent(query)
+    context = normalize_history(history, exclude=query)
+    fallback = heuristic_intent(query, context)
 
     if not settings.AGENT_SEARCH_ENABLED or not settings.AI_ENABLED:
         status = "skipped:agent_disabled" if not settings.AGENT_SEARCH_ENABLED else "skipped:ai_disabled"
@@ -244,7 +355,7 @@ async def plan_query(
             intent=fallback,
             step=SearchStep(
                 tool="planner",
-                args={"query": query},
+                args={"query": query, "history": len(context)},
                 status=status,
                 latency_ms=(time.perf_counter() - started) * 1000,
             ),
@@ -257,7 +368,7 @@ async def plan_query(
             db,
             operation="agent_search.plan",
             system=PLANNER_SYSTEM_PROMPT,
-            user=_planner_user_message(query, explicit_filters),
+            user=_planner_user_message(query, explicit_filters, context),
             model=model,
             max_tokens=2048,
             temperature=0.0,
@@ -272,7 +383,7 @@ async def plan_query(
                 intent=fallback,
                 step=SearchStep(
                     tool="planner",
-                    args={"query": query, "model": result.model_id},
+                    args={"query": query, "model": result.model_id, "history": len(context)},
                     status="degraded",
                     latency_ms=latency_ms,
                 ),
@@ -290,6 +401,7 @@ async def plan_query(
                     "model": result.model_id,
                     "keywords": intent.keywords,
                     "filters": intent.filters,
+                    "history": len(context),
                 },
                 result_count=len(intent.keywords),
                 status="ok",
@@ -313,7 +425,7 @@ async def plan_query(
         intent=fallback,
         step=SearchStep(
             tool="planner",
-            args={"query": query},
+            args={"query": query, "history": len(context)},
             status="degraded",
             latency_ms=(time.perf_counter() - started) * 1000,
         ),

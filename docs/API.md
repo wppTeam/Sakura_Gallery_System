@@ -466,6 +466,7 @@ GET /api/v1/search?q={query}&mode=agent|fast
 | `limit` / `offset` | int | 分页，limit ≤ 100 |
 | `season` / `category` / `campus` / `tag` | string | 结构化过滤 |
 | `period` | string | 拍摄时段 `dawn` / `noon` / `dusk` / `night`（也接受 晨/昼/暮/夜、黄昏、清晨等口语） |
+| `history` | string[] | 连续追问上下文：最近几轮用户提问（最多 3 条，按时间顺序）。只在省略式追问（如「那黄昏呢」）时用于补全条件；新话题会被忽略。重复参数形式：`?history=校园的春天&history=那黄昏呢` |
 
 **响应**（节选）：
 

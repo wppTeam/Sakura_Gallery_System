@@ -442,20 +442,26 @@ def _build_filter_sql(
         facet_keys: list[str] = ["building", "landscape"] if key == "landmark" else [key]
         value_list = value if isinstance(value, list) else [value]
         for item in value_list:
-            fk_name = f"fk{idx}"
             fv_name = f"fvv{idx}"
             fk_name_lit = f"fkl{idx}"
             idx += 1
-            params[fk_name] = facet_keys
             params[fv_name] = item
             params[fk_name_lit] = str(item).lower().replace(" ", "-")
+            # 每个 facet key 单独绑定：asyncpg 不接受 `IN :list` 这种把列表绑到
+            # 单个占位符的写法（会报语法错误），必须展开成 `IN (:k0, :k1)`。
+            facet_placeholders: list[str] = []
+            for facet_key in facet_keys:
+                key_param = f"fk{idx}"
+                idx += 1
+                params[key_param] = facet_key
+                facet_placeholders.append(f":{key_param}")
             conditions.append(
                 "EXISTS ("
                 "SELECT 1 FROM photo_classifications pcf "
                 "JOIN taxonomy_facets tff ON tff.id = pcf.facet_id "
                 "JOIN taxonomy_nodes tnf ON tnf.id = pcf.node_id "
                 "LEFT JOIN taxonomy_aliases taf ON taf.node_id = tnf.id "
-                f"WHERE pcf.photo_id = p.id AND tff.key IN :{fk_name} "
+                f"WHERE pcf.photo_id = p.id AND tff.key IN ({', '.join(facet_placeholders)}) "
                 "AND tff.is_active = TRUE AND tnf.is_active = TRUE AND tnf.is_selectable = TRUE "
                 f"AND (tnf.name = :{fv_name} OR tnf.key = :{fk_name_lit} OR taf.alias = :{fv_name})"
                 ")"

@@ -302,6 +302,13 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
 - API：`GET /api/v1/search?q=&mode=agent|fast`、`/search/facets`、`/search/suggest`、
   `/search/traces/{trace_id}`（仅 admin）
 - 实测：fast 端到端 21–50ms；agent「校园里春季开的花」2.2s（planner ≈2.0s，解释常被预算跳过）
+- **多轮追问（history 上下文）**：`GET /api/v1/search` 支持重复参数
+  `history=上一轮提问`（最多 3 条、每条 ≤200 字，按时间顺序）。planner 的 user 消息
+  会带上「对话上下文」，模型只在当前问题是省略式追问（如「那黄昏呢」「还有春天的吗」）时
+  借上文补全 keywords/filters，新话题忽略上文；模型不可用时规则兜底
+  `heuristic_intent(query, history)` 仅对「那/还有/再/换成…」或句末「呢/吗」的追问合并
+  上一轮关键词，并识别时段口语（「黄昏」→ `period=dusk`）。前端在连续搜索时携带，
+  并对用户显示「结合上文 · 清除」；上下文不落库（trace 里只记 `history` 条数）
 - **按光找图（`period` 过滤）**：`/search` 与 `/photos/public` 都接受
   `period=dawn|noon|dusk|night`（也接受 晨/昼/暮/夜、清晨、黄昏、傍晚、夜晚 等口语）；
   小时区间与「光的一日」策展共用 `backend/app/services/light_of_day.py` 的

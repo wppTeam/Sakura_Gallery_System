@@ -444,6 +444,13 @@ async def search_photos(
     technique: Optional[str] = Query(None, description="表现手法 filter"),
     animal: Optional[str] = Query(None, description="动物 filter"),
     plant: Optional[str] = Query(None, description="植物 filter"),
+    history: list[str] = Query(
+        [],
+        description=(
+            "连续追问的上下文：最近几轮用户提问（按时间顺序，最多 3 条，每条 ≤200 字）。"
+            "仅用于省略式追问（如「那黄昏呢」）时补全条件；新话题会被忽略。"
+        ),
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> SearchResponse:
     """自然语言 + 结构化筛选检索已通过审核的照片。
@@ -485,6 +492,7 @@ async def search_photos(
         limit=limit,
         offset=offset,
         mode=mode,
+        history=history or None,
     )
     # trace 是本接口唯一的写操作；flush 成功后显式提交，失败不影响响应
     if getattr(result, "trace", None) is not None:

@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -66,9 +66,14 @@ def _merge_reasons(*reasons: Optional[str]) -> Optional[str]:
     return " | ".join(seen) if seen else None
 
 
-def _fast_intent(query: str, explicit_filters: dict[str, Any]) -> SearchIntent:
-    intent = planner.heuristic_intent(query)
-    intent.filters = dict(explicit_filters)
+def _fast_intent(
+    query: str,
+    explicit_filters: dict[str, Any],
+    history: Optional[list[str]] = None,
+) -> SearchIntent:
+    intent = planner.heuristic_intent(query, history)
+    # 界面上显式选择的筛选优先于规则推断
+    intent.filters = {**intent.filters, **explicit_filters}
     return intent
 
 
@@ -158,9 +163,10 @@ async def _run_fast(
     offset: int,
     reason: str,
     search_mode: str = "fast",
+    history: Optional[list[str]] = None,
 ) -> AgentSearchResult:
     """纯词法路径：planner/explainer 都跳过（不花模型钱）。"""
-    intent = _fast_intent(query, explicit_filters)
+    intent = _fast_intent(query, explicit_filters, history)
     retrieval = await retriever.retrieve(
         db,
         query=query,
@@ -173,7 +179,7 @@ async def _run_fast(
     steps: list[SearchStep] = [
         SearchStep(
             tool="planner",
-            args={"query": query, "mode": "fast"},
+            args={"query": query, "mode": "fast", "history": len(history or [])},
             result_count=len(intent.keywords),
             status=f"skipped:{reason}",
         ),
@@ -247,9 +253,12 @@ async def _run_agent(
     explicit_filters: dict[str, Any],
     limit: int,
     offset: int,
+    history: Optional[list[str]] = None,
 ) -> AgentSearchResult:
     started = time.perf_counter()
-    plan = await planner.plan_query(db, query, explicit_filters=explicit_filters)
+    plan = await planner.plan_query(
+        db, query, explicit_filters=explicit_filters, history=history
+    )
     intent = plan.intent
     intent.query = query
     # 显式筛选优先（覆盖 planner 的推断）
@@ -348,10 +357,16 @@ async def run_agent_search(
     offset: int = 0,
     *,
     mode: str = "agent",
+    history: Optional[Sequence[str]] = None,
 ) -> AgentSearchResult:
-    """Agent 检索入口：永远返回结果对象，不抛业务异常。"""
+    """Agent 检索入口：永远返回结果对象，不抛业务异常。
+
+    ``history``：最近几轮的用户提问（按时间顺序，前端在连续追问时传入）。
+    只用于理解省略式追问；新话题不受影响。
+    """
     started = time.perf_counter()
     query = (query or "").strip()
+    context = planner.normalize_history(history, exclude=query)
     effective_limit = _clamp_limit(limit)
     try:
         effective_offset = max(0, int(offset or 0))
@@ -381,6 +396,7 @@ async def run_agent_search(
                 offset=effective_offset,
                 reason=reason,
                 search_mode="fast",
+                history=context,
             )
         elif not settings.AGENT_SEARCH_ENABLED:
             result = await _run_fast(
@@ -391,6 +407,7 @@ async def run_agent_search(
                 offset=effective_offset,
                 reason="agent_search_disabled",
                 search_mode="fast",
+                history=context,
             )
         elif not settings.AI_ENABLED:
             result = await _run_fast(
@@ -401,6 +418,7 @@ async def run_agent_search(
                 offset=effective_offset,
                 reason="ai_disabled",
                 search_mode="fast",
+                history=context,
             )
         else:
             result = await _run_agent(
@@ -409,6 +427,7 @@ async def run_agent_search(
                 explicit_filters=explicit_filters,
                 limit=effective_limit,
                 offset=effective_offset,
+                history=context,
             )
     except Exception:  # noqa: BLE001 - 任何异常降级为纯词法 fast
         logger.exception("agent_search: agent pipeline failed, falling back to lexical fast path")
@@ -421,6 +440,7 @@ async def run_agent_search(
                 offset=effective_offset,
                 reason="agent_search_failed",
                 search_mode="fast",
+                history=context,
             )
         except Exception:  # noqa: BLE001 - 检索彻底失败时返回空页而不是 500
             logger.exception("agent_search: lexical fallback failed too")
@@ -438,7 +458,7 @@ async def run_agent_search(
                 ],
                 clarify=None,
                 clarify_options=[],
-                intent=_fast_intent(query, explicit_filters),
+                intent=_fast_intent(query, explicit_filters, context),
                 trace_id=None,
                 search_mode="fast",
                 fallback_reason="search_failed",
@@ -486,9 +506,16 @@ class AgentSearchService:
         offset: int = 0,
         *,
         mode: str = "agent",
+        history: Optional[Sequence[str]] = None,
     ) -> AgentSearchResult:
         return await run_agent_search(
-            db, query, filters=filters, limit=limit, offset=offset, mode=mode
+            db,
+            query,
+            filters=filters,
+            limit=limit,
+            offset=offset,
+            mode=mode,
+            history=history,
         )
 
 
