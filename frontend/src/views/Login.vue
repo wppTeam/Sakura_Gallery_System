@@ -91,8 +91,9 @@
       </div>
 
       <div class="auth-field">
-        <label class="auth-label">邮箱验证码</label>
+        <label class="auth-label" for="login-email-code">邮箱验证码</label>
         <EmailCodeField
+          id="login-email-code"
           v-model="codeForm.code"
           :email="codeForm.email"
           purpose="login"

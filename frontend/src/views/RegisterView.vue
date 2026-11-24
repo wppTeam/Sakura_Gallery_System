@@ -40,8 +40,9 @@
       </div>
 
       <div class="auth-field">
-        <label class="auth-label">邮箱验证码 <span class="auth-required">*</span></label>
+        <label class="auth-label" for="reg-email-code">邮箱验证码 <span class="auth-required">*</span></label>
         <EmailCodeField
+          id="reg-email-code"
           v-model="form.email_code"
           :email="form.email"
           purpose="register"

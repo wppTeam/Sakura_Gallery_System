@@ -13,7 +13,7 @@
         :src="coverImageSrc"
         :srcset="coverSrcset || undefined"
         :sizes="COVER_SIZES"
-        :alt="''"
+        :alt="`${collection.title} 封面`"
         :width="collection.cover.width || undefined"
         :height="collection.cover.height || undefined"
         loading="lazy"

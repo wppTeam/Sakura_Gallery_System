@@ -9,6 +9,7 @@
         inputmode="numeric"
         autocomplete="one-time-code"
         placeholder="6 位邮箱验证码"
+        :input-props="{ id, 'aria-label': '邮箱验证码' }"
         :status="error ? 'error' : undefined"
         @update:value="onInput"
         @keydown.enter.prevent="$emit('submit')"
@@ -44,6 +45,8 @@ const props = withDefaults(
     modelValue: string
     email: string
     purpose: EmailCodePurpose
+    /** 供 <label for> 关联，键盘/读屏可定位 */
+    id?: string
     disabled?: boolean
     /** 后端未返回 cooldown 时的默认倒计时秒数 */
     defaultCooldown?: number

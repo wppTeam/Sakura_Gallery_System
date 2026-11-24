@@ -466,6 +466,7 @@ export async function fetchWorkDetail(id: string): Promise<WorkDetail> {
 export interface RelatedWork {
   id: string
   title: string
+  author: string
   thumbUrl: string
   aspectRatio: string
   meta: string
@@ -490,6 +491,7 @@ export async function fetchRelatedWorks(detail: WorkDetail, limit = 8): Promise<
           return {
             id: item.id,
             title: displayPhotoTitle(item) || '未命名作品',
+            author: displayPhotoAuthor(item) || '',
             thumbUrl: getPhotoUrl(item.id, 'thumbnail'),
             aspectRatio: width > 0 && height > 0 ? `${width} / ${height}` : '4 / 3',
             meta: [seasonLabel(item as RawPhoto), categoryLabel(item as RawPhoto)].filter(Boolean).join(' · '),

@@ -22,7 +22,7 @@
           :src="src"
           :srcset="responsive ? jpegSrcset || undefined : undefined"
           :sizes="responsive && jpegSrcset ? SRC_SIZES : undefined"
-          :alt="detail.title"
+          :alt="detail.author ? `${detail.title} · ${detail.author}` : detail.title"
           :width="detail.width || undefined"
           :height="detail.height || undefined"
           class="stage-img"
@@ -200,7 +200,7 @@ watch(
   opacity: 0.55;
   transform: scale(1.04);
   z-index: 0;
-  transition: opacity 0.45s ease;
+  transition: opacity 0.42s ease;
   pointer-events: none;
 }
 
@@ -244,7 +244,7 @@ watch(
   border-radius: var(--r-photo, 16px);
   opacity: 0;
   transform: scale(0.995);
-  transition: opacity 0.45s ease, transform 0.45s ease;
+  transition: opacity 0.42s ease, transform 0.42s ease;
 }
 
 .stage-img.is-loaded {

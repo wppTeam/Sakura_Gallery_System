@@ -801,12 +801,15 @@ onBeforeUnmount(() => {
 
 .privacy-input {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  top: 50%;
+  left: 0;
+  width: 44px;
+  height: 44px;
   padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
+  margin: 0;
+  transform: translateY(-50%);
+  opacity: 0;
+  cursor: pointer;
   white-space: nowrap;
   border: 0;
 }

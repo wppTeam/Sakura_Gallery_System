@@ -420,6 +420,13 @@ onBeforeUnmount(() => {
   padding: 0 20px;
 }
 
+/* 触屏上按钮高度提到 44px，保证可点性 */
+@media (pointer: coarse) {
+  .header-submit {
+    min-height: 44px;
+  }
+}
+
 .login-link {
   padding: 8px 12px;
   color: var(--ink);

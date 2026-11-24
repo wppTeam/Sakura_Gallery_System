@@ -112,7 +112,6 @@
         />
         <MasonryGrid
           v-else
-          v-reveal
           :items="latest"
           :loading="feedLoading"
           :max-columns="3"
@@ -145,7 +144,6 @@
       <SeasonBand
         v-for="(season, index) in SEASONS"
         :key="season.key"
-        v-reveal
         :season="season"
         :index="index + 1"
         :photos="seasonPhotos[season.key]"
@@ -211,7 +209,7 @@
         />
 
         <ul class="views-grid">
-          <li v-for="(view, index) in EIGHT_VIEWS" :key="view.node" v-reveal v-reveal-i="index % 4">
+          <li v-for="(view, index) in EIGHT_VIEWS" :key="view.node">
             <RouterLink class="view-card" :to="{ path: '/explore', query: { landscape: view.node } }">
               <span class="view-num" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span>
               <span class="view-body">

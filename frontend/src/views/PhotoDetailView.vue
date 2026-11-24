@@ -44,6 +44,7 @@
                   原图仅做尺寸压缩、不裁切构图。</template>
                 单击图片查看大图，双击可直接放大；大图内 Esc 关闭、← → 切换、+/− 缩放。
               </span>
+              <span class="media-note media-note--touch">双击图片查看大图 · 大图内左右滑切换</span>
               <span v-if="detail.season" class="media-season">{{ detail.season }}作品</span>
             </div>
           </div>

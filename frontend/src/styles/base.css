@@ -135,7 +135,7 @@ textarea {
 
 /* ---------- 焦点可见性：键盘可达是硬性要求 ---------- */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 2px solid var(--sakura-deep);
+  outline: 3px solid var(--sakura-deep);
   outline-offset: 3px;
   border-radius: var(--r-sm);
 }
@@ -192,6 +192,79 @@ textarea {
 .skip-link:focus {
   transform: translate(-50%, 0);
   color: var(--on-accent);
+}
+
+/* ---------- 触屏可点尺寸：可交互元素 ≥44×44（WCAG 2.5.5 / 平台惯例） ---------- */
+@media (pointer: coarse) {
+  .brand,
+  .nav-link,
+  .login-link,
+  .header-submit,
+  .menu-trigger,
+  .user-trigger,
+  .btn-icon,
+  .btn-fav,
+  .btn-download,
+  .stage-expand,
+  .detail-back,
+  .topic-chip,
+  .filter-select,
+  .search-btn,
+  .search-submit,
+  .search-input,
+  .crumb-link,
+  .idx-crumb-link,
+  .cl-crumb-link,
+  .link-arrow,
+  .back-top,
+  .title-link,
+  .tag,
+  .media-season,
+  .hero-stat-link {
+    min-height: 44px;
+  }
+
+  .menu-trigger,
+  .user-trigger,
+  .btn-icon,
+  .back-top {
+    min-width: 44px;
+  }
+
+  .nav-link,
+  .crumb-link,
+  .idx-crumb-link,
+  .cl-crumb-link,
+  .link-arrow,
+  .title-link,
+  .tag,
+  .hero-stat-link {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .title-link {
+    padding-block: 4px;
+  }
+
+  /* Naive 输入/选择控件在触屏上保持 44px 可点高度 */
+  .public-shell .n-input,
+  .public-shell .n-base-selection,
+  .auth-page .n-input {
+    min-height: 44px;
+  }
+
+  .public-shell .n-input .n-input__input-el,
+  .public-shell .n-input .n-input__placeholder,
+  .auth-page .n-input .n-input__input-el {
+    min-height: 44px;
+    line-height: 42px;
+  }
 }
 
 /* ---------- 排版原子 ---------- */

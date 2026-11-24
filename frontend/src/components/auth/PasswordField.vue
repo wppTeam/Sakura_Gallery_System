@@ -6,6 +6,7 @@
       :disabled="disabled"
       :placeholder="placeholder"
       :autocomplete="autocomplete"
+      :input-props="id ? { id } : undefined"
       size="large"
       :status="error ? 'error' : undefined"
       @update:value="onInput"
@@ -21,7 +22,6 @@
           type="button"
           :aria-label="revealed ? '隐藏密码' : '显示密码'"
           :aria-pressed="revealed"
-          tabindex="-1"
           @mousedown.prevent
           @click="revealed = !revealed"
         >

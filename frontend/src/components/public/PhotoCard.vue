@@ -25,7 +25,7 @@
               :src="photo.thumbUrl"
               :srcset="jpegSrcset || undefined"
               :sizes="jpegSrcset ? SRC_SIZES : undefined"
-              :alt="photo.title"
+              :alt="imgAlt"
               :width="photo.width || undefined"
               :height="photo.height || undefined"
               :loading="eager ? 'eager' : 'lazy'"
@@ -148,6 +148,11 @@ const thumbStyle = computed(() => {
 const seasonMeta = computed(() => seasonKicker(props.photo.season))
 const placeText = computed(() => props.photo.place || props.photo.campus || '')
 const authorInitial = computed(() => (props.photo.author || '匿').slice(0, 1))
+
+/** 读屏用：作品标题 + 作者，不重复装饰性信息 */
+const imgAlt = computed(() =>
+  props.photo.author ? `${props.photo.title} · ${props.photo.author}` : props.photo.title,
+)
 </script>
 
 <style scoped>
@@ -214,7 +219,7 @@ const authorInitial = computed(() => (props.photo.author || '匿').slice(0, 1))
   object-fit: contain; /* 容器比例受 clamp 限制时也不裁切原图 */
   opacity: 0;
   transform: scale(1.02);
-  transition: opacity 420ms var(--ease-out), transform 620ms var(--ease-out);
+  transition: opacity 420ms var(--ease-out), transform 420ms var(--ease-out);
 }
 
 .is-ready .thumb-img {

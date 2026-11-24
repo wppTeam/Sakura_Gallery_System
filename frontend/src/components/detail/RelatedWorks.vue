@@ -23,7 +23,7 @@
         :to="`/photo/${work.id}`"
       >
         <div class="related-thumb" :style="{ aspectRatio: work.aspectRatio || '4 / 3' }">
-          <img :src="work.thumbUrl" :alt="work.title" loading="lazy" decoding="async" class="related-img" />
+          <img :src="work.thumbUrl" :alt="work.author ? `${work.title} · ${work.author}` : work.title" loading="lazy" decoding="async" class="related-img" />
         </div>
         <span class="related-name">{{ work.title }}</span>
         <span v-if="work.meta" class="related-meta">{{ work.meta }}</span>

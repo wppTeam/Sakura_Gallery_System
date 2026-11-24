@@ -110,6 +110,10 @@
   line-height: 1.6;
 }
 
+.media-note--touch {
+  display: none;
+}
+
 .media-season {
   flex: none;
   padding: 3px 10px;
@@ -181,6 +185,10 @@
 
   .media-note {
     display: none;
+  }
+
+  .media-note--touch {
+    display: inline;
   }
 
   .media-season {

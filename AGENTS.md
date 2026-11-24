@@ -250,6 +250,12 @@ template_meta work_id, file_key, format, slides, ratio, fonts[],
   深色底用 `logo-combo-reverse.png`，favicon 16/32/48 用实心简化版、大尺寸用细节版
 - **标题字必须自托管**：`design/fonts/zcool/`（92 分片）。CDN 会静默回退；
   且 CSS 的 `url()` 相对 CSS 文件自身解析，路径写错会 404 而无报错
+- **可访问性契约（改公共端组件别破坏）**：
+  · 键盘焦点 `:focus-visible` 3px 轮廓（`styles/base.css`），Skip link 指向 `#main`；
+  · 触屏（`@media (pointer: coarse)`）可点元素 ≥44×44，桌面 fine pointer 可保留紧凑尺寸；
+  · 灯箱/抽屉/对话框：Esc 关闭、Tab 焦点陷阱、打开时聚焦容器、关闭后焦点归还触发元素；
+  · 图片 alt 用「标题 · 作者」（装饰性缩略图才允许空 alt），表单 label 与控件 `for/id` 关联；
+  · `prefers-reduced-motion: reduce` 下停花瓣与位移动画，图片渐显 420ms，骨架与卡片同比例防 CLS。
 
 ## 9. 本地开发
 

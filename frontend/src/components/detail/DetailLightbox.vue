@@ -3,10 +3,12 @@
     <Transition name="lightbox">
       <div
         v-if="show"
+        ref="dialogEl"
         class="lightbox"
         role="dialog"
         aria-modal="true"
         aria-label="作品大图预览"
+        tabindex="-1"
         @click.self="close"
       >
         <header class="lightbox-bar">
@@ -73,7 +75,7 @@
         >
           <img
             :src="currentSource.url"
-            :alt="detail.title"
+            :alt="detail.author ? `${detail.title} · ${detail.author}` : detail.title"
             class="lightbox-img"
             :style="{ transform: `scale(${zoom})` }"
             decoding="async"
@@ -106,7 +108,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { NIcon } from 'naive-ui'
 import {
   ChevronBackOutline,
@@ -223,6 +225,10 @@ function onTouchEnd(event: TouchEvent) {
 
 function handleKeydown(event: KeyboardEvent) {
   if (!props.show) return
+  if (event.key === 'Tab') {
+    trapFocus(event)
+    return
+  }
   if (event.key === 'Escape') {
     event.preventDefault()
     close()
@@ -246,20 +252,56 @@ function handleKeydown(event: KeyboardEvent) {
 }
 
 let previousOverflow = ''
+let lastFocused: HTMLElement | null = null
+
+const dialogEl = ref<HTMLElement | null>(null)
+
+/** Tab 焦点陷阱：键盘焦点只在灯箱内部循环 */
+function trapFocus(event: KeyboardEvent) {
+  const root = dialogEl.value
+  if (!root) return
+  const nodes = [
+    ...root.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
+    ),
+  ].filter((el) => el.offsetParent !== null || el === document.activeElement)
+  if (!nodes.length) {
+    event.preventDefault()
+    root.focus()
+    return
+  }
+  const first = nodes[0]
+  const last = nodes[nodes.length - 1]
+  const active = document.activeElement as HTMLElement | null
+  if (event.shiftKey && (active === first || !root.contains(active))) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && (active === last || !root.contains(active))) {
+    event.preventDefault()
+    first.focus()
+  }
+}
 
 watch(
   () => props.show,
   (visible) => {
     if (visible) {
+      lastFocused = (document.activeElement as HTMLElement | null) ?? null
       activeIndex.value = 0
       zoomed.value = false
       zoom.value = 1
       previousOverflow = document.body.style.overflow
       document.body.style.overflow = 'hidden'
       window.addEventListener('keydown', handleKeydown)
+      nextTick(() => dialogEl.value?.focus())
     } else {
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', handleKeydown)
+      // 关闭后把焦点归还给打开灯箱的元素
+      if (lastFocused && typeof lastFocused.focus === 'function') {
+        lastFocused.focus()
+      }
+      lastFocused = null
     }
   },
   { immediate: true },
@@ -276,6 +318,7 @@ onBeforeUnmount(() => {
   position: fixed;
   inset: 0;
   z-index: 3000;
+  outline: none;
   display: flex;
   flex-direction: column;
   background: rgba(28, 16, 21, 0.94);
