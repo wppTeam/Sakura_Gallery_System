@@ -62,7 +62,7 @@
           <span class="auth-season is-winter">冬 · 初雪</span>
         </div>
 
-        <p class="auth-quote">「十二番花信，八处景名，都是这套索引的坐标。」</p>
+        <p class="auth-quote">「十二番花信，一日四光，都是这套索引的坐标。」</p>
       </aside>
 
       <main class="auth-main">

@@ -34,12 +34,20 @@
 
       <template v-else-if="detail">
         <header class="cl-head">
-          <p class="eyebrow">CURATED COLLECTION</p>
+          <p class="eyebrow">{{ isUserCollection ? 'AUTHOR COLLECTION' : 'CURATED COLLECTION' }}</p>
           <div class="cl-title-row">
             <h1 class="cl-title">{{ detail.title }}</h1>
             <span class="cl-count">{{ detail.photoCount }} 张作品</span>
           </div>
           <p v-if="detail.subtitle" class="cl-sub">{{ detail.subtitle }}</p>
+          <p v-if="isUserCollection" class="cl-author">
+            <span class="cl-author-chip">
+              作者专辑<template v-if="authorHandle"> · @{{ authorHandle }}</template>
+            </span>
+            <span v-if="detail.owner?.displayName && detail.owner.displayName !== authorHandle" class="cl-author-name">
+              {{ detail.owner.displayName }}
+            </span>
+          </p>
           <p v-if="detail.description" class="cl-desc">{{ detail.description }}</p>
         </header>
 
@@ -135,6 +143,13 @@ const coverLoaded = ref(false)
 
 const slug = computed(() => String(route.params.slug || ''))
 
+const isUserCollection = computed(() => detail.value?.kind === 'user')
+const authorHandle = computed(() => {
+  const owner = detail.value?.owner
+  if (!owner) return ''
+  return owner.username || owner.displayName || ''
+})
+
 const cover = computed<PublicPhoto | null>(() => detail.value?.cover ?? null)
 const coverImageSrc = computed(() => cover.value?.imageUrl || cover.value?.thumbUrl || '')
 const coverSrcset = computed(() => buildSrcset(cover.value?.variants || [], 'jpeg'))
@@ -180,7 +195,8 @@ async function loadCollection() {
   try {
     const data = await fetchCollection(target)
     detail.value = data
-    document.title = `${data.title} · 主题专题 · 视觉百花 Sakura Gallery`
+    const suffix = data.kind === 'user' ? '作者专辑' : '主题专题'
+    document.title = `${data.title} · ${suffix} · 视觉百花 Sakura Gallery`
   } catch (e) {
     const info = describeError(e)
     error.value = info.message
@@ -267,6 +283,31 @@ watch(
   color: var(--sakura-deep);
   font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
+}
+
+.cl-author {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 0;
+}
+
+.cl-author-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: var(--r-pill);
+  background: var(--sakura-wash);
+  color: var(--sakura-deep);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.cl-author-name {
+  color: var(--muted);
+  font-size: var(--fs-sm);
 }
 
 .cl-sub {

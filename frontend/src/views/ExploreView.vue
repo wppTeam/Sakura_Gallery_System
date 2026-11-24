@@ -12,7 +12,7 @@
         </p>
       </div>
       <p class="explore-desc">
-        按季节、校区与景名筛选。每一张都保留原始构图与作者署名，十二番花信与八处景名是这套索引的坐标。
+        按季节、校区与取景地筛选。每一张都保留原始构图与作者署名，十二番花信与一日四光是这套索引的坐标。
       </p>
       <p class="explore-now">
         <span class="now-dot" aria-hidden="true" />
@@ -77,10 +77,10 @@
             v-if="landscapeName"
             class="active-pill"
             type="button"
-            :aria-label="`清除景名筛选：${landscapeName}`"
+            :aria-label="`清除取景地筛选：${landscapeName}`"
             @click="clearLandscape"
           >
-            景名 · {{ landscapeName }} <span aria-hidden="true">×</span>
+            取景 · {{ landscapeName }} <span aria-hidden="true">×</span>
           </button>
 
           <button v-if="filtersActive" class="filter-reset" type="button" @click="resetFilters">
@@ -126,7 +126,7 @@
       <EmptyState
         v-else-if="!initialLoading && items.length === 0"
         :title="landscapeEmpty ? '该景暂无作品' : filtersActive ? '没有符合条件的作品' : '还没有作品'"
-        :description="landscapeEmpty ? '这个景名还没有对应的公开作品，后续会陆续收录。可以先去其它角落看看。' : filtersActive ? '换一个季节、校区或景名试试，也可以清除筛选看全部。' : '第一批照片正在路上，你也可以成为第一个把校园放进来的人。'"
+        :description="landscapeEmpty ? '这个取景地还没有对应的公开作品，后续会陆续收录。可以先去其它角落看看。' : filtersActive ? '换一个季节、校区或取景地试试，也可以清除筛选看全部。' : '第一批照片正在路上，你也可以成为第一个把校园放进来的人。'"
         :action-label="landscapeEmpty ? '去看看其它作品' : filtersActive ? '清除筛选' : '去投稿'"
         @action="landscapeEmpty ? resetFilters() : filtersActive ? resetFilters() : $router.push('/upload')"
       />
@@ -205,7 +205,7 @@ const nextBloomInfo = { text: `${upcomingBloom.month}月${upcomingBloom.ten}的$
 const season = ref('')
 const campus = ref('')
 const category = ref('')
-/** 景名目前只从 URL 进入（首页八景卡片），不占一个下拉位 */
+/** 取景地目前只从 URL 进入（专题/光谱深链），不占一个下拉位 */
 const landscape = ref('')
 const sort = ref<SortKey>('new')
 /** 是否纳入人像作品（仅登录后生效；状态存 localStorage，刷新后保持） */
@@ -226,7 +226,7 @@ const filtersActive = computed(() =>
   Boolean(season.value || campus.value || category.value || landscape.value),
 )
 
-/** 八景/景名筛选：目前后端种子数据尚未打 landscape 标签，空结果时给叙事化的空态而不是故障感 */
+/** 取景地筛选：目前后端种子数据尚未打 landscape 标签，空结果时给叙事化的空态而不是故障感 */
 const landscapeEmpty = computed(() => Boolean(landscape.value))
 
 /* ---------- 列表数据 ---------- */

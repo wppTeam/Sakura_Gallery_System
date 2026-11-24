@@ -14,7 +14,7 @@
       <nav class="desktop-nav" aria-label="主导航">
         <RouterLink class="nav-link" :class="{ 'is-active': isExplore }" to="/explore">探索</RouterLink>
         <RouterLink class="nav-link" :to="{ path: '/', hash: '#seasons' }">四季</RouterLink>
-        <RouterLink class="nav-link" :to="{ path: '/', hash: '#views' }">八景</RouterLink>
+        <RouterLink class="nav-link" to="/spectrum">光谱</RouterLink>
       </nav>
 
       <div class="header-actions">
@@ -23,13 +23,13 @@
             <circle cx="9" cy="9" r="5.6" stroke="currentColor" stroke-width="1.6" />
             <path d="m13.4 13.4 3.1 3.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
           </svg>
-          <label class="sr-only" for="header-search-input">搜索作品、作者或景名</label>
+          <label class="sr-only" for="header-search-input">搜索作品、标题或标签</label>
           <input
             id="header-search-input"
             v-model="keyword"
             class="search-input"
             type="search"
-            placeholder="搜花信、景名或作者"
+            placeholder="搜标题、标签或作者"
             autocomplete="off"
             enterkeyhint="search"
           />
@@ -116,8 +116,8 @@
           <RouterLink class="drawer-link" :to="{ path: '/', hash: '#seasons' }" @click="closeDrawer">
             <span class="drawer-num">02</span>四季
           </RouterLink>
-          <RouterLink class="drawer-link" :to="{ path: '/', hash: '#views' }" @click="closeDrawer">
-            <span class="drawer-num">03</span>八景
+          <RouterLink class="drawer-link" to="/spectrum" @click="closeDrawer">
+            <span class="drawer-num">03</span>光谱
           </RouterLink>
           <RouterLink class="drawer-link" to="/upload" @click="closeDrawer">
             <span class="drawer-num">04</span>投稿
@@ -126,13 +126,13 @@
 
         <div class="drawer-foot wrap">
           <form class="drawer-search" role="search" @submit.prevent="submitSearch">
-            <label class="sr-only" for="drawer-search-input">搜索作品、作者或景名</label>
+            <label class="sr-only" for="drawer-search-input">搜索作品、标题或标签</label>
             <input
               id="drawer-search-input"
               v-model="keyword"
               class="drawer-search-input"
               type="search"
-              placeholder="搜花信、景名或作者"
+              placeholder="搜标题、标签或作者"
               autocomplete="off"
               enterkeyhint="search"
             />

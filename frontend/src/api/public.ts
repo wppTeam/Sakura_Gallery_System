@@ -285,7 +285,7 @@ export async function fetchPublicPhotos(query: PublicPhotoQuery = {}): Promise<P
   }
 }
 
-/** 公开分类法（季节 / 校区 / 八景 / 植物等筛选来源） */
+/** 公开分类法（季节 / 校区 / 取景地 / 植物等筛选来源） */
 export async function fetchPublicTaxonomy(): Promise<PublicTaxonomyFacet[]> {
   return request.get<PublicTaxonomyFacet[]>('/api/v1/taxonomy/public')
 }

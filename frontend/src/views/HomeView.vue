@@ -23,14 +23,14 @@
           </h1>
 
           <p class="hero-lead hero-enter" style="--enter: 120ms">
-            北化学生自己的开源图像平台。<br />校园的一年，由十二番花信与八处景名索引。
+            北化学生自己的开源图像平台。<br />校园的一年，由光的一日、四季<br />与樱色光谱索引。
           </p>
 
           <div class="hero-search hero-enter" style="--enter: 180ms">
             <SearchBar
               v-model="heroKeyword"
               size="lg"
-              placeholder="搜花信、景名或作者"
+              placeholder="搜标题、标签或作者"
               button-text="搜索"
               @submit="goSearch"
             />
@@ -45,9 +45,9 @@
           <p class="hero-stats hero-enter" style="--enter: 300ms">
             <a class="hero-stat-link" :href="`#feed`">{{ totalText }}</a>
             <span class="hero-stat-sep" aria-hidden="true">·</span>
-            <span>十二番花信</span>
+            <span>四时</span>
             <span class="hero-stat-sep" aria-hidden="true">·</span>
-            <span>八处景名</span>
+            <span>一日四光</span>
           </p>
         </div>
 
@@ -137,7 +137,7 @@
           title-id="seasons-title"
           eyebrow="FOUR SEASONS"
           title="一年四时，各有各的颜色"
-          description="以节气与花信为轴，校园的四季被拆成八个景名与十二番花期。"
+          description="以节气为轴，校园的四季与一天里的四段光各自成篇。"
         />
       </div>
 
@@ -196,29 +196,100 @@
       </div>
     </section>
 
-    <!-- ============ 北化八景 ============ -->
-    <section id="views" class="section views-section" aria-labelledby="views-title">
+    <!-- ============ 光的一日 ============ -->
+    <section id="light" class="section light-section" aria-labelledby="light-title">
       <div class="wrap">
         <SectionHeader
-          title-id="views-title"
-          eyebrow="EIGHT SCENES"
-          title="北化八景"
-          description="八个景名，是几代北化人共同的坐标。点开任意一景，看它在不同季节的样子。"
-          more-label="在探索页筛选"
-          :more-to="{ path: '/explore', query: { landscape: EIGHT_VIEWS[0].node } }"
+          title-id="light-title"
+          eyebrow="LIGHT OF DAY"
+          title="光的一日"
+          description="按拍摄时刻自动归位——早晨、正午、黄昏、夜里，同一条路在光里换四次衣服。"
+          more-label="全部专题"
+          more-to="/collections"
         />
 
-        <ul class="views-grid">
-          <li v-for="(view, index) in EIGHT_VIEWS" :key="view.node">
-            <RouterLink class="view-card" :to="{ path: '/explore', query: { landscape: view.node } }">
-              <span class="view-num" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span>
-              <span class="view-body">
-                <span class="view-name">{{ view.name }}</span>
-                <span class="view-hint">看这一景的作品</span>
+        <ul v-if="lightLoading && !lightCollections.length" class="light-grid" aria-hidden="true">
+          <li v-for="index in 4" :key="index" class="light-card light-card--skeleton" />
+        </ul>
+
+        <ul v-else class="light-grid">
+          <li v-for="card in lightCards" :key="card.slug">
+            <component
+              :is="card.collection ? RouterLink : 'div'"
+              class="light-card"
+              :class="{ 'is-pending': !card.collection }"
+              :to="card.collection ? `/collections/${card.collection.slug}` : undefined"
+            >
+              <span class="light-cover">
+                <img
+                  v-if="card.collection?.cover"
+                  class="light-cover-img"
+                  :src="card.collection.cover.thumbUrl"
+                  :alt="`${card.collection.title} 封面`"
+                  width="640"
+                  height="426"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span v-else class="light-cover-token" aria-hidden="true">{{ card.token }}</span>
+                <span class="light-token" aria-hidden="true">{{ card.token }}</span>
               </span>
-              <svg class="view-arrow" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-                <path d="M3.5 9h10M9.2 4.4 13.8 9l-4.6 4.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+              <span class="light-body">
+                <span class="light-name">{{ card.collection?.title || card.title }}</span>
+                <span class="light-hint">{{ card.hint }}</span>
+                <span class="light-meta">
+                  <template v-if="card.collection">{{ card.collection.photoCount }} 件作品</template>
+                  <template v-else>整理中 · 暂无作品</template>
+                </span>
+              </span>
+            </component>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ 樱色光谱 ============ -->
+    <section
+      v-if="spectrum.length || spectrumLoading"
+      id="spectrum"
+      class="section spectrum-section"
+      aria-labelledby="spectrum-title"
+    >
+      <div class="wrap">
+        <SectionHeader
+          title-id="spectrum-title"
+          eyebrow="SAKURA SPECTRUM"
+          title="樱色光谱"
+          description="按作品主色自动归入五张色卡——不是我们挑的，是颜色自己长出来的。"
+          more-label="全部光谱"
+          more-to="/spectrum"
+        />
+
+        <div
+          v-if="spectrumLoading && !spectrum.length"
+          class="spectrum-rail"
+          aria-hidden="true"
+        >
+          <div
+            v-for="index in 5"
+            :key="index"
+            class="spectrum-chip spectrum-chip--skeleton"
+          />
+        </div>
+
+        <ul v-else class="spectrum-rail" aria-label="樱色光谱色卡">
+          <li v-for="palette in spectrum" :key="palette.key" class="spectrum-cell">
+            <RouterLink
+              class="spectrum-chip"
+              :to="`/spectrum#band-${palette.key}`"
+              :style="{ '--band': palette.hex }"
+            >
+              <span class="spectrum-swatch" aria-hidden="true" />
+              <span class="spectrum-chip-body">
+                <span class="spectrum-name">{{ palette.name }}</span>
+                <span class="spectrum-count">{{ palette.photoCount }} 件作品</span>
+              </span>
+              <span class="spectrum-arrow" aria-hidden="true">→</span>
             </RouterLink>
           </li>
         </ul>
@@ -266,10 +337,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { fetchPublicPhotos, type PublicPhoto } from '../api/public'
 import {
-  EIGHT_VIEWS,
   SEASONS,
   currentSeason,
   currentTerm,
@@ -284,7 +354,7 @@ import SearchBar from '../components/public/SearchBar.vue'
 import SeasonBand from '../components/public/SeasonBand.vue'
 import SectionHeader from '../components/public/SectionHeader.vue'
 import TopicChip from '../components/public/TopicChip.vue'
-import { fetchCollections, type CollectionSummary } from '../api/collections'
+import { fetchCollections, fetchSpectrum, type CollectionSummary, type SpectrumPalette } from '../api/collections'
 
 const router = useRouter()
 
@@ -419,10 +489,60 @@ async function loadCollections() {
   }
 }
 
+/* ---------- 光的一日 ---------- */
+const LIGHT_DEFS = [
+  { slug: 'light-dawn', token: '晨', title: '晨 · 还没醒的校园', hint: '六点到九点，光比人先到' },
+  { slug: 'light-noon', token: '昼', title: '昼 · 光在正上方', hint: '十点到十五点，影子最短' },
+  { slug: 'light-dusk', token: '暮', title: '暮 · 一日将尽', hint: '十五点以后，光开始变软' },
+  { slug: 'light-night', token: '夜', title: '夜 · 灯与星', hint: '十九点以后，另一种校园' },
+] as const
+
+const lightCollections = ref<CollectionSummary[]>([])
+const lightLoading = ref(true)
+
+const lightCards = computed(() =>
+  LIGHT_DEFS.map((def) => ({
+    ...def,
+    collection: lightCollections.value.find((item) => item.slug === def.slug) ?? null,
+  })),
+)
+
+async function loadLightCollections() {
+  lightLoading.value = true
+  try {
+    const data = await fetchCollections({ limit: 50 })
+    lightCollections.value = data.items.filter((item) => item.slug.startsWith('light-'))
+  } catch (error) {
+    lightCollections.value = []
+    console.warn('[home] 光的一日加载失败', error)
+  } finally {
+    lightLoading.value = false
+  }
+}
+
+/* ---------- 樱色光谱 ---------- */
+const spectrum = ref<SpectrumPalette[]>([])
+const spectrumLoading = ref(true)
+
+async function loadSpectrum() {
+  spectrumLoading.value = true
+  try {
+    const data = await fetchSpectrum()
+    spectrum.value = data.palettes.filter((item) => Boolean(item.slug))
+  } catch (error) {
+    spectrum.value = []
+    console.warn('[home] 樱色光谱加载失败', error)
+  } finally {
+    spectrumLoading.value = false
+  }
+}
+
 onMounted(() => {
   loadFeed()
   loadSeasons()
   loadCollections()
+  loadLightCollections()
+  loadSpectrum()
 })
 </script>
 
@@ -661,82 +781,132 @@ onMounted(() => {
 }
 
 /* ============================================================
-   八景
+   光的一日
    ============================================================ */
-.views-grid {
+.light-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--gap-sm);
-  margin-top: clamp(24px, 3vw, 36px);
+  margin: clamp(24px, 3vw, 36px) 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.view-card {
+.light-card {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  flex-direction: column;
   height: 100%;
-  padding: 20px 18px;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--r-card);
   background: var(--surface);
-  transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out),
-    box-shadow var(--dur-fast) var(--ease-out);
+  text-decoration: none;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
-.view-card:hover {
+.light-card:hover {
   border-color: var(--sakura-pale);
   box-shadow: var(--shadow-soft);
-  transform: translateY(-2px);
 }
 
-.view-num {
+.light-card:focus-visible {
+  outline: 3px solid var(--sakura-deep);
+  outline-offset: 3px;
+}
+
+.light-cover {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  padding: 12px;
+  background: var(--sakura-wash);
+  overflow: hidden;
+}
+
+.light-cover-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: var(--r-sm);
+  transition: transform 180ms var(--ease-out);
+}
+
+.light-card:hover .light-cover-img,
+.light-card:focus-visible .light-cover-img {
+  transform: scale(1.015);
+}
+
+.light-cover-token {
   color: var(--sakura);
   font-family: var(--display);
-  font-size: 22px;
+  font-size: 52px;
   line-height: 1;
-  letter-spacing: 0.02em;
+  opacity: 0.72;
 }
 
-.view-body {
+.light-token {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--sakura-deep);
+  font-family: var(--display);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.light-body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-width: 0;
+  padding: 14px 16px 16px;
 }
 
-.view-name {
+.light-name {
   color: var(--ink);
   font-family: var(--font);
-  font-size: 21px;
+  font-size: 17px;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
 }
 
-.view-hint {
-  color: var(--faint);
+.light-hint {
+  color: var(--muted);
   font-size: var(--fs-xs);
-  opacity: 0;
-  transform: translateY(2px);
-  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  line-height: 1.6;
 }
 
-.view-card:hover .view-hint,
-.view-card:focus-visible .view-hint {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.view-arrow {
-  margin-left: auto;
-  align-self: center;
+.light-meta {
+  margin-top: 2px;
   color: var(--faint);
-  transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  font-size: 11px;
+  letter-spacing: 0.04em;
 }
 
-.view-card:hover .view-arrow {
-  color: var(--sakura-deep);
-  transform: translateX(3px);
+.light-card.is-pending {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--surface) 70%, var(--ground));
+}
+
+.light-card.is-pending .light-cover {
+  background: var(--ground-deep);
+}
+
+.light-card--skeleton {
+  min-height: 280px;
+  border: 1px solid var(--line);
+  background: linear-gradient(100deg, var(--sakura-wash) 20%, var(--sakura-mist) 42%, var(--sakura-wash) 62%);
+  background-size: 220% 100%;
+  animation: collections-shimmer 1.4s linear infinite;
 }
 
 /* ============================================================
@@ -828,7 +998,7 @@ onMounted(() => {
     order: 2;
   }
 
-  .views-grid {
+  .light-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -870,21 +1040,23 @@ onMounted(() => {
     font-size: 10px;
   }
 
-  .views-grid {
+  .light-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }
 
-  .view-card {
-    padding: 14px 12px;
+  .light-body {
+    padding: 11px 12px 13px;
   }
 
-  .view-name {
-    font-size: 20px;
+  .light-name {
+    font-size: 15px;
   }
 
-  .view-arrow {
-    display: none;
+  .light-token {
+    width: 24px;
+    height: 24px;
+    font-size: 13px;
   }
 
   .join-card {
@@ -970,4 +1142,152 @@ onMounted(() => {
     animation: none;
   }
 }
+/* ============================================================
+   樱色光谱
+   ============================================================ */
+.spectrum-section {
+  overflow: hidden;
+}
+
+.spectrum-rail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+}
+
+.spectrum-cell {
+  min-width: 0;
+}
+
+.spectrum-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 100%;
+  min-height: 108px;
+  padding: 16px 18px;
+  border-radius: var(--r-card);
+  background: color-mix(in srgb, var(--band) 13%, var(--surface));
+  box-shadow: var(--shadow-soft);
+  text-decoration: none;
+  overflow: hidden;
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.spectrum-chip::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--band);
+}
+
+.spectrum-chip:hover {
+  box-shadow: var(--shadow-lift);
+}
+
+.spectrum-chip:focus-visible {
+  outline: 3px solid var(--sakura-deep);
+  outline-offset: 3px;
+}
+
+.spectrum-swatch {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--band);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.32);
+}
+
+.spectrum-chip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.spectrum-name {
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: 0.03em;
+}
+
+.spectrum-count {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.02em;
+}
+
+.spectrum-arrow {
+  margin-left: auto;
+  color: var(--ink-soft);
+  font-size: 15px;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.spectrum-chip:hover .spectrum-arrow {
+  transform: translateX(3px);
+}
+
+.spectrum-chip--skeleton {
+  background: linear-gradient(100deg, var(--sakura-wash) 20%, var(--sakura-mist) 42%, var(--sakura-wash) 62%);
+  background-size: 220% 100%;
+  animation: collections-shimmer 1.4s linear infinite;
+}
+
+.spectrum-chip--skeleton::before {
+  display: none;
+}
+
+@media (max-width: 1080px) {
+  .spectrum-rail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .spectrum-rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .spectrum-chip {
+    min-height: 92px;
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .spectrum-swatch {
+    width: 36px;
+    height: 36px;
+  }
+
+  .spectrum-name {
+    font-size: 20px;
+  }
+
+  .spectrum-arrow {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spectrum-chip--skeleton {
+    animation: none;
+  }
+
+  .spectrum-chip,
+  .spectrum-arrow {
+    transition: none;
+  }
+}
+
 </style>

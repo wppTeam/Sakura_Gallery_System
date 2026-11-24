@@ -24,6 +24,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BACKEND_ROOT = REPO_ROOT / "backend"
+if not (BACKEND_ROOT / "app").is_dir():
+    # 容器内（镜像把 backend/ 作为 /app）直接用当前目录
+    BACKEND_ROOT = Path.cwd()
 # config 的 env_file 相对 cwd 解析：必须先切到 backend/ 再 import app
 os.chdir(BACKEND_ROOT)
 sys.path.insert(0, str(BACKEND_ROOT))

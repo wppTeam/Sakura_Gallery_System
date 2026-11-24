@@ -1,10 +1,18 @@
 /**
  * 策展专题（collections）API。
  *
- * 后端接口：
+ * 公开接口：
  * - GET /api/v1/collections/public  公开专题列表（published + public）
  * - GET /api/v1/collections/{slug}  专题详情（photos 按 position 正序，仅 approved）
  * - GET /api/v1/photos/{id}/collections  作品所属专题（详情页「收录于」）
+ *
+ * 作者手账（需登录）：
+ * - POST   /api/v1/collections              新建专辑（kind=user）
+ * - GET    /api/v1/collections/mine         我的专辑列表
+ * - GET    /api/v1/collections/{id}/manage  我的专辑编辑数据（作者或 admin）
+ * - PATCH  /api/v1/collections/{id}         修改标题/副标题/引言/封面/状态
+ * - DELETE /api/v1/collections/{id}         删除专辑
+ * - PUT    /api/v1/collections/{id}/photos  整体替换并保序
  *
  * 约定：封面与作品都是完整 PhotoResponse，这里统一走 api/public 的
  * toPublicPhoto 转成公共端展示模型（作者署名、中文分类、变体、LQIP 等）。
@@ -12,6 +20,14 @@
 import request from './index'
 import type { Photo } from '../types/photo'
 import { toPublicPhoto, type PublicPhoto } from './public'
+
+export type CollectionStatus = 'published' | 'draft'
+
+/** 公开作者身份（无学号） */
+export interface CollectionOwner {
+  username: string
+  displayName: string
+}
 
 export interface CollectionSummary {
   id: string
@@ -21,6 +37,10 @@ export interface CollectionSummary {
   kind: string
   sortOrder: number
   photoCount: number
+  /** published | draft（公开列表恒为 published） */
+  status: CollectionStatus
+  /** 作者手账的公开作者；编辑部专题为 null */
+  owner: CollectionOwner | null
   /** 专题内 position 最小的 approved 作品；可能为 null（空专题/全部未审） */
   cover: PublicPhoto | null
 }
@@ -45,6 +65,36 @@ export interface CollectionListResponse {
   offset: number
 }
 
+export interface MyCollection extends CollectionSummary {
+  description: string
+  updatedAt: string
+}
+
+export interface MyCollectionsResponse {
+  items: MyCollection[]
+  total: number
+}
+
+/** 管理端编辑数据：photos 为当前有序作品，photoIds 为其 id 序列 */
+export interface ManagedCollection extends CollectionDetail {
+  photoIds: string[]
+}
+
+export interface CollectionCreatePayload {
+  title: string
+  subtitle?: string
+  description?: string
+}
+
+export interface CollectionUpdatePayload {
+  title?: string
+  subtitle?: string
+  description?: string
+  /** null 表示清除封面；undefined 表示不改 */
+  coverPhotoId?: string | null
+  status?: CollectionStatus
+}
+
 interface RawCollection {
   id?: unknown
   slug?: unknown
@@ -54,10 +104,13 @@ interface RawCollection {
   kind?: unknown
   sort_order?: unknown
   photo_count?: unknown
+  status?: unknown
+  owner?: unknown
   cover?: unknown
   photos?: unknown
   prev_slug?: unknown
   next_slug?: unknown
+  updated_at?: unknown
 }
 
 function textOf(value: unknown, fallback = ''): string {
@@ -72,6 +125,19 @@ function nullableText(value: unknown): string | null {
   return typeof value === 'string' && value ? value : null
 }
 
+function normalizeStatus(value: unknown): CollectionStatus {
+  return value === 'draft' ? 'draft' : 'published'
+}
+
+function normalizeOwner(value: unknown): CollectionOwner | null {
+  if (!value || typeof value !== 'object') return null
+  const raw = value as Record<string, unknown>
+  const username = textOf(raw.username)
+  const displayName = textOf(raw.display_name) || textOf(raw.displayName) || username
+  if (!username && !displayName) return null
+  return { username, displayName }
+}
+
 function toSummary(raw: RawCollection): CollectionSummary {
   const coverRaw = raw.cover as Photo | null | undefined
   return {
@@ -82,7 +148,39 @@ function toSummary(raw: RawCollection): CollectionSummary {
     kind: textOf(raw.kind, 'editorial'),
     sortOrder: numOf(raw.sort_order),
     photoCount: numOf(raw.photo_count),
+    status: normalizeStatus(raw.status),
+    owner: normalizeOwner(raw.owner),
     cover: coverRaw ? toPublicPhoto(coverRaw) : null,
+  }
+}
+
+function toDetail(raw: RawCollection): CollectionDetail {
+  const summary = toSummary(raw)
+  const photos = Array.isArray(raw.photos)
+    ? (raw.photos as Photo[]).map(toPublicPhoto)
+    : []
+  return {
+    ...summary,
+    description: textOf(raw.description),
+    photos,
+    prevSlug: nullableText(raw.prev_slug),
+    nextSlug: nullableText(raw.next_slug),
+  }
+}
+
+function toMyCollection(raw: RawCollection): MyCollection {
+  return {
+    ...toSummary(raw),
+    description: textOf(raw.description),
+    updatedAt: textOf(raw.updated_at),
+  }
+}
+
+function toManaged(raw: RawCollection): ManagedCollection {
+  const detail = toDetail(raw)
+  return {
+    ...detail,
+    photoIds: detail.photos.map((photo) => photo.id),
   }
 }
 
@@ -115,17 +213,7 @@ export async function fetchCollection(slug: string): Promise<CollectionDetail> {
   const raw = await request.get<RawCollection>(
     `/api/v1/collections/${encodeURIComponent(slug)}`,
   )
-  const summary = toSummary(raw)
-  const photos = Array.isArray(raw.photos)
-    ? (raw.photos as Photo[]).map(toPublicPhoto)
-    : []
-  return {
-    ...summary,
-    description: textOf(raw.description),
-    photos,
-    prevSlug: nullableText(raw.prev_slug),
-    nextSlug: nullableText(raw.next_slug),
-  }
+  return toDetail(raw)
 }
 
 /** 作品被收录于哪些专题（详情页「收录于」），失败时返回空数组不阻塞详情页 */
@@ -146,5 +234,119 @@ export async function fetchPhotoCollections(photoId: string): Promise<PhotoColle
   } catch (error) {
     console.warn('[collections] 作品所属专题加载失败', error)
     return []
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 作者手账（需登录）                                                   */
+/* ------------------------------------------------------------------ */
+
+/** 我的专辑列表（含草稿） */
+export async function fetchMyCollections(): Promise<MyCollectionsResponse> {
+  const data = await request.get<{ items?: RawCollection[]; total?: unknown }>(
+    '/api/v1/collections/mine',
+  )
+  const items = Array.isArray(data.items) ? data.items.map(toMyCollection) : []
+  return { items, total: numOf(data.total, items.length) }
+}
+
+/** 我的专辑编辑数据（作者或 admin） */
+export async function fetchManagedCollection(id: string): Promise<ManagedCollection> {
+  const raw = await request.get<RawCollection>(
+    `/api/v1/collections/${encodeURIComponent(id)}/manage`,
+  )
+  return toManaged(raw)
+}
+
+/** 新建专辑（默认发布；草稿由后续 PATCH 设置） */
+export async function createCollection(
+  payload: CollectionCreatePayload,
+): Promise<ManagedCollection> {
+  const raw = await request.post<RawCollection>('/api/v1/collections', {
+    title: payload.title,
+    subtitle: payload.subtitle || undefined,
+    description: payload.description || undefined,
+  })
+  return toManaged(raw)
+}
+
+/** 修改专辑信息（只发传入的字段） */
+export async function updateCollection(
+  id: string,
+  payload: CollectionUpdatePayload,
+): Promise<ManagedCollection> {
+  const body: Record<string, unknown> = {}
+  if (payload.title !== undefined) body.title = payload.title
+  if (payload.subtitle !== undefined) body.subtitle = payload.subtitle
+  if (payload.description !== undefined) body.description = payload.description
+  if (payload.coverPhotoId !== undefined) body.cover_photo_id = payload.coverPhotoId
+  if (payload.status !== undefined) body.status = payload.status
+  const raw = await request.patch<RawCollection>(
+    `/api/v1/collections/${encodeURIComponent(id)}`,
+    body,
+  )
+  return toManaged(raw)
+}
+
+/** 删除专辑 */
+export async function deleteCollection(id: string): Promise<void> {
+  await request.delete(`/api/v1/collections/${encodeURIComponent(id)}`)
+}
+
+/** 整体替换作品并保序（≤100，只能放自己的 approved 作品） */
+export async function replaceCollectionPhotos(
+  id: string,
+  photoIds: string[],
+): Promise<ManagedCollection> {
+  const raw = await request.put<RawCollection>(
+    `/api/v1/collections/${encodeURIComponent(id)}/photos`,
+    { photo_ids: photoIds },
+  )
+  return toManaged(raw)
+}
+
+/* ============ 樱色光谱（按主色自动策展） ============ */
+
+export interface SpectrumPalette {
+  key: string
+  name: string
+  hex: string
+  description: string
+  slug: string | null
+  photoCount: number
+  cover: PublicPhoto | null
+}
+
+export interface SpectrumResponse {
+  palettes: SpectrumPalette[]
+  total: number
+}
+
+function toSpectrumPalette(raw: unknown): SpectrumPalette {
+  const item = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const coverRaw = item.cover
+  return {
+    key: textOf(item.key),
+    name: textOf(item.name),
+    hex: textOf(item.hex) || '#e8628c',
+    description: textOf(item.description),
+    slug: nullableText(item.slug),
+    photoCount: numOf(item.photo_count ?? item.photoCount),
+    cover:
+      coverRaw && typeof coverRaw === 'object'
+        ? toPublicPhoto(coverRaw as unknown as Photo)
+        : null,
+  }
+}
+
+/** 樱色光谱：5 个色卡（固定顺序，slug 可能为 null） */
+export async function fetchSpectrum(): Promise<SpectrumResponse> {
+  const raw = await request.get<Record<string, unknown>>('/api/v1/collections/spectrum')
+  const rawObj = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const list = Array.isArray(rawObj.palettes) ? rawObj.palettes : []
+  const palettes = list.map(toSpectrumPalette).filter((item) => item.key && item.name)
+  return {
+    palettes,
+    total: numOf(rawObj.total) || palettes.reduce((sum, item) => sum + item.photoCount, 0),
   }
 }

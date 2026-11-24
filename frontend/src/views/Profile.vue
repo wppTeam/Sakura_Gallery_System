@@ -10,6 +10,10 @@
           <p class="profile-lead">
             管理你的收藏与投稿，维护公开资料。所有作品展示尊重原始构图，不裁切。
           </p>
+          <div class="profile-quick-links">
+            <RouterLink class="profile-quick-link" to="/favorites">我的收藏 →</RouterLink>
+            <RouterLink class="profile-quick-link" to="/my-collections">我的策展 →</RouterLink>
+          </div>
           <ul class="profile-chips" aria-label="账户概览">
             <li>
               <span class="chip-num">{{ formatInteger(stats.total) }}</span>
@@ -438,6 +442,37 @@ onMounted(() => {
   color: var(--muted, #63474f);
   font-size: 15px;
   line-height: 1.8;
+}
+
+.profile-quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.profile-quick-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--sakura-deep);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+
+.profile-quick-link:hover {
+  border-color: var(--sakura);
+  background: var(--sakura-wash);
+}
+
+.profile-quick-link:focus-visible {
+  outline: 3px solid var(--sakura);
+  outline-offset: 2px;
 }
 
 .profile-chips {

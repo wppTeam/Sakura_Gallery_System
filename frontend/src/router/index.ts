@@ -70,6 +70,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: false },
       },
       {
+        path: 'spectrum',
+        name: 'Spectrum',
+        component: () => import('../views/SpectrumView.vue'),
+        meta: { requiresAuth: false },
+      },
+      {
         path: 'search',
         name: 'Search',
         component: () => import('../views/SearchView.vue'),
@@ -79,6 +85,18 @@ const routes: RouteRecordRaw[] = [
         path: 'favorites',
         name: 'Favorites',
         component: () => import('../views/FavoritesView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'my-collections',
+        name: 'MyCollections',
+        component: () => import('../views/MyCollectionsView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'my-collections/:id/edit',
+        name: 'CollectionEdit',
+        component: () => import('../views/CollectionEditorView.vue'),
         meta: { requiresAuth: true },
       },
     ],
@@ -197,7 +215,10 @@ const ROUTE_TITLES: Record<string, string> = {
   Collections: '策展专题 · 视觉百花',
   CollectionDetail: '策展专题 · 视觉百花',
   Search: '检索 · 视觉百花',
+  Spectrum: '樱色光谱 · 视觉百花',
   Favorites: '我的收藏 · 视觉百花',
+  MyCollections: '我的策展 · 视觉百花',
+  CollectionEdit: '编辑策展 · 视觉百花',
   Upload: '投稿 · 视觉百花',
   MySubmissions: '我的投稿 · 视觉百花',
   Profile: '个人中心 · 视觉百花',
@@ -217,7 +238,7 @@ const router = createRouter({
   routes,
   scrollBehavior(to, _from, savedPosition) {
     if (savedPosition) return savedPosition
-    // 站内锚点（四季 / 八景 / 最新作品）滚动时给 sticky 顶栏留出空间
+    // 站内锚点（四季 / 光的一日 / 樱色光谱 / 最新作品）滚动时给 sticky 顶栏留出空间
     if (to.hash) return { el: to.hash, top: 84 }
     return { top: 0 }
   },

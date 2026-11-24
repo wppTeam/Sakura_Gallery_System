@@ -39,7 +39,7 @@ const props = withDefaults(
   }>(),
   {
     modelValue: '',
-    placeholder: '搜索作品、作者或景名',
+    placeholder: '搜索作品、标题或标签',
     label: '搜索',
     size: 'md',
     buttonText: '搜索',

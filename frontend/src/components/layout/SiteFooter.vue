@@ -23,7 +23,7 @@
           <RouterLink class="foot-link" to="/explore">探索全部</RouterLink>
           <RouterLink class="foot-link" :to="{ path: '/', hash: '#seasons' }">四季</RouterLink>
           <RouterLink class="foot-link" :to="{ path: '/', hash: '#feed' }">最新作品</RouterLink>
-          <RouterLink class="foot-link" :to="{ path: '/', hash: '#views' }">北化八景</RouterLink>
+          <RouterLink class="foot-link" :to="{ path: '/', hash: '#light' }">光的一日</RouterLink>
         </div>
 
         <div class="foot-col">
@@ -43,7 +43,7 @@
 
       <div class="foot-credits">
         <p>
-          照片按作者所选协议署名，完整署名与授权信息见作品详情页。十二番花信与北化八景来自校园真实物候与景名，
+          照片按作者所选协议署名，完整署名与授权信息见作品详情页。四季节气与光的一日来自校园真实物候与光线，
           作为全站内容的索引方式；AIGC 作品均带显式标识。
         </p>
       </div>
