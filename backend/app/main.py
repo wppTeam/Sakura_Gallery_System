@@ -7,17 +7,20 @@ import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
+from xml.sax.saxutils import escape as xml_escape
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import os
 from app.core.config import get_settings, DEFAULT_SECRET_KEY
-from app.core.database import init_db
+from sqlalchemy import or_, select
+
+from app.core.database import AsyncSessionLocal, init_db
 from app.api.v1.router import api_router
 import app.models  # noqa: F401  确保所有模型被导入，create_all 才能发现它们
 
@@ -262,6 +265,97 @@ async def root():
 async def health_check():
     """健康检查端点"""
     return {"status": "healthy"}
+
+
+# ────────────────────────────────────────────────────────────
+# SEO：robots.txt / sitemap.xml（nginx 把这两个路径反代到这里）
+# ────────────────────────────────────────────────────────────
+def _site_base_url() -> str:
+    """每次请求读取配置，便于测试/环境切换（默认 https://buct-sakura.cn）。"""
+    return (settings.SITE_BASE_URL or "https://buct-sakura.cn").rstrip("/")
+
+
+@app.get("/robots.txt", include_in_schema=False)
+async def robots_txt():
+    """允许公开页面收录，禁止后台/接口/登录页。"""
+    base = _site_base_url()
+    body = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /admin\n"
+        "Disallow: /api/\n"
+        "Disallow: /login\n"
+        "Disallow: /upload\n"
+        "\n"
+        f"Sitemap: {base}/sitemap.xml\n"
+    )
+    return PlainTextResponse(body, headers={"Cache-Control": "public, max-age=3600"})
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def sitemap_xml():
+    """站点地图：首页 / 探索 / 专题 / 公开且非敏感的作品。"""
+    from app.models.collection import Collection
+    from app.models.photo import Photo
+
+    base = _site_base_url()
+    entries: list[tuple[str, str | None]] = [
+        (f"{base}/", None),
+        (f"{base}/explore", None),
+        (f"{base}/collections", None),
+    ]
+    async with AsyncSessionLocal() as db:
+        collections = (
+            await db.execute(
+                select(Collection.slug, Collection.updated_at)
+                .where(Collection.status == "published", Collection.visibility == "public")
+                .order_by(Collection.sort_order, Collection.created_at)
+            )
+        ).all()
+        for slug, updated_at in collections:
+            entries.append((f"{base}/collections/{slug}", _iso(updated_at)))
+
+        photos = (
+            await db.execute(
+                select(Photo.id, Photo.updated_at)
+                .where(
+                    Photo.status == "approved",
+                    or_(Photo.privacy_level.is_(None), Photo.privacy_level != "sensitive"),
+                )
+                .order_by(Photo.published_at.desc())
+                .limit(5000)
+            )
+        ).all()
+        for photo_id, updated_at in photos:
+            entries.append((f"{base}/photo/{photo_id}", _iso(updated_at)))
+
+    body = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
+    for loc, lastmod in entries:
+        body.append("  <url>")
+        body.append(f"    <loc>{xml_escape(loc)}</loc>")
+        if lastmod:
+            body.append(f"    <lastmod>{lastmod}</lastmod>")
+        body.append("  </url>")
+    body.append("</urlset>")
+    return Response(
+        "\n".join(body),
+        media_type="application/xml",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
+
+
+def _iso(value) -> str | None:
+    """datetime → sitemap 需要的 W3C 日期（无时区则按 UTC 输出）。"""
+    if not value:
+        return None
+    try:
+        return value.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    except Exception:  # noqa: BLE001 - 坏数据不影响 sitemap 其它条目
+        return None
+
 
 
 if __name__ == "__main__":

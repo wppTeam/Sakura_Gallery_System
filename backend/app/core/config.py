@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     
     # 数据库配置
     DATABASE_URL: str = "sqlite+aiosqlite:///./visual_buct.db"
+    # 对外站点地址（sitemap/robots/canonical 用；不含结尾斜杠）
+    SITE_BASE_URL: str = "https://buct-sakura.cn"
     # 连接池按「小机器」可调：2c4g + uvicorn --workers 2 时，每个 worker 都有
     # 自己的池，pool_size*workers 才是真实连接数（PG 默认 max_connections=100）。
     DB_POOL_SIZE: int = 10

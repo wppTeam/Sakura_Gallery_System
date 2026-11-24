@@ -177,6 +177,27 @@ const routes: RouteRecordRaw[] = [
   },
 ]
 
+const ROUTE_TITLES: Record<string, string> = {
+  Home: '视觉百花 · 北化学生自建开源创作平台',
+  Explore: '探索作品 · 视觉百花',
+  Gallery: '探索作品 · 视觉百花',
+  PhotoDetail: '作品详情 · 视觉百花',
+  Collections: '策展专题 · 视觉百花',
+  CollectionDetail: '策展专题 · 视觉百花',
+  Search: '检索 · 视觉百花',
+  Favorites: '我的收藏 · 视觉百花',
+  Upload: '投稿 · 视觉百花',
+  MySubmissions: '我的投稿 · 视觉百花',
+  Profile: '个人中心 · 视觉百花',
+  Login: '登录 · 视觉百花',
+  TaggingWorkspace: '标注工作台 · 视觉百花后台',
+  Dashboard: '仪表盘 · 视觉百花后台',
+  PhotoReview: '审核队列 · 视觉百花后台',
+  NotFound: '页面未找到 · 视觉百花',
+}
+
+const DEFAULT_TITLE = '视觉百花 · 北化学生自建开源创作平台'
+
 const router = createRouter({
   history: createWebHistory(),
   routes,
@@ -216,6 +237,10 @@ router.beforeEach(async (to) => {
     return '/'
   }
   return true
+})
+
+router.afterEach((to) => {
+  document.title = ROUTE_TITLES[String(to.name)] || DEFAULT_TITLE
 })
 
 export default router

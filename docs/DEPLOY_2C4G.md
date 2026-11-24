@@ -1032,3 +1032,26 @@ docker logs sakura-quick 2>&1 | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com'
 | `deploy/.env.production.example` | `deploy/.env.prod.example`（键更全，含容器网络语义） |
 | `deploy/visual-buct.service`（systemd 跑 uvicorn） | backend 容器 + `restart: unless-stopped` |
 | 根 `DEPLOY.md` | 本文件 |
+
+---
+
+## 16. SEO 与站点元信息（2026-11-24 落地）
+
+站点公开后需要被搜索引擎与社交平台正确索引/预览：
+
+- **`robots.txt` / `sitemap.xml` 由后端生成**（`backend/app/main.py`），nginx 用 exact location 反代：
+  - `/robots.txt`：允许公开页面，禁止 `/admin`、`/api/`、`/login`、`/upload`，并给出 sitemap 地址；
+  - `/sitemap.xml`：首页 + `/explore` + `/collections` + 已发布专题 + 最多 5000 张「approved 且非 sensitive」作品；
+    **敏感人像作品与待审作品不会出现在 sitemap 里**（有回归测试 `backend/tests/test_seo_endpoints.py`）。
+  - 站点地址由 `SITE_BASE_URL`（默认 `https://buct-sakura.cn`）决定，换域名只改这一个配置。
+- **SPA 元信息**：`frontend/index.html` 带 description / canonical / og:* / twitter:* / JSON-LD(WebSite+SearchAction)；
+  路由切换时 `router/index.ts` 的 `afterEach` 更新 `document.title`（首页/探索/检索/专题/作品/后台等各有标题）。
+- **验证**：
+  ```bash
+  curl -s https://buct-sakura.cn/robots.txt
+  curl -s https://buct-sakura.cn/sitemap.xml | head
+  curl -s https://buct-sakura.cn/sitemap.xml | grep -c '<url>'   # 期望 = 3 + 专题数 + 公开作品数
+  ```
+  2026-11-24 本地实测：71 条（3 + 12 专题 + 56 公开作品）。
+- **注意**：Cloudflare 代理下 sitemap 响应会带 `X-Cache-Status: BYPASS`（nginx 层不缓存，后端自身 1h 缓存头）；
+  若发现 sitemap 不更新，先在 Cloudflare 面板对该路径 Purge。
