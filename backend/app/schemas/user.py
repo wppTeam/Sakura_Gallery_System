@@ -105,6 +105,9 @@ class UserRoleUpdate(BaseModel):
 
 class UserInDB(UserBase):
     """User in database schema"""
+    # 响应侧对 email 宽松：DB 中历史/导入数据可能是非法邮箱，
+    # 不应因为响应校验失败让 /auth/me 等接口 500（输入侧仍用 EmailStr 校验）。
+    email: Optional[str] = None
     id: str
     role: str
     is_active: bool

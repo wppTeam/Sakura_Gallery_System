@@ -115,3 +115,58 @@ def test_invalid_username_rejected(auth_client: TestClient):
             },
         )
         assert resp.status_code == 422, (bad, resp.text)
+
+
+
+def test_user_response_tolerates_invalid_email():
+    """响应模型对 email 放宽：历史/导入的非法邮箱不应让序列化直接炸。"""
+    from datetime import datetime
+
+    from app.schemas.user import User as UserSchema
+
+    user = UserSchema.model_validate(
+        {
+            "id": "u-invalid-email",
+            "student_id": "20260001",
+            "email": "broken@example.invalid",
+            "full_name": "历史用户",
+            "role": "user",
+            "is_active": True,
+            "created_at": datetime.utcnow(),
+        }
+    )
+    assert user.email == "broken@example.invalid"
+
+
+def test_me_returns_200_for_invalid_stored_email():
+    """/auth/me 不因 DB 里非法邮箱 500（回归：曾触发 ResponseValidationError）。"""
+    from datetime import datetime
+    from types import SimpleNamespace
+
+    from app.core.deps import get_current_active_user
+
+    stub = SimpleNamespace(
+        id="u-invalid-email",
+        student_id="20260001",
+        email="broken@example.invalid",
+        full_name="历史用户",
+        username=None,
+        display_name=None,
+        role="user",
+        is_active=True,
+        created_at=datetime.utcnow(),
+        last_login_at=None,
+        login_count=0,
+        failed_login_attempts=0,
+        locked_until=None,
+        token_version=1,
+        email_verified=False,
+    )
+    app.dependency_overrides[get_current_active_user] = lambda: stub
+    try:
+        with TestClient(app) as client:
+            resp = client.get("/api/v1/auth/me")
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["email"] == "broken@example.invalid"
+    finally:
+        app.dependency_overrides.pop(get_current_active_user, None)
