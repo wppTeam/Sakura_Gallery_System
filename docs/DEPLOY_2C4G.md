@@ -1059,6 +1059,34 @@ curl -s 'https://<domain>/api/v1/collections/public?limit=50' | jq '.total'
 - 作品入专题只取 `status=approved` 且 `privacy_level!=sensitive`；`photo_count` 与公开列表一致。
 - 重复执行不会重复建专题（按 slug upsert，重排 entries）。
 
+### 15.7 视觉相似签名回填（2026-11-25 实跑）
+
+详情页「视觉相似」依赖 `photos.exif_data["_dhash"]`；新上传由上传管线自动计算，
+存量作品必须在部署新版后端后回填一次（脚本幂等，可重复执行）：
+
+```bash
+# 1) 传到服务器并放开权限（容器内 uid=10001 读不了 600 权限文件）
+scp scripts/backfill_visual_signatures.py wppjkw@<server>:/tmp/
+ssh wppjkw@<server> "chmod 644 /tmp/backfill_visual_signatures.py"
+
+# 2) 拷进容器，先 dry-run 再实跑（容器内 backend 被拷成 /app，需 -w /app 与 PYTHONPATH）
+ssh wppjkw@<server> "docker cp /tmp/backfill_visual_signatures.py sakura-prod-backend:/tmp/"
+ssh wppjkw@<server> "docker exec -w /app -e PYTHONPATH=/app sakura-prod-backend \
+  python /tmp/backfill_visual_signatures.py --dry-run"
+ssh wppjkw@<server> "docker exec -w /app -e PYTHONPATH=/app sakura-prod-backend \
+  python /tmp/backfill_visual_signatures.py"
+
+# 3) 验证（应返回 total>0，items 带 similarity 与中文 reasons；实测 64 张 6.3s）
+curl -s 'https://<domain>/api/v1/photos/<photo_id>/similar?limit=6' \
+  | jq '.total, [.items[] | {title, similarity, reasons}]'
+```
+
+要点：
+- 脚本优先取缩略图（COS 下载 ×64，约 6–8s），失败自动退回压缩图/原图；单张失败只告警。
+- 未公开/敏感作品也会计算签名（候选过滤在查询层做，不影响公开列表）。
+- 换机器或重跑只需再执行一次；`--force` 可强制重算，`--limit/--only` 便于抽查。
+- 验收：`pytest tests/test_visual_similarity.py -q` = 7 passed。
+
 ## 16. SEO 与站点元信息（2026-11-24 落地）
 
 站点公开后需要被搜索引擎与社交平台正确索引/预览：

@@ -1,7 +1,10 @@
 <template>
   <section v-if="loading || works.length" class="related">
     <div class="related-head">
-      <h2 class="related-title">相关作品</h2>
+      <div class="related-heading">
+        <h2 class="related-title">视觉相似</h2>
+        <p class="related-sub">按构图、色调与标签找到的相近作品</p>
+      </div>
       <router-link class="related-more" :to="{ path: '/search', query: moreQuery }">
         查看更多
         <n-icon :component="ArrowForwardOutline" :size="14" />
@@ -12,6 +15,10 @@
       <div v-for="index in 5" :key="index" class="related-skeleton">
         <div class="related-skeleton-img" />
         <div class="related-skeleton-line" />
+        <div class="related-skeleton-chips">
+          <span class="related-skeleton-chip" />
+          <span class="related-skeleton-chip is-short" />
+        </div>
       </div>
     </div>
 
@@ -22,11 +29,15 @@
         class="related-card"
         :to="`/photo/${work.id}`"
       >
-        <div class="related-thumb" :style="{ aspectRatio: work.aspectRatio || '4 / 3' }">
+        <div class="related-thumb">
           <img :src="work.thumbUrl" :alt="work.author ? `${work.title} · ${work.author}` : work.title" loading="lazy" decoding="async" class="related-img" />
+          <span v-if="work.aigc" class="related-aigc">AI 生成</span>
         </div>
         <span class="related-name">{{ work.title }}</span>
         <span v-if="work.meta" class="related-meta">{{ work.meta }}</span>
+        <span v-if="work.reasons?.length" class="related-reasons">
+          <span v-for="reason in work.reasons.slice(0, 2)" :key="reason" class="related-reason">{{ reason }}</span>
+        </span>
       </router-link>
     </div>
   </section>
@@ -66,11 +77,25 @@ const moreQuery = computed(() => {
   gap: 12px;
 }
 
+.related-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
 .related-title {
   margin: 0;
   font-family: var(--display, 'Noto Sans SC', sans-serif);
   font-size: 18px;
   color: var(--ink, #4a2b35);
+}
+
+.related-sub {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted, #63474f);
 }
 
 .related-more {
@@ -125,13 +150,30 @@ const moreQuery = computed(() => {
 }
 
 .related-thumb {
+  position: relative;
   width: 100%;
+  aspect-ratio: 4 / 3;
   border-radius: 10px;
   overflow: hidden;
   background: #fdf3f7;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.related-aigc {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(74, 43, 53, 0.12);
+  color: var(--ink, #4a2b35);
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
 }
 
 .related-img {
@@ -155,6 +197,26 @@ const moreQuery = computed(() => {
 .related-meta {
   font-size: 11px;
   color: #9a7f87;
+}
+
+.related-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 1px;
+}
+
+.related-reason {
+  max-width: 100%;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--sakura-wash, #ffeef4);
+  color: var(--sakura-deep, #c93a63);
+  font-size: 10.5px;
+  line-height: 1.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .related-skeleton {
@@ -184,6 +246,24 @@ const moreQuery = computed(() => {
 .related-skeleton-line {
   height: 12px;
   width: 70%;
+}
+
+.related-skeleton-chips {
+  display: flex;
+  gap: 4px;
+}
+
+.related-skeleton-chip {
+  width: 48px;
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fbeef4 25%, #fff7fa 37%, #fbeef4 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+
+.related-skeleton-chip.is-short {
+  width: 36px;
 }
 
 @keyframes shimmer {
