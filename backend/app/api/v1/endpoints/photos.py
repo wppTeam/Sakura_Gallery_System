@@ -861,6 +861,11 @@ async def upload_photo(
         if variant_meta:
             stored_exif["_variants"] = variant_meta
 
+        # 樱色光谱：按主色自动归入色卡（内部键，公开接口另出色卡元数据）
+        spectrum_meta = processing_result.get("spectrum")
+        if spectrum_meta:
+            stored_exif["_spectrum"] = spectrum_meta
+
         processing_status = "pending" if enable_ai and runtime_settings.ai_enabled else "manual"
         photo = await photo_crud.create_photo(
             db,

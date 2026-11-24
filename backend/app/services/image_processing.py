@@ -574,6 +574,7 @@ def process_uploaded_image(
         "lqip_color": None,
         "variants": {},
         "mime_type": None,
+        "spectrum": None,
     }
 
     try:
@@ -612,6 +613,20 @@ def process_uploaded_image(
             results["lqip_color"] = placeholder["color"]
             exif_data["_lqip"] = placeholder["lqip"]
             exif_data["_lqip_color"] = placeholder["color"]
+
+        # 5.5 樱色光谱：用缩略图采样主色，供「光谱」策展使用（失败不影响上传）
+        try:
+            from app.services.spectrum import classify_image
+
+            spectrum_source = (
+                results["thumb_path"] if results.get("thumb_path") else original_path
+            )
+            spectrum = classify_image(str(spectrum_source))
+            if spectrum:
+                results["spectrum"] = spectrum
+                exif_data["_spectrum"] = spectrum
+        except Exception:  # noqa: BLE001 - 采样是锦上添花
+            pass
 
         # 6. 响应式变体（仅显式要求时生成；需要端点/存储层配合才能对外提供 URL）
         if variants_dir:

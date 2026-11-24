@@ -109,13 +109,24 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
 架构、配置项与降级矩阵见 [`docs/AI_PLATFORM.md`](docs/AI_PLATFORM.md)。
 
 **策展专题（collections，已落地）**：`collections` + `collection_photos` 两张表
-（`backend/app/models/collection.py`），把年度相册 / 八景 / 四季组织成可浏览的专题，
-对应本文件「用户自助建专辑不需要管理员批准」的落地形式。公开接口：
-`GET /api/v1/collections/public`、`GET /api/v1/collections/{slug}`、
+（`backend/app/models/collection.py`）。`kind` 区分三类策展：
+
+- `editorial`（编辑策展）：年度相册、校园四季、手机摄影等，用 `scripts/seed_collections.py` 种。
+- `editorial`（自动策展）：**光的一日**按 `captured_at` 归入 晨/昼/暮/夜、**樱色光谱**
+  按作品主色归入 樱粉/金/绿/蓝/墨（`app/services/spectrum.py`，采样缩略图 64×64 的 HSV）。
+  两者都由 `scripts/seed_curation.py` 幂等生成，不需要人工选图。
+- `user`（作者手账）：用户自建专辑，**不需要管理员批准**（落 AGENTS.md §4 的「自助」原则）。
+  CRUD 接口：`POST /api/v1/collections`、`GET /mine`、`GET /{id}/manage`、`PATCH /{id}`、
+  `PUT /{id}/photos`（整体替换并保序）、`DELETE /{id}`；只能收录自己的 approved 作品，
+  一次 ≤100 件、每人 ≤50 个专辑。
+
+公开接口：`GET /api/v1/collections/public`（只返回至少 1 张公开作品的专题）、
+`GET /api/v1/collections/{slug}`（含 `owner{username,display_name}`）、
+`GET /api/v1/collections/spectrum`（五色卡 + 封面）、
 `GET /api/v1/photos/{photo_id}/collections`（详情页「收录于」）。
-约定：专题只展示 `status=approved` 的作品；`photo_count` 与实际可见条目一致；
-封面**不裁切**（前端 `object-fit: contain`）；专题内顺序用 `position` 显式维护，
-不要依赖创建时间。种子数据用 `scripts/seed_collections.py`（幂等，按 slug upsert）。
+约定：专题只展示 `status=approved` 且非 `sensitive` 的作品；`photo_count` 与实际可见条目一致；
+封面**不裁切**（前端 `object-fit: contain`）；专题内顺序用 `position` 显式维护；
+用户专辑的公开身份只用 `username/display_name`，绝不带学号/真实姓名。
 
 ## 5. 合规约定（不可省）
 

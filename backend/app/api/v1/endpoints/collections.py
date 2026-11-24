@@ -8,26 +8,38 @@
 """
 from __future__ import annotations
 
+import uuid
 from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_, select
+from fastapi import APIRouter, Depends, HTTPException, Query, status as http_status
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.endpoints.photos import serialize_photo
-from app.core.deps import get_db
+from app.core.deps import get_current_user, get_db
 from app.crud.photo import _photo_with_relations
-from app.models import Collection, CollectionPhoto, Photo
+from app.models import Collection, CollectionPhoto, Photo, User
 from app.schemas.collection import (
+    CollectionCreate,
     CollectionDetail,
     CollectionListResponse,
+    CollectionMineResponse,
+    CollectionOwnerBrief,
+    CollectionPhotosUpdate,
     CollectionSummary,
+    CollectionUpdate,
+    SpectrumResponse,
+    SpectrumSwatch,
 )
 from app.schemas.photo import PhotoResponse
+from app.services.audit import log_audit
+from app.services.spectrum import PALETTES, SPECTRUM_SLUGS
 
 router = APIRouter()
 
 _MAX_LIMIT = 50
+_MAX_USER_COLLECTIONS = 50
+_USER_COLLECTION_SORT_BASE = 1000
 
 
 async def _approved_entries(
@@ -108,24 +120,146 @@ async def _published_collections(db: AsyncSession) -> list[Collection]:
     return list(rows)
 
 
+async def _owners_by_id(
+    db: AsyncSession, owner_ids: list[str | None]
+) -> dict[str, CollectionOwnerBrief]:
+    ids = {oid for oid in owner_ids if oid}
+    if not ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(User.id, User.username, User.display_name).where(User.id.in_(ids))
+        )
+    ).all()
+    return {
+        row[0]: CollectionOwnerBrief(username=row[1], display_name=row[2])
+        for row in rows
+    }
+
+
+def _is_admin(user: User) -> bool:
+    return getattr(user, "role", None) == "admin"
+
+
+async def _entries_all(db: AsyncSession, collection_id: str) -> list[str]:
+    """按 position 返回专辑内全部作品 id（不过滤审核状态，编辑页用）。"""
+    rows = (
+        await db.execute(
+            select(CollectionPhoto.photo_id)
+            .where(CollectionPhoto.collection_id == collection_id)
+            .order_by(CollectionPhoto.position.asc(), CollectionPhoto.added_at.asc())
+        )
+    ).scalars().all()
+    return list(rows)
+
+
+async def _build_detail(
+    db: AsyncSession,
+    collection: Collection,
+    *,
+    approved_only: bool = True,
+    owner_map: dict[str, CollectionOwnerBrief] | None = None,
+) -> CollectionDetail:
+    """组装专题详情；编辑场景传 ``approved_only=False`` 以看到未审核作品。"""
+    if approved_only:
+        approved = (await _approved_entries(db, [collection.id])).get(collection.id, [])
+    else:
+        approved = await _entries_all(db, collection.id)
+
+    photo_map = await _photos_by_id(db, approved)
+    photos: list[PhotoResponse] = []
+    for photo_id in approved:
+        photo = photo_map.get(photo_id)
+        if photo is None:
+            continue
+        if approved_only and photo.status != "approved":
+            continue
+        photos.append(await serialize_photo(db, photo))
+
+    if owner_map is None:
+        owner_map = await _owners_by_id(db, [collection.owner_id])
+    owner = owner_map.get(collection.owner_id) if collection.owner_id else None
+
+    cover = await _serialize_cover(
+        db, collection, [photo.id for photo in photos], photo_map
+    )
+
+    prev_slug = next_slug = None
+    if collection.status == "published" and collection.visibility == "public":
+        ordered = await _published_collections(db)
+        slugs = [c.slug for c in ordered]
+        if collection.slug in slugs:
+            index = slugs.index(collection.slug)
+            prev_slug = slugs[index - 1] if index > 0 else None
+            next_slug = slugs[index + 1] if index < len(slugs) - 1 else None
+
+    return CollectionDetail(
+        id=collection.id,
+        slug=collection.slug,
+        title=collection.title,
+        subtitle=collection.subtitle,
+        description=collection.description,
+        kind=collection.kind,
+        sort_order=collection.sort_order,
+        photo_count=len(photos),
+        cover=cover,
+        photos=photos,
+        prev_slug=prev_slug,
+        next_slug=next_slug,
+        status=collection.status,
+        owner=owner,
+    )
+
+
+async def _get_owned_collection(
+    db: AsyncSession, collection_id: str, user: User
+) -> Collection:
+    collection = (
+        await db.execute(select(Collection).where(Collection.id == collection_id))
+    ).scalars().first()
+    if collection is None:
+        raise HTTPException(status_code=404, detail="专辑不存在")
+    if collection.owner_id != user.id and not _is_admin(user):
+        raise HTTPException(status_code=403, detail="只能管理自己的专辑")
+    return collection
+
+
+async def _allocate_user_slug(db: AsyncSession) -> str:
+    for _ in range(8):
+        candidate = f"u-{uuid.uuid4().hex[:10]}"
+        exists = (
+            await db.execute(select(Collection.id).where(Collection.slug == candidate))
+        ).first()
+        if exists is None:
+            return candidate
+    raise HTTPException(status_code=500, detail="专辑地址生成失败，请重试")
+
+
 @router.get("/public", response_model=CollectionListResponse)
 async def list_public_collections(
     limit: int = Query(20, ge=1, le=_MAX_LIMIT),
     offset: int = Query(0, ge=0, le=2000),
     db: AsyncSession = Depends(get_db),
 ) -> CollectionListResponse:
-    """专题列表（首页「主题专题」横滑卡区使用）。"""
+    """专题列表（首页「主题专题」横滑卡区使用）。
+
+    只返回至少有一张公开作品的专题：空专题（全部待审/敏感）不上首页，
+    避免用户点进去看到空页。
+    """
     collections = await _published_collections(db)
+    all_entries = await _approved_entries(db, [c.id for c in collections])
+    collections = [c for c in collections if all_entries.get(c.id)]
     total = len(collections)
     page = collections[offset : offset + limit]
 
-    entries = await _approved_entries(db, [c.id for c in page])
+    entries = {c.id: all_entries.get(c.id, []) for c in page}
     cover_ids = [
         cover_id
         for c in page
         if (cover_id := _pick_cover_id(c, entries.get(c.id, []))) is not None
     ]
     photo_map = await _photos_by_id(db, cover_ids)
+    owner_map = await _owners_by_id(db, [c.owner_id for c in page])
 
     items: list[CollectionSummary] = []
     for collection in page:
@@ -141,9 +275,274 @@ async def list_public_collections(
                 sort_order=collection.sort_order,
                 photo_count=len(approved),
                 cover=cover,
+                status=collection.status,
+                owner=owner_map.get(collection.owner_id)
+                if collection.owner_id
+                else None,
             )
         )
     return CollectionListResponse(items=items, total=total, limit=limit, offset=offset)
+
+
+# ── 樱色光谱（按主色自动策展）────────────────────────────────────────
+
+
+@router.get("/spectrum", response_model=SpectrumResponse)
+async def list_spectrum(db: AsyncSession = Depends(get_db)) -> SpectrumResponse:
+    """五个色卡及其对应的光谱专题（按主色自动策展）。
+
+    只返回存在公开作品的色卡；`cover` 为该专题的第一张公开作品（不裁切）。
+    """
+    collections = (
+        await db.execute(
+            select(Collection).where(
+                Collection.slug.in_(list(SPECTRUM_SLUGS)),
+                Collection.status == "published",
+                Collection.visibility == "public",
+            )
+        )
+    ).scalars().all()
+    by_slug = {collection.slug: collection for collection in collections}
+
+    entries = await _approved_entries(db, [c.id for c in collections])
+    cover_ids = [
+        cover_id
+        for c in collections
+        if (cover_id := _pick_cover_id(c, entries.get(c.id, []))) is not None
+    ]
+    photo_map = await _photos_by_id(db, cover_ids)
+
+    palettes: list[SpectrumSwatch] = []
+    for palette in PALETTES:
+        collection = by_slug.get(palette.slug)
+        approved = entries.get(collection.id, []) if collection else []
+        cover = (
+            await _serialize_cover(db, collection, approved, photo_map)
+            if collection is not None
+            else None
+        )
+        palettes.append(
+            SpectrumSwatch(
+                key=palette.key,
+                name=palette.name,
+                hex=palette.hex,
+                description=palette.description,
+                slug=palette.slug if collection is not None else None,
+                photo_count=len(approved),
+                cover=cover,
+            )
+        )
+    return SpectrumResponse(palettes=palettes, total=len(collections))
+
+
+# ── 作者手账（用户自建专辑）──────────────────────────────────────────
+
+
+@router.get("/mine", response_model=CollectionMineResponse)
+async def list_my_collections(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CollectionMineResponse:
+    """我的专辑（含草稿），按最近更新排序。"""
+    collections = (
+        await db.execute(
+            select(Collection)
+            .where(Collection.owner_id == current_user.id)
+            .order_by(Collection.updated_at.desc())
+        )
+    ).scalars().all()
+    entries = await _approved_entries(db, [c.id for c in collections])
+    cover_ids = [
+        cover_id
+        for c in collections
+        if (cover_id := _pick_cover_id(c, entries.get(c.id, []))) is not None
+    ]
+    photo_map = await _photos_by_id(db, cover_ids)
+    owner = CollectionOwnerBrief(
+        username=getattr(current_user, "username", None),
+        display_name=getattr(current_user, "display_name", None),
+    )
+    items: list[CollectionSummary] = []
+    for collection in collections:
+        approved = entries.get(collection.id, [])
+        items.append(
+            CollectionSummary(
+                id=collection.id,
+                slug=collection.slug,
+                title=collection.title,
+                subtitle=collection.subtitle,
+                kind=collection.kind,
+                sort_order=collection.sort_order,
+                photo_count=len(approved),
+                cover=await _serialize_cover(db, collection, approved, photo_map),
+                status=collection.status,
+                owner=owner,
+            )
+        )
+    return CollectionMineResponse(items=items, total=len(items))
+
+
+@router.post("", response_model=CollectionDetail, status_code=http_status.HTTP_201_CREATED)
+async def create_user_collection(
+    payload: CollectionCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CollectionDetail:
+    """新建「作者手账」专辑；用户自建无需管理员批准（AGENTS.md §4）。"""
+    owned = (
+        await db.execute(
+            select(func.count(Collection.id)).where(
+                Collection.owner_id == current_user.id
+            )
+        )
+    ).scalar_one()
+    if owned >= _MAX_USER_COLLECTIONS:
+        raise HTTPException(
+            status_code=400, detail=f"最多只能创建 {_MAX_USER_COLLECTIONS} 个专辑"
+        )
+
+    collection = Collection(
+        slug=await _allocate_user_slug(db),
+        title=payload.title.strip(),
+        subtitle=(payload.subtitle or "").strip() or None,
+        description=(payload.description or "").strip() or None,
+        kind="user",
+        owner_id=current_user.id,
+        visibility="public",
+        status="published",
+        sort_order=_USER_COLLECTION_SORT_BASE + owned,
+    )
+    db.add(collection)
+    await db.flush()
+    await log_audit(
+        db,
+        user_id=current_user.id,
+        action="collection.create",
+        resource_type="collection",
+        resource_id=collection.id,
+        detail=collection.title,
+    )
+    await db.commit()
+    return await _build_detail(db, collection, approved_only=False)
+
+
+@router.get("/{collection_id}/manage", response_model=CollectionDetail)
+async def get_managed_collection(
+    collection_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CollectionDetail:
+    """编辑页读取：含未审核作品，仅作者或管理员可用。"""
+    collection = await _get_owned_collection(db, collection_id, current_user)
+    return await _build_detail(db, collection, approved_only=False)
+
+
+@router.patch("/{collection_id}", response_model=CollectionDetail)
+async def update_user_collection(
+    collection_id: str,
+    payload: CollectionUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CollectionDetail:
+    collection = await _get_owned_collection(db, collection_id, current_user)
+    updates = payload.model_dump(exclude_unset=True)
+
+    if "cover_photo_id" in updates:
+        cover_id = updates["cover_photo_id"]
+        if cover_id is not None:
+            entries = await _entries_all(db, collection.id)
+            if cover_id not in entries:
+                raise HTTPException(status_code=400, detail="封面必须是专辑内的作品")
+        collection.cover_photo_id = cover_id
+    for field in ("title", "subtitle", "description"):
+        if field in updates:
+            value = updates[field]
+            if isinstance(value, str):
+                value = value.strip() or None
+            setattr(collection, field, value)
+    if updates.get("status") in ("published", "draft"):
+        collection.status = updates["status"]
+    if collection.title is None:
+        raise HTTPException(status_code=400, detail="标题不能为空")
+
+    await log_audit(
+        db,
+        user_id=current_user.id,
+        action="collection.update",
+        resource_type="collection",
+        resource_id=collection.id,
+        detail=collection.title,
+    )
+    await db.commit()
+    return await _build_detail(db, collection, approved_only=False)
+
+
+@router.put("/{collection_id}/photos", response_model=CollectionDetail)
+async def replace_collection_photos(
+    collection_id: str,
+    payload: CollectionPhotosUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CollectionDetail:
+    """整体替换专辑作品并保序；只能放本人已审核作品。"""
+    collection = await _get_owned_collection(db, collection_id, current_user)
+
+    photo_ids = list(dict.fromkeys(payload.photo_ids))
+    if photo_ids:
+        rows = (
+            await db.execute(
+                select(Photo.id, Photo.uploader_id, Photo.status).where(
+                    Photo.id.in_(photo_ids)
+                )
+            )
+        ).all()
+        found = {row[0]: row for row in rows}
+        for photo_id in photo_ids:
+            row = found.get(photo_id)
+            if row is None:
+                raise HTTPException(status_code=400, detail=f"作品不存在：{photo_id}")
+            if row[1] != current_user.id and not _is_admin(current_user):
+                raise HTTPException(status_code=403, detail="只能收录自己的作品")
+            if row[2] != "approved":
+                raise HTTPException(status_code=400, detail="只能收录已通过审核的作品")
+
+    await db.execute(
+        delete(CollectionPhoto).where(CollectionPhoto.collection_id == collection.id)
+    )
+    for position, photo_id in enumerate(photo_ids):
+        db.add(
+            CollectionPhoto(
+                collection_id=collection.id,
+                photo_id=photo_id,
+                position=position,
+            )
+        )
+    if collection.cover_photo_id and collection.cover_photo_id not in photo_ids:
+        collection.cover_photo_id = None
+    await db.commit()
+    return await _build_detail(db, collection, approved_only=False)
+
+
+@router.delete("/{collection_id}")
+async def delete_user_collection(
+    collection_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    collection = await _get_owned_collection(db, collection_id, current_user)
+    title = collection.title
+    await db.delete(collection)
+    await log_audit(
+        db,
+        user_id=current_user.id,
+        action="collection.delete",
+        resource_type="collection",
+        resource_id=collection_id,
+        detail=title,
+    )
+    await db.commit()
+    return {"ok": True, "deleted": collection_id}
+
 
 
 @router.get("/{slug}", response_model=CollectionDetail)
@@ -151,7 +550,7 @@ async def get_public_collection(
     slug: str,
     db: AsyncSession = Depends(get_db),
 ) -> CollectionDetail:
-    """专题详情：叙事 + 有序作品 + 上下篇。"""
+    """专题详情：叙事 + 有序作品 + 上下篇 + 作者（用户专辑时）。"""
     collection = (
         await db.execute(
             select(Collection).where(
@@ -163,40 +562,7 @@ async def get_public_collection(
     ).scalars().first()
     if collection is None:
         raise HTTPException(status_code=404, detail="专题不存在或未发布")
-
-    entries = await _approved_entries(db, [collection.id])
-    approved = entries.get(collection.id, [])
-    photo_map = await _photos_by_id(db, approved)
-
-    photos: list[PhotoResponse] = []
-    for photo_id in approved:
-        photo = photo_map.get(photo_id)
-        if photo is None:
-            continue
-        photos.append(await serialize_photo(db, photo))
-
-    cover = await _serialize_cover(db, collection, approved, photo_map)
-
-    ordered = await _published_collections(db)
-    slugs = [c.slug for c in ordered]
-    index = slugs.index(collection.slug) if collection.slug in slugs else -1
-    prev_slug = slugs[index - 1] if index > 0 else None
-    next_slug = slugs[index + 1] if 0 <= index < len(slugs) - 1 else None
-
-    return CollectionDetail(
-        id=collection.id,
-        slug=collection.slug,
-        title=collection.title,
-        subtitle=collection.subtitle,
-        description=collection.description,
-        kind=collection.kind,
-        sort_order=collection.sort_order,
-        photo_count=len(photos),
-        cover=cover,
-        photos=photos,
-        prev_slug=prev_slug,
-        next_slug=next_slug,
-    )
+    return await _build_detail(db, collection)
 
 
 # ── 作品 → 所属专题（详情页「收录于」chips）─────────────────────────────

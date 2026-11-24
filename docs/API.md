@@ -237,6 +237,31 @@ Content-Type: multipart/form-data
 
 把同一主题 / 同一年度相册的作品组织成「专题」，公共端首页横滑卡与专题详情页消费。
 
+### 樱色光谱（公开）
+
+```http
+GET /api/v1/collections/spectrum
+```
+
+返回固定的五个色卡（樱粉/金/绿/蓝/墨），每项含 `key`/`name`/`hex`/`description`/
+`slug`（暂无作品的色卡为 `null`）/`photo_count`/`cover`。每个 `slug` 同时是普通专题，
+可直接用 `GET /api/v1/collections/{slug}` 打开完整列表。作品由上传时采样缩略图主色自动归类
+（`backend/app/services/spectrum.py`），不是人工挑选。
+
+### 作者手账（用户自建专辑，需登录）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/collections` | 新建专辑：`{title, subtitle?, description?}` → 201 `CollectionDetail`（`kind=user`、`status=published`） |
+| GET | `/api/v1/collections/mine` | 我的专辑（含草稿），按最近更新排序 |
+| GET | `/api/v1/collections/{id}/manage` | 编辑页读取（含未审核作品），仅作者或 admin |
+| PATCH | `/api/v1/collections/{id}` | 改标题/副标题/引言/封面/发布状态（`published`/`draft`） |
+| PUT | `/api/v1/collections/{id}/photos` | `{photo_ids:[...]}` 整体替换并保序（≤100，仅本人 approved 作品） |
+| DELETE | `/api/v1/collections/{id}` | 删除专辑（同时删除条目，不删作品） |
+
+权限：未登录 401；非作者 403（admin 可管理任意专辑）。封面只能取专辑内作品；
+空专辑不进入公开列表。
+
 ### 专题列表（公开）
 
 ```http
