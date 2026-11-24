@@ -265,6 +265,11 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
   信号归一化权重）；候选集只含已发布且非敏感作品，Python 内打分（`MAX_CANDIDATES=800`），
   近重复（汉明 ≤3）不推荐；`GET /api/v1/photos/{id}/similar?limit=` 返回 `similarity + reasons`
   供前端「视觉相似」区展示。存量回填：`scripts/backfill_visual_signatures.py`
+- **以图搜图**（`POST /api/v1/search/visual`，multipart `file`）：上传图只在内存算签名
+  （`backend/app/services/visual_probe.py`：dhash + 光谱色卡，不落盘、不写库、无 AI 成本），
+  复用视觉相似打分对公开作品排序，返回与文本检索同构的 `results[]`（score / match_reason /
+  thumb_url / author…），前端直接复用结果卡片；与上传图近重复（汉明 ≤3）的作品不返回；
+  限 8MB / 4000 万像素 / JPEG·PNG·WebP，公开端点按 IP 10 次/分钟限流（slowapi）
 - **Milvus / pgvector 本轮不做**（2c4g 装不下 Milvus standalone ≥8GB）；规模上来后加 pgvector + `text-embedding-v4` 回填
 
 ## 8. 设计系统

@@ -296,6 +296,15 @@ GET /api/v1/photos/{photo_id}/collections
 
 ---
 
+## 🖼 以图搜图（公开）
+
+上传一张图，返回站内视觉相似作品（`results[]` 与文本检索同构，前端复用结果卡片）。
+探针图**只在内存里**算 dhash + 光谱色卡，不落盘、不写库、不调用 AI 模型。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/search/visual` | `multipart/form-data`：`file`（JPEG / PNG / WebP，≤8MB，≤4000 万像素）+ 可选 `limit`（1–30，默认 12）。返回 `{results[], total, query_time_ms, mode:"visual", query:{filename,width,height,aspect_ratio,palette,palette_name,palette_hex}}`；非图片/过小 → 400，超过 8MB 或像素上限 → 413；与上传图近重复（汉明 ≤3）的作品不返回；按 IP 限流 10 次/分钟 |
+
 ## 👁 视觉相似（公开）
 
 上传时记录 dhash 感知哈希 + 光谱色卡；按「构图 / 色调 / 标签 / 季节 / 校区」加权排序。

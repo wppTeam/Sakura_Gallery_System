@@ -94,13 +94,36 @@ def _hue_bucket(hue: float) -> str:
 
 def classify_image(path: str | Path, *, edge: int = _SAMPLE_EDGE) -> dict | None:
     """返回 ``{"palette", "hex", "ratio"}``；无法读取/解码时返回 None。"""
-    from PIL import Image, ImageOps  # 函数内 import：保持模块导入轻量
+    from PIL import Image
 
     try:
         with Image.open(path) as im:
-            im = ImageOps.exif_transpose(im)
-            im = im.convert("RGB").resize((edge, edge))
-            pixels = list(im.getdata())
+            return _classify_pil(im, edge=edge)
+    except Exception:  # noqa: BLE001 - 采样失败不应中断业务
+        return None
+
+
+def classify_image_bytes(data: bytes, *, edge: int = _SAMPLE_EDGE) -> dict | None:
+    """对图片字节直接采样分类（以图搜图的探针图用，不落盘）。"""
+    import io
+
+    from PIL import Image
+
+    try:
+        with Image.open(io.BytesIO(data)) as im:
+            return _classify_pil(im, edge=edge)
+    except Exception:  # noqa: BLE001 - 采样失败不应中断业务
+        return None
+
+
+def _classify_pil(im, *, edge: int = _SAMPLE_EDGE) -> dict | None:
+    """对已打开的 Pillow 图像采样分类（上传图/本地文件共用）。"""
+    from PIL import ImageOps  # 函数内 import：保持模块导入轻量
+
+    try:
+        im = ImageOps.exif_transpose(im)
+        im = im.convert("RGB").resize((edge, edge))
+        pixels = list(im.getdata())
     except Exception:  # noqa: BLE001 - 采样失败不应中断业务
         return None
     if not pixels:

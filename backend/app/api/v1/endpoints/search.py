@@ -13,26 +13,41 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel, Field
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.deps import get_current_admin_user, get_db
 from app.models.search_trace import AgentSearchTrace
+from app.models.tag import PhotoTag, Tag
 from app.services import lexical_search
 from app.services.agent_search import run_agent_search
 from app.services.agent_search.types import AgentSearchResult
 from app.services.lexical_search import FacetResult, SearchHit
+from app.services.spectrum import PALETTE_BY_KEY
+from app.services.visual_probe import (
+    MAX_PROBE_BYTES,
+    ProbeError,
+    build_visual_probe,
+    probe_source_label,
+)
+from app.services.visual_similarity import search_visual
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 router = APIRouter()
+
+# 以图搜图是公开端点，按 IP 限流，避免被当成免费的图片识别/抓取接口。
+limiter = Limiter(key_func=get_remote_address)
 
 # 旧端点保留的结构化筛选参数（→ filters）
 _TAXONOMY_QUERY_KEYS = (
@@ -149,6 +164,28 @@ class SuggestResponse(BaseModel):
     prefix: str = ""
 
 
+class VisualSearchQueryModel(BaseModel):
+    """探针图摘要（前端用来说明“我们看到了什么”）。"""
+
+    filename: Optional[str] = Field(None, description="上传文件名（仅展示）")
+    width: int
+    height: int
+    aspect_ratio: Optional[float] = None
+    palette: Optional[str] = Field(None, description="主色卡 key：pink/gold/green/blue/ink")
+    palette_name: Optional[str] = Field(None, description="主色卡中文名")
+    palette_hex: Optional[str] = None
+
+
+class VisualSearchResponse(BaseModel):
+    """以图搜图响应；results 与文本检索同构，前端可复用结果卡片。"""
+
+    results: list[SearchPhotoResult] = Field(default_factory=list)
+    total: int = Field(..., ge=0)
+    query_time_ms: float = Field(..., ge=0)
+    mode: str = Field("visual", description="固定为 visual")
+    query: VisualSearchQueryModel
+
+
 # ---- 请求参数 → filters ----
 
 def _collect_filters(
@@ -246,6 +283,127 @@ def _build_response(result: AgentSearchResult) -> SearchResponse:
         clarify_options=list(result.clarify_options or []),
         facets=_facets_model(result.facets),
         trace_id=result.trace_id,
+    )
+
+
+def _visual_result_item(
+    hit,
+    tags: list[str],
+) -> SearchPhotoResult:
+    """把一条视觉相似命中转成与文本检索同构的结果项（前端复用卡片）。"""
+    photo = hit.photo
+    aspect_ratio: Optional[float] = None
+    if photo.width and photo.height:
+        try:
+            aspect_ratio = round(float(photo.width) / float(photo.height), 4)
+        except (TypeError, ValueError, ZeroDivisionError):
+            aspect_ratio = None
+    return SearchPhotoResult(
+        photo_id=str(photo.id),
+        id=str(photo.id),
+        kind="aigc" if photo.is_aigc else "photo",
+        score=round(max(0.0, min(1.0, float(hit.score))), 4),
+        tags=list(tags),
+        classifications={},
+        matched_fields=["visual"],
+        match_reason="；".join(hit.reasons) or None,
+        title=photo.title,
+        filename=photo.filename,
+        author=photo.author,
+        thumb_url=f"/api/v1/photos/{photo.id}/image/thumbnail",
+        width=photo.width,
+        height=photo.height,
+        aspect_ratio=aspect_ratio,
+        season=photo.season,
+        category=photo.category,
+        campus=photo.campus,
+        is_aigc=bool(photo.is_aigc),
+        aigc_label=photo.aigc_label if photo.is_aigc else None,
+        blurhash=None,
+        created_at=photo.created_at,
+        published_at=photo.published_at,
+    )
+
+
+async def _tags_for_photos(
+    db: AsyncSession, photo_ids: list[str]
+) -> dict[str, list[str]]:
+    """批量取自由标签（以图搜图结果卡片展示用，避免 N+1）。"""
+    if not photo_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(PhotoTag.photo_id, Tag.name)
+            .join(Tag, Tag.id == PhotoTag.tag_id)
+            .where(PhotoTag.photo_id.in_(photo_ids))
+        )
+    ).all()
+    tags_by_photo: dict[str, list[str]] = {}
+    for photo_id, name in rows:
+        if name:
+            tags_by_photo.setdefault(str(photo_id), []).append(name)
+    return tags_by_photo
+
+
+@router.post(
+    "/search/visual",
+    response_model=VisualSearchResponse,
+    summary="以图搜图（上传一张图，找站内视觉相似作品）",
+)
+@limiter.limit("10/minute")
+async def search_by_image(
+    request: Request,
+    file: UploadFile = File(..., description="JPEG / PNG / WebP，不超过 8MB"),
+    limit: int = Query(12, ge=1, le=30, description="最多返回条数"),
+    db: AsyncSession = Depends(get_db),
+):
+    """公开端点，不需要登录；探针图只在内存里算签名，不落盘、不写库、无 AI 成本。"""
+    started = time.perf_counter()
+    if getattr(file, "size", None) and file.size > MAX_PROBE_BYTES:
+        raise HTTPException(status_code=413, detail="图片不能超过 8MB，请压缩后再试")
+    data = await file.read(MAX_PROBE_BYTES + 1)
+    try:
+        probe = build_visual_probe(data)
+    except ProbeError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+    hits = await search_visual(db, probe, limit=limit)
+    tags_by_photo = await _tags_for_photos(db, [str(hit.photo.id) for hit in hits])
+    results = [
+        _visual_result_item(hit, tags_by_photo.get(str(hit.photo.id), []))
+        for hit in hits
+    ]
+
+    spectrum = probe.exif_data.get("_spectrum")
+    palette_key: Optional[str] = None
+    palette_hex: Optional[str] = None
+    if isinstance(spectrum, dict):
+        candidate_key = spectrum.get("palette")
+        if isinstance(candidate_key, str) and candidate_key in PALETTE_BY_KEY:
+            palette_key = candidate_key
+            hex_value = spectrum.get("hex")
+            if isinstance(hex_value, str):
+                palette_hex = hex_value
+    palette = PALETTE_BY_KEY.get(palette_key or "")
+    try:
+        aspect = round(probe.width / probe.height, 4) if probe.height else None
+    except ZeroDivisionError:
+        aspect = None
+
+    return VisualSearchResponse(
+        results=results,
+        total=len(results),
+        query_time_ms=round((time.perf_counter() - started) * 1000, 2),
+        mode="visual",
+        query=VisualSearchQueryModel(
+            filename=probe_source_label(file.filename) if file.filename else None,
+            width=probe.width,
+            height=probe.height,
+            aspect_ratio=aspect,
+            palette=palette_key,
+            palette_name=palette.name if palette else None,
+            palette_hex=palette_hex,
+        ),
     )
 
 

@@ -69,14 +69,34 @@ class SimilarityHit:
     reasons: tuple[str, ...]
 
 
-def photo_dhash(photo: Photo) -> Optional[str]:
+@dataclass(frozen=True)
+class VisualProbe:
+    """以图搜图的探针签名：上传图只在内存里参与打分，不落库、不写盘。
+
+    字段刻意与 Photo 的同名属性对齐（``exif_data`` / ``width`` / ``height`` /
+    ``season`` / ``campus`` / ``id``），这样打分函数用鸭子类型即可同时接受
+    数据库作品与上传探针。
+    """
+
+    id: str
+    exif_data: Mapping[str, object]
+    width: int
+    height: int
+    season: Optional[str] = None
+    campus: Optional[str] = None
+
+
+VisualTarget = Photo | VisualProbe
+
+
+def photo_dhash(photo: VisualTarget) -> Optional[str]:
     """读取照片的 dhash 签名（老图可能没有，返回 None）。"""
     exif = photo.exif_data if isinstance(photo.exif_data, dict) else {}
     value = exif.get("_dhash")
     return value if isinstance(value, str) and len(value) == 64 else None
 
 
-def photo_palette(photo: Photo) -> Optional[str]:
+def photo_palette(photo: VisualTarget) -> Optional[str]:
     """读取照片的光谱色卡 key（pink/gold/green/blue/ink）。"""
     exif = photo.exif_data if isinstance(photo.exif_data, dict) else {}
     spectrum = exif.get("_spectrum")
@@ -95,14 +115,14 @@ def compute_dhash(path: str) -> Optional[str]:
         return None
 
 
-def _aspect_ratio(photo: Photo) -> Optional[float]:
+def _aspect_ratio(photo: VisualTarget) -> Optional[float]:
     width, height = photo.width or 0, photo.height or 0
     if width <= 0 or height <= 0:
         return None
     return width / height
 
 
-def _aspect_similarity(a: Photo, b: Photo) -> Optional[float]:
+def _aspect_similarity(a: VisualTarget, b: Photo) -> Optional[float]:
     """构图比例相似度：|log(r1/r2)| 归一化到 0..1（相差 2.2 倍即 0）。"""
     ratio_a, ratio_b = _aspect_ratio(a), _aspect_ratio(b)
     if not ratio_a or not ratio_b:
@@ -111,7 +131,7 @@ def _aspect_similarity(a: Photo, b: Photo) -> Optional[float]:
     return max(0.0, 1.0 - distance / math.log(2.2))
 
 
-def _palette_similarity(a: Photo, b: Photo) -> Optional[float]:
+def _palette_similarity(a: VisualTarget, b: Photo) -> Optional[float]:
     palette_a, palette_b = photo_palette(a), photo_palette(b)
     if not palette_a or not palette_b:
         return None
@@ -131,20 +151,20 @@ def _tag_overlap(
     return intersection / union if union else None
 
 
-def _season_match(a: Photo, b: Photo) -> Optional[float]:
+def _season_match(a: VisualTarget, b: Photo) -> Optional[float]:
     if not a.season or not b.season:
         return None
     return 1.0 if a.season == b.season else 0.0
 
 
-def _campus_match(a: Photo, b: Photo) -> Optional[float]:
+def _campus_match(a: VisualTarget, b: Photo) -> Optional[float]:
     if not a.campus or not b.campus:
         return None
     return 1.0 if a.campus == b.campus else 0.0
 
 
 def _reasons(
-    target: Photo,
+    target: VisualTarget,
     candidate: Photo,
     *,
     dhash_similarity: Optional[float],
@@ -182,7 +202,7 @@ def _shared_tag_names(
 
 
 def score_pair(
-    target: Photo,
+    target: VisualTarget,
     candidate: Photo,
     target_tags: Sequence[str],
     candidate_tags: Sequence[str],
@@ -229,7 +249,7 @@ def score_pair(
 
 
 def rank_similar(
-    target: Photo,
+    target: VisualTarget,
     candidates: Iterable[Photo],
     tags_by_photo: Mapping[str, Sequence[str]],
     target_tags: Sequence[str],
@@ -264,37 +284,36 @@ def rank_similar(
     return hits[: max(0, limit)]
 
 
-async def find_similar_photos(
+async def _load_candidates_and_tags(
     db: AsyncSession,
-    target: Photo,
     *,
-    limit: int = 8,
-) -> list[SimilarityHit]:
-    """查询候选集并排序；目标作品本身需已公开（调用方负责 404 判断）。"""
-    candidate_rows = (
-        await db.execute(
-            select(Photo)
-            # 序列化要读 taxonomy 分类（serialize_classifications），预先 selectin
-            # 加载，避免 async session 里触发懒加载导致 MissingGreenlet。
-            .options(
-                selectinload(Photo.classifications).selectinload(
-                    PhotoClassification.facet
-                ),
-                selectinload(Photo.classifications).selectinload(
-                    PhotoClassification.node
-                ),
-            )
-            .where(
-                Photo.id != target.id,
-                Photo.status == "approved",
-                func.coalesce(Photo.privacy_level, PRIVACY_NORMAL) == PRIVACY_NORMAL,
-            )
-            .order_by(Photo.published_at.desc().nullslast(), Photo.created_at.desc())
-            .limit(MAX_CANDIDATES)
+    exclude_id: str | None = None,
+) -> tuple[list[Photo], dict[str, list[str]]]:
+    """加载候选作品与其自由标签（视觉相似 / 以图搜图共用）。"""
+    stmt = (
+        select(Photo)
+        # 序列化要读 taxonomy 分类（serialize_classifications），预先 selectin
+        # 加载，避免 async session 里触发懒加载导致 MissingGreenlet。
+        .options(
+            selectinload(Photo.classifications).selectinload(
+                PhotoClassification.facet
+            ),
+            selectinload(Photo.classifications).selectinload(
+                PhotoClassification.node
+            ),
         )
-    ).scalars().all()
+        .where(
+            Photo.status == "approved",
+            func.coalesce(Photo.privacy_level, PRIVACY_NORMAL) == PRIVACY_NORMAL,
+        )
+        .order_by(Photo.published_at.desc().nullslast(), Photo.created_at.desc())
+        .limit(MAX_CANDIDATES)
+    )
+    if exclude_id is not None:
+        stmt = stmt.where(Photo.id != exclude_id)
+    candidate_rows = list((await db.execute(stmt)).scalars().all())
     if not candidate_rows:
-        return []
+        return [], {}
 
     candidate_ids = [str(photo.id) for photo in candidate_rows]
     tag_rows = (
@@ -308,6 +327,21 @@ async def find_similar_photos(
     for photo_id, name in tag_rows:
         if name:
             tags_by_photo.setdefault(str(photo_id), []).append(name)
+    return candidate_rows, tags_by_photo
+
+
+async def find_similar_photos(
+    db: AsyncSession,
+    target: Photo,
+    *,
+    limit: int = 8,
+) -> list[SimilarityHit]:
+    """查询候选集并排序；目标作品本身需已公开（调用方负责 404 判断）。"""
+    candidate_rows, tags_by_photo = await _load_candidates_and_tags(
+        db, exclude_id=str(target.id)
+    )
+    if not candidate_rows:
+        return []
 
     target_tag_rows = (
         await db.execute(
@@ -323,5 +357,29 @@ async def find_similar_photos(
         candidate_rows,
         tags_by_photo,
         target_tags,
+        limit=limit,
+    )
+
+
+async def search_visual(
+    db: AsyncSession,
+    probe: VisualProbe,
+    *,
+    limit: int = 12,
+) -> list[SimilarityHit]:
+    """以图搜图：用上传图的签名对站内公开作品打分并排序。
+
+    探针没有标签与季节信息，打分时这些信号为 None，权重按可用信号归一化；
+    与 probe dhash 汉明 ≤ NEAR_DUPLICATE_HAMMING 的作品会被当作近重复排除
+    （上传的往往就是站内已发布的那张图，不应该再推荐给它自己）。
+    """
+    candidate_rows, tags_by_photo = await _load_candidates_and_tags(db)
+    if not candidate_rows:
+        return []
+    return rank_similar(
+        probe,
+        candidate_rows,
+        tags_by_photo,
+        [],
         limit=limit,
     )
