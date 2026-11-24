@@ -1035,6 +1035,30 @@ docker logs sakura-quick 2>&1 | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com'
 
 ---
 
+### 15.6 策展专题初始化（2026-11-25 实跑）
+
+上线后需要生成「光的一日」「樱色光谱」两类自动策展专题；脚本幂等，可重复执行。
+
+```bash
+# 1) 传到服务器（宿主机上执行）
+scp scripts/seed_curation.py wppjkw@<server>:/tmp/seed_curation.py
+ssh wppjkw@<server> "chmod 644 /tmp/seed_curation.py"
+
+# 2) 拷进容器并执行（容器内 uid=10001，宿主机 600 权限的文件读不了 → 必须先 chmod 644）
+ssh wppjkw@<server> "docker cp /tmp/seed_curation.py sakura-prod-backend:/tmp/seed_curation.py"
+ssh wppjkw@<server> "docker exec -w /app sakura-prod-backend python /tmp/seed_curation.py"
+
+# 3) 验证（应为 5 个色卡、公开专题总数 19）
+curl -s https://<domain>/api/v1/collections/spectrum | jq '.total, [.palettes[] | {key, photo_count}]'
+curl -s 'https://<domain>/api/v1/collections/public?limit=50' | jq '.total'
+```
+
+要点：
+- 脚本会自动读取 `photos.exif_data["_spectrum"]`，缺失时用缩略图重新采样（56 张约 30–60 秒，走 COS 下载）。
+- `light-dawn` 需要 05–09 点拍摄且 `captured_at` 完整的作品；没有作品时专题为 `draft`、不出现在公开列表（首页显示「整理中」占位）。
+- 作品入专题只取 `status=approved` 且 `privacy_level!=sensitive`；`photo_count` 与公开列表一致。
+- 重复执行不会重复建专题（按 slug upsert，重排 entries）。
+
 ## 16. SEO 与站点元信息（2026-11-24 落地）
 
 站点公开后需要被搜索引擎与社交平台正确索引/预览：
