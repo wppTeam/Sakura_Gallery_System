@@ -88,7 +88,12 @@ export interface PublicPhotoQuery {
   sort_order?: 'asc' | 'desc'
   /** 是否纳入人像作品（仅登录后生效；后端仍受 portrait_visibility 约束） */
   include_sensitive?: boolean
+  /** 光线时段筛选：与首页「光的一日」同一套时段定义（后端 normalize_period 也接受中文） */
+  period?: LightPeriodKey
 }
+
+/** 光线时段：晨 / 昼 / 暮 / 夜（本地小时 5–9 / 9–15 / 15–19 / 其余） */
+export type LightPeriodKey = 'dawn' | 'noon' | 'dusk' | 'night'
 
 export interface PublicPhotoPage {
   items: PublicPhoto[]

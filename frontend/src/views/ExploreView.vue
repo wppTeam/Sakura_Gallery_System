@@ -36,6 +36,34 @@
           />
         </div>
 
+        <div class="filter-periods" role="group" aria-label="按光线时段筛选">
+          <span class="filter-periods-label">光</span>
+          <div class="period-chips">
+            <button
+              type="button"
+              class="period-chip period-chip--all"
+              :class="{ 'is-active': !period }"
+              :aria-pressed="!period"
+              @click="setPeriod('')"
+            >
+              全部
+            </button>
+            <button
+              v-for="option in PERIOD_OPTIONS"
+              :key="option.key"
+              type="button"
+              class="period-chip"
+              :class="[`period-chip--${option.key}`, { 'is-active': period === option.key }]"
+              :aria-pressed="period === option.key"
+              :aria-label="`${option.label} ${option.range}`"
+              @click="setPeriod(option.key)"
+            >
+              <span class="period-dot" aria-hidden="true" />
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+
         <div class="filter-selects">
           <label class="select-wrap">
             <span class="sr-only">校区</span>
@@ -125,8 +153,8 @@
 
       <EmptyState
         v-else-if="!initialLoading && items.length === 0"
-        :title="landscapeEmpty ? '该景暂无作品' : filtersActive ? '没有符合条件的作品' : '还没有作品'"
-        :description="landscapeEmpty ? '这个取景地还没有对应的公开作品，后续会陆续收录。可以先去其它角落看看。' : filtersActive ? '换一个季节、校区或取景地试试，也可以清除筛选看全部。' : '第一批照片正在路上，你也可以成为第一个把校园放进来的人。'"
+        :title="landscapeEmpty ? '该景暂无作品' : periodEmpty ? '这个时段还没有作品' : filtersActive ? '没有符合条件的作品' : '还没有作品'"
+        :description="landscapeEmpty ? '这个取景地还没有对应的公开作品，后续会陆续收录。可以先去其它角落看看。' : periodEmpty ? '试试其他时段，也可以清除筛选，先看看全部作品。' : filtersActive ? '换一个季节、校区或取景地试试，也可以清除筛选看全部。' : '第一批照片正在路上，你也可以成为第一个把校园放进来的人。'"
         :action-label="landscapeEmpty ? '去看看其它作品' : filtersActive ? '清除筛选' : '去投稿'"
         @action="landscapeEmpty ? resetFilters() : filtersActive ? resetFilters() : $router.push('/upload')"
       />
@@ -195,6 +223,15 @@ const SORT_OPTIONS = [
 ] as const
 type SortKey = (typeof SORT_OPTIONS)[number]['value']
 
+/** 光线时段：与首页「光的一日」同一套区间（后端 light_of_day.py） */
+const PERIOD_OPTIONS = [
+  { key: 'dawn', label: '晨', range: '05:00–09:00' },
+  { key: 'noon', label: '昼', range: '09:00–15:00' },
+  { key: 'dusk', label: '暮', range: '15:00–19:00' },
+  { key: 'night', label: '夜', range: '19:00–05:00' },
+] as const
+type PeriodKey = (typeof PERIOD_OPTIONS)[number]['key']
+
 /* ---------- 「此刻」来自真实节气 ---------- */
 const nowTerm = currentTerm()
 const nowSeason = currentSeason()
@@ -207,6 +244,8 @@ const campus = ref('')
 const category = ref('')
 /** 取景地目前只从 URL 进入（专题/光谱深链），不占一个下拉位 */
 const landscape = ref('')
+/** 光线时段（晨/昼/暮/夜），空串表示全部 */
+const period = ref<PeriodKey | ''>('')
 const sort = ref<SortKey>('new')
 /** 是否纳入人像作品（仅登录后生效；状态存 localStorage，刷新后保持） */
 const includeSensitive = ref(false)
@@ -223,8 +262,11 @@ const landscapeName = computed(
 )
 
 const filtersActive = computed(() =>
-  Boolean(season.value || campus.value || category.value || landscape.value),
+  Boolean(season.value || campus.value || category.value || landscape.value || period.value),
 )
+
+/** 只选了光线时段或时段组合结果为空时，给更贴切的解释文案 */
+const periodEmpty = computed(() => Boolean(period.value))
 
 /** 取景地筛选：目前后端种子数据尚未打 landscape 标签，空结果时给叙事化的空态而不是故障感 */
 const landscapeEmpty = computed(() => Boolean(landscape.value))
@@ -251,6 +293,7 @@ function baseQuery() {
     campus: campus.value || undefined,
     category: category.value || undefined,
     landscape: landscape.value || undefined,
+    period: period.value || undefined,
     sort_by,
     sort_order,
     include_sensitive: includeSensitive.value && isAuthed.value ? true : undefined,
@@ -319,6 +362,7 @@ function syncQuery() {
   if (campus.value) query.campus = campus.value
   if (category.value) query.category = category.value
   if (landscape.value) query.landscape = landscape.value
+  if (period.value) query.period = period.value
   if (sort.value !== 'new') query.sort = sort.value
   void router.replace({ path: '/explore', query })
 }
@@ -340,11 +384,18 @@ function setSeason(label: string) {
   applyFilters()
 }
 
+function setPeriod(next: PeriodKey | '') {
+  if (period.value === next) return
+  period.value = next
+  applyFilters()
+}
+
 function resetFilters() {
   season.value = ''
   campus.value = ''
   category.value = ''
   landscape.value = ''
+  period.value = ''
   sort.value = 'new'
   applyFilters()
 }
@@ -360,6 +411,10 @@ function applyQuery(): boolean {
   const nextCampus = readString(route.query.campus)
   const nextCategory = readString(route.query.category)
   const nextLandscape = readString(route.query.landscape)
+  const nextPeriodRaw = readString(route.query.period)
+  const nextPeriod = PERIOD_OPTIONS.some((option) => option.key === nextPeriodRaw)
+    ? (nextPeriodRaw as PeriodKey)
+    : ''
   const nextSortRaw = readString(route.query.sort)
   const nextSort = (SORT_OPTIONS.some((option) => option.value === nextSortRaw)
     ? nextSortRaw
@@ -370,6 +425,7 @@ function applyQuery(): boolean {
     campus.value === nextCampus &&
     category.value === nextCategory &&
     landscape.value === nextLandscape &&
+    period.value === nextPeriod &&
     sort.value === nextSort
 
   season.value = SEASONS.some((item) => item.label === nextSeason) ? nextSeason : ''
@@ -378,6 +434,7 @@ function applyQuery(): boolean {
     ? nextCategory
     : ''
   landscape.value = EIGHT_VIEWS.some((view) => view.node === nextLandscape) ? nextLandscape : ''
+  period.value = nextPeriod
   sort.value = nextSort
   return !same
 }
@@ -612,12 +669,122 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
 .filter-seasons::-webkit-scrollbar {
   display: none;
+}
+
+/* ---------- 按光浏览：晨 / 昼 / 暮 / 夜 ---------- */
+.filter-periods {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-basis: 100%;
+  min-width: 0;
+}
+
+.filter-periods-label {
+  flex: none;
+  color: var(--faint);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.14em;
+}
+
+.period-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  min-width: 0;
+  padding-block: 2px;
+  scrollbar-width: none;
+}
+
+.period-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.period-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  height: 40px;
+  padding: 0 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--fs-14);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.period-chip:hover {
+  border-color: var(--period-accent, var(--sakura));
+  color: var(--ink);
+}
+
+.period-chip.is-active {
+  border-color: var(--period-accent, var(--sakura-deep));
+  background: var(--period-pale, var(--sakura-pale));
+  color: var(--ink);
+}
+
+.period-chip--all {
+  --period-accent: var(--sakura);
+  --period-pale: var(--sakura-pale);
+}
+
+.period-chip--all.is-active {
+  border-color: var(--sakura-deep);
+  background: var(--sakura-deep);
+  color: var(--on-accent);
+}
+
+.period-chip--all.is-active .period-dot {
+  background: var(--on-accent);
+}
+
+.period-chip--dawn {
+  --period-accent: var(--autumn);
+  --period-pale: var(--autumn-pale);
+}
+
+.period-chip--noon {
+  --period-accent: var(--sakura);
+  --period-pale: var(--sakura-pale);
+}
+
+.period-chip--dusk {
+  --period-accent: color-mix(in srgb, var(--spring) 55%, var(--autumn) 45%);
+  --period-pale: var(--spring-pale);
+}
+
+.period-chip--night {
+  --period-accent: var(--winter);
+  --period-pale: var(--winter-pale);
+}
+
+.period-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--period-accent, var(--sakura));
+  opacity: 0.9;
+}
+
+.period-chip:active {
+  transform: scale(0.97);
 }
 
 .filter-selects {
@@ -732,6 +899,17 @@ onBeforeUnmount(() => {
   .filter-inner {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  /* 列向布局下显式撑满容器，避免内容 min-width 把页面顶出横向滚动 */
+  .filter-seasons,
+  .filter-periods,
+  .filter-selects,
+  .privacy-row {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .filter-selects {
