@@ -35,6 +35,9 @@ from app.models.user import User
 from app.schemas.ai_analysis import AIAnalysisTaskCreate, AIAnalysisTaskResponse, AIApplyResponse
 from app.schemas.photo import (
     PhotoListResponse,
+    PhotoNeighborItem,
+    PhotoNeighborsResponse,
+    PhotoNavContext,
     PhotoResponse,
     PhotoUpdate,
     PhotoUploadResponse,
@@ -55,6 +58,7 @@ from app.services.search_interpreter import get_search_interpreter
 from app.services.storage import cleanup_staged_files, get_storage, stage_photo_upload
 from app.services import privacy
 from app.services.visual_similarity import find_similar_photos
+from app.services.photo_navigation import get_neighbors
 from starlette.concurrency import run_in_threadpool
 
 from app.services.moderation_worker import enqueue_moderation
@@ -1054,6 +1058,65 @@ async def list_my_submissions(
         page=skip // limit + 1 if limit > 0 else 1,
         page_size=limit,
         items=await serialize_photos_admin(db, photos),
+    )
+
+
+def _neighbor_item(photo: Photo) -> PhotoNeighborItem:
+    """导航窗口里的紧凑项：只带胶片条需要的字段（不带 EXIF / 变体 / 标签）。"""
+    ratio = None
+    if photo.width and photo.height:
+        ratio = round(float(photo.width) / float(photo.height), 4)
+    exif = photo.exif_data if isinstance(photo.exif_data, dict) else {}
+    return PhotoNeighborItem(
+        id=photo.id,
+        title=photo.title or _parse_photo_title(photo.description),
+        width=photo.width,
+        height=photo.height,
+        aspect_ratio=ratio,
+        is_aigc=bool(photo.is_aigc),
+        aigc_label=photo.aigc_label,
+        lqip_color=exif.get("_lqip_color"),
+        thumb_url=f"/api/v1/photos/{photo.id}/image/thumbnail",
+    )
+
+
+@router.get("/{photo_id}/neighbors", response_model=PhotoNeighborsResponse)
+async def get_photo_neighbors(
+    photo_id: str,
+    context: Optional[str] = Query(
+        None, description="浏览上下文：latest（默认）或 collection:<slug>"
+    ),
+    before: int = Query(5, ge=0, le=8, description="向前取几张（更早的相邻作品）"),
+    after: int = Query(5, ge=0, le=8, description="向后取几张（更新的相邻作品）"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    portrait_visibility: str = Depends(get_portrait_visibility),
+):
+    """详情页「上一张 / 下一张」与灯箱胶片条。
+
+    上下文两种：``latest``（全站最新流）与 ``collection:<slug>``（专题策展顺序，
+    从专题页进入详情时使用）。作品本身不可访问时 404；候选只含已发布、非人像
+    敏感作品，导航不会把待审 / 脱敏作品带出去。
+    """
+    photo = await photo_crud.get_photo_with_tags(db, photo_id)
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    await _assert_photo_access(db, photo, current_user, portrait_visibility)
+    _assert_sensitive_viewer(photo, current_user)
+
+    nav = await get_neighbors(db, photo, context=context, before=before, after=after)
+    return PhotoNeighborsResponse(
+        context=PhotoNavContext(
+            kind=nav.context.kind,
+            slug=nav.context.slug,
+            title=nav.context.title,
+            position=nav.context.position,
+            total=nav.context.total,
+        ),
+        items=[_neighbor_item(item) for item in nav.items],
+        index=nav.index,
+        prev=nav.prev_id,
+        next=nav.next_id,
     )
 
 

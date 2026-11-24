@@ -140,3 +140,37 @@ class SimilarPhotosResponse(BaseModel):
 
     items: List[SimilarPhotoItem]
     total: int
+
+
+class PhotoNeighborItem(BaseModel):
+    """导航窗口里的紧凑作品项（胶片条用，避免完整 EXIF/变体的开销）。"""
+
+    id: str
+    title: Optional[str] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    aspect_ratio: Optional[float] = Field(None, description="宽/高，前端占位用")
+    is_aigc: bool = False
+    aigc_label: Optional[str] = None
+    lqip_color: Optional[str] = None
+    thumb_url: str
+
+
+class PhotoNavContext(BaseModel):
+    """当前作品所处的浏览上下文。"""
+
+    kind: str = Field(..., description="latest | collection")
+    slug: Optional[str] = None
+    title: Optional[str] = None
+    position: int = Field(..., ge=1, description="当前作品在序列中的位置（1 起）")
+    total: int = Field(..., ge=0)
+
+
+class PhotoNeighborsResponse(BaseModel):
+    """详情页「上一张 / 下一张」导航。"""
+
+    context: PhotoNavContext
+    items: List[PhotoNeighborItem]
+    index: int = Field(..., ge=0, description="当前作品在 items 中的下标")
+    prev: Optional[str] = None
+    next: Optional[str] = None

@@ -325,6 +325,12 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
   复用视觉相似打分对公开作品排序，返回与文本检索同构的 `results[]`（score / match_reason /
   thumb_url / author…），前端直接复用结果卡片；与上传图近重复（汉明 ≤3）的作品不返回；
   限 8MB / 4000 万像素 / JPEG·PNG·WebP，公开端点按 IP 10 次/分钟限流（slowapi）
+- **详情页导航（上一张 / 下一张）**：`GET /api/v1/photos/{id}/neighbors?context=latest|collection:<slug>`
+  返回当前作品所处的序列（`latest` 按 `coalesce(published_at, created_at)` 倒序；`collection:<slug>`
+  按 `collection_photos.position`），以及 `position/total`、前后邻居 id 与一个含当前作品的紧凑窗口
+  （`items[]` 只带 id/标题/宽高/AIGC 角标/LQIP 色/thumbnail URL，避免胶片条传完整 EXIF）。候选只含已发布
+  且非人像敏感作品；专题不存在或作品不在专题内时自动退回最新流；目标不可访问时 404。实现
+  `backend/app/services/photo_navigation.py`（latest 用 keyset 四条小 SQL，不把全站 id 拉进内存）
 - **Milvus / pgvector 本轮不做**（2c4g 装不下 Milvus standalone ≥8GB）；规模上来后加 pgvector + `text-embedding-v4` 回填
 
 ## 8. 设计系统

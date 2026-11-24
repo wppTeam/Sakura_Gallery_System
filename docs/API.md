@@ -391,6 +391,46 @@ GET /api/v1/photos/{photo_id}/collections
 |------|------|------|
 | GET | `/api/v1/photos/{photo_id}/similar?limit=8` | 返回 `{items:[PhotoResponse & {similarity,reasons}], total}`；候选只含已发布且非敏感作品；目标不存在/未公开 → 404 |
 
+## 🧭 作品导航（公开）
+
+详情页「上一张 / 下一张」与灯箱胶片条的数据来源；匿名可读，数据只含已发布、非人像敏感作品。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/photos/{photo_id}/neighbors` | 当前作品所在序列 + 前后邻居 + 紧凑窗口 |
+
+查询参数：
+
+| 参数 | 类型 | 默认 | 说明 |
+|------|------|------|------|
+| `context` | string | `latest` | `latest`（全站最新流）或 `collection:<slug>`（专题策展顺序） |
+| `before` | int | `5` | 向前取几张（0–8） |
+| `after` | int | `5` | 向后取几张（0–8） |
+
+响应示例（截取）：
+
+```json
+{
+  "context": {"kind": "collection", "slug": "light-dusk", "title": "暮 · 一日将尽", "position": 4, "total": 24},
+  "items": [
+    {"id": "672e211e-…", "title": "9月 · 景山公园…", "width": 1664, "height": 928,
+     "aspect_ratio": 1.7931, "is_aigc": false, "aigc_label": null,
+     "lqip_color": "#4a3a1e", "thumb_url": "/api/v1/photos/672e211e-…/image/thumbnail"}
+  ],
+  "index": 2,
+  "prev": "c53b55a7-…",
+  "next": "33d3581f-…"
+}
+```
+
+说明：
+
+- `items` 包含当前作品本身（`index` 指向它），胶片条可直接渲染；`prev` / `next` 是相对当前作品的
+  紧邻作品，可能落在窗口之外，前端翻页时据此跳转并重新取一次导航。
+- 专题不存在、未发布，或作品不在该专题内时，自动退回 `latest` 上下文（不会返回空导航）。
+- 目标作品不存在 / 不可公开访问（待审、或匿名访问人像敏感作品）时返回 404。
+- 该接口响应小、可安全缓存，线上 nginx 对匿名请求做了 60s 微缓存。
+
 ## 🚩 举报 / 侵权投诉
 
 公开端（匿名可提交，登录后自动记录投诉人）：
