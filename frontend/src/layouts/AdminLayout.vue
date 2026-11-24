@@ -114,6 +114,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { NIcon, useDialog, useMessage } from 'naive-ui'
 import {
   BarChartOutline,
+  ChatbubbleEllipsesOutline,
   CheckmarkCircleOutline,
   ChevronBackOutline,
   ChevronDownOutline,
@@ -139,6 +140,7 @@ import { useAuthStore } from '../stores/auth'
 import ChangePasswordDialog from '../components/common/ChangePasswordDialog.vue'
 import NotificationBell from '../components/common/NotificationBell.vue'
 import { fetchReportStats } from '../api/admin_reports'
+import { fetchAdminAppealStats } from '../api/admin_appeals'
 
 const router = useRouter()
 const route = useRoute()
@@ -181,6 +183,7 @@ const PAGE_TITLES: Record<string, string> = {
   Dashboard: '仪表盘',
   PhotoReview: '照片审核',
   Reports: '举报处理',
+  Appeals: '复核申诉',
   AiUsage: 'AI 成本',
   TagManagement: '自由标签',
   TaxonomyManagement: '分类治理',
@@ -209,12 +212,15 @@ onMounted(() => {
   syncNarrow(mediaQuery.matches)
   mediaQuery.addEventListener('change', onMediaChange)
   window.addEventListener('reports:changed', loadReportPendingCount)
+  window.addEventListener('appeals:changed', loadAppealPendingCount)
   void loadReportPendingCount()
+  void loadAppealPendingCount()
 })
 
 onBeforeUnmount(() => {
   mediaQuery?.removeEventListener('change', onMediaChange)
   window.removeEventListener('reports:changed', loadReportPendingCount)
+  window.removeEventListener('appeals:changed', loadAppealPendingCount)
 })
 
 watch(
@@ -223,6 +229,7 @@ watch(
     if (name) activeKey.value = name.toString()
     document.title = `${currentTitle.value} · 后台管理 · 视觉百花`
     void loadReportPendingCount()
+    void loadAppealPendingCount()
   },
   { immediate: true },
 )
@@ -252,10 +259,32 @@ async function loadReportPendingCount() {
   }
 }
 
+const appealPendingCount = ref(0)
+
+function renderAppealsLabel() {
+  return h('span', { class: 'menu-label-with-badge' }, [
+    h('span', null, '复核申诉'),
+    appealPendingCount.value > 0
+      ? h('span', { class: 'menu-pending-badge menu-pending-badge--appeal' }, String(appealPendingCount.value))
+      : null,
+  ])
+}
+
+async function loadAppealPendingCount() {
+  if (!authStore.canReview) return
+  try {
+    const stats = await fetchAdminAppealStats(7)
+    appealPendingCount.value = stats.pending
+  } catch {
+    // 角标失败不影响后台使用
+  }
+}
+
 const contentMenuOptions: MenuOption[] = [
   { label: '仪表盘', key: 'Dashboard', icon: renderMenuIcon(BarChartOutline) },
   { label: '照片审核', key: 'PhotoReview', icon: renderMenuIcon(CheckmarkCircleOutline) },
   { label: renderReportsLabel, key: 'Reports', icon: renderMenuIcon(FlagOutline) },
+  { label: renderAppealsLabel, key: 'Appeals', icon: renderMenuIcon(ChatbubbleEllipsesOutline) },
   { label: '自由标签', key: 'TagManagement', icon: renderMenuIcon(PricetagsOutline) },
   { label: '分类治理', key: 'TaxonomyManagement', icon: renderMenuIcon(GitNetworkOutline) },
   { label: '标注任务', key: 'TaggingTaskManagement', icon: renderMenuIcon(PricetagOutline) },
@@ -414,6 +443,10 @@ function onUserMenuSelect(key: string) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.admin-menu :deep(.menu-pending-badge--appeal) {
+  background: var(--sakura-deep, #c93a63);
 }
 
 .admin-menu :deep(.menu-pending-badge) {

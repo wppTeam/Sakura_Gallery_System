@@ -23,6 +23,53 @@
         </div>
       </div>
 
+      <div
+        v-if="detail && detail.status === 'pending' && appeal && appeal.status === 'accepted'"
+        class="work-status-banner work-status-banner--appeal"
+        role="status"
+      >
+        <n-icon :component="CheckmarkCircleOutline" :size="18" />
+        <div class="work-status-copy">
+          <b>申诉已受理</b>
+          <span>复核通过，作品已重新进入审核流程{{ appeal.handledAt ? `（${formatAppealTime(appeal.handledAt)} 受理）` : '' }}。</span>
+        </div>
+      </div>
+
+      <div
+        v-if="detail && detail.status === 'rejected'"
+        class="work-status-banner work-status-banner--rejected"
+        role="status"
+      >
+        <n-icon :component="AlertCircleOutline" :size="18" />
+        <div class="work-status-copy">
+          <b>未通过审核</b>
+          <template v-if="appealLoading">
+            <span>正在读取复核申请状态…</span>
+          </template>
+          <template v-else-if="!appeal">
+            <span>这张作品暂不公开展示。如果你认为审核有误，可以补充说明申请一次人工复核，复核结果会通知你。</span>
+          </template>
+          <template v-else-if="appeal.status === 'pending'">
+            <span>复核申请已提交，等待受理（提交于 {{ formatAppealTime(appeal.createdAt) }}）。结果会通过站内通知告知你。</span>
+          </template>
+          <template v-else-if="appeal.status === 'rejected'">
+            <span>复核结论：{{ appeal.note || '维持原审核结果' }}（{{ formatAppealTime(appeal.handledAt) }}）。</span>
+          </template>
+        </div>
+        <div class="work-status-actions">
+          <n-button
+            v-if="!appealLoading && (!appeal || appeal.status === 'pending')"
+            size="small"
+            type="primary"
+            :disabled="appeal?.status === 'pending'"
+            @click="openAppeal"
+          >
+            <template #icon><n-icon :component="CreateOutline" /></template>
+            {{ appeal?.status === 'pending' ? '已提交，等待受理' : '申请复核' }}
+          </n-button>
+        </div>
+      </div>
+
       <DetailSkeleton v-if="loading" />
 
       <DetailErrorState
@@ -114,6 +161,58 @@
         />
       </template>
 
+      <n-modal
+        v-model:show="appealOpen"
+        preset="card"
+        class="appeal-modal"
+        :bordered="false"
+        :mask-closable="!appealSubmitting"
+        :closable="!appealSubmitting"
+        style="width: min(92vw, 520px)"
+      >
+        <template #header>
+          <div class="appeal-modal-head">
+            <span class="appeal-modal-seal" aria-hidden="true">!</span>
+            <div>
+              <b>申请复核</b>
+              <span>对被驳回的作品补充说明，平台会人工复核一次</span>
+            </div>
+          </div>
+        </template>
+        <div class="appeal-form">
+          <p class="appeal-hint">
+            复核只针对「是否存在误判或可补充的合规信息」，请尽量说明拍摄/创作背景、授权情况或你认为审核有误的原因。
+          </p>
+          <label class="appeal-label" for="appeal-reason">复核理由（10–2000 字）</label>
+          <n-input
+            id="appeal-reason"
+            v-model:value="appealReason"
+            type="textarea"
+            :autosize="{ minRows: 5, maxRows: 10 }"
+            maxlength="2000"
+            show-count
+            placeholder="例如：这是我本人拍摄的校园活动，已取得被摄同学同意；或画面中的人物为公共场所远景，不可识别……"
+            :disabled="appealSubmitting"
+          />
+          <p v-if="appealReason.length && appealReasonLength < 10" class="appeal-inline-error">
+            还需要 {{ 10 - appealReasonLength }} 个字才能提交。
+          </p>
+          <n-alert v-if="appealError" type="error" class="appeal-alert" role="alert">
+            {{ appealError }}
+          </n-alert>
+          <p class="appeal-legal">
+            提交即表示你确认所述内容真实；恶意或虚假申诉可能影响账号信用。详见
+            <router-link to="/terms">服务条款</router-link>。
+          </p>
+          <div class="appeal-actions">
+            <n-button secondary :disabled="appealSubmitting" @click="appealOpen = false">取消</n-button>
+            <n-button type="primary" :loading="appealSubmitting" :disabled="!appealCanSubmit" @click="submitAppeal">
+              提交复核申请
+            </n-button>
+          </div>
+        </div>
+      </n-modal>
+
       <Transition name="backtop">
         <button
           v-if="showBackTop"
@@ -135,10 +234,13 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NIcon, useMessage } from 'naive-ui'
 import {
+  AlertCircleOutline,
   ArrowBackOutline,
   ArrowUpOutline,
+  CheckmarkCircleOutline,
   ChevronBackOutline,
   ChevronForwardOutline,
+  CreateOutline,
   HourglassOutline,
 } from '@vicons/ionicons5'
 import { useAuthStore } from '../stores/auth'
@@ -158,6 +260,11 @@ import {
   type WorkDetail,
 } from '../components/detail/workDetail'
 import { fetchPhotoNeighbors, type PhotoNeighbors } from '../api/public'
+import {
+  fetchPhotoAppeal,
+  submitPhotoAppeal,
+  type PhotoAppeal,
+} from '../api/appeals'
 import '../styles/detail.css'
 
 interface LoadError {
@@ -186,6 +293,19 @@ const favoriteCount = ref<number | null>(null)
 const favoritePending = ref(false)
 
 const lightboxOpen = ref(false)
+
+/** 审核复核（申诉）：仅作者或被驳回作品的作者可见，失败静默降级 */
+const appeal = ref<PhotoAppeal | null>(null)
+const appealLoading = ref(false)
+const appealOpen = ref(false)
+const appealReason = ref('')
+const appealSubmitting = ref(false)
+const appealError = ref('')
+
+const appealReasonLength = computed(() => appealReason.value.trim().length)
+const appealCanSubmit = computed(
+  () => appealReasonLength.value >= 10 && appealReasonLength.value <= 2000 && !appealSubmitting.value,
+)
 
 /** 序列上下文（上一张/下一张、灯箱胶片条）；失败时为 null，静默降级 */
 const neighbors = ref<PhotoNeighbors | null>(null)
@@ -323,6 +443,7 @@ async function load(preserveViewer = false) {
     void loadRelated(data)
     void loadFavorite()
     void loadNeighbors(id)
+    void loadAppeal(id)
     // 灯箱内 ←/→ 翻作品：路由重挂载后自动重开灯箱，保持连续观展
     if (reopenLightbox) lightboxOpen.value = true
   } catch (err) {
@@ -435,6 +556,93 @@ function onGlobalKeydown(event: KeyboardEvent) {
     if (!next) return
     event.preventDefault()
     navigateWork(next)
+  }
+}
+
+function formatAppealTime(value: string | null): string {
+  if (!value) return '刚刚'
+  const normalized = /[zZ]|[+-]\d{2}:?\d{2}$/.test(value) ? value : `${value}Z`
+  const date = new Date(normalized)
+  if (Number.isNaN(date.getTime())) return value
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+let appealSeq = 0
+async function loadAppeal(id: string) {
+  const status = detail.value?.status
+  if (!auth.isAuthenticated || (status !== 'rejected' && status !== 'pending')) {
+    appeal.value = null
+    return
+  }
+  const seq = ++appealSeq
+  appealLoading.value = true
+  try {
+    const data = await fetchPhotoAppeal(id)
+    if (seq !== appealSeq || workId.value !== id) return
+    appeal.value = data
+  } finally {
+    if (seq === appealSeq) appealLoading.value = false
+  }
+}
+
+function openAppeal() {
+  if (appeal.value?.status === 'pending') return
+  if (appeal.value?.status === 'rejected') return
+  appealError.value = ''
+  appealReason.value = ''
+  appealOpen.value = true
+}
+
+function extractAppealDetail(err: unknown): string {
+  const response = (err as { response?: { status?: number; data?: unknown } })?.response
+  const data = response?.data
+  if (typeof data === 'string') return data
+  if (data && typeof data === 'object') {
+    const record = data as Record<string, unknown>
+    if (typeof record.detail === 'string') return record.detail
+    if (Array.isArray(record.detail)) {
+      const first = record.detail[0] as { msg?: unknown } | undefined
+      if (first && typeof first.msg === 'string') return first.msg
+    }
+    if (typeof record.message === 'string') return record.message
+  }
+  return ''
+}
+
+function describeAppealError(err: unknown): string {
+  const detailText = extractAppealDetail(err)
+  if (detailText) return detailText
+  const status = (err as { response?: { status?: number } })?.response?.status
+  if (status === 401) return '登录已过期，请重新登录后再试'
+  if (status === 403) return '只有作品作者本人可以申请复核'
+  if (status === 404) return '作品不存在或已被删除'
+  if (status === 409) return '这张作品已有正在处理的复核申请，请等待受理'
+  if (status === 429) return '提交过于频繁，请稍后再试'
+  if (status === 400) return '复核理由需要 10–2000 字，请调整后再提交'
+  if (status && status >= 500) return '服务暂时不可用，请稍后重试'
+  return '网络连接失败，请检查网络后重试'
+}
+
+async function submitAppeal() {
+  if (!appealCanSubmit.value) return
+  const id = workId.value
+  appealSubmitting.value = true
+  appealError.value = ''
+  try {
+    await submitPhotoAppeal(id, appealReason.value)
+    message.success('复核申请已提交，受理结果会通知你')
+    appealOpen.value = false
+    const data = await fetchPhotoAppeal(id)
+    if (workId.value === id) appeal.value = data
+  } catch (err) {
+    appealError.value = describeAppealError(err)
+    const status = (err as { response?: { status?: number } })?.response?.status
+    if (status === 409) {
+      void loadAppeal(id)
+    }
+  } finally {
+    appealSubmitting.value = false
   }
 }
 
@@ -616,4 +824,146 @@ onBeforeUnmount(() => {
     transition-duration: 0.01ms;
   }
 }
+
+/* ---------------- 审核复核（申诉） ---------------- */
+.work-status-banner--rejected {
+  border-color: color-mix(in srgb, var(--autumn, #b5703c) 34%, var(--line, #f3dde5));
+  background: var(--autumn-pale, #ffdfd6);
+  flex-wrap: wrap;
+}
+
+.work-status-banner--rejected .work-status-copy b {
+  color: var(--autumn, #b5703c);
+}
+
+.work-status-banner--rejected :deep(.n-icon) {
+  color: var(--autumn, #b5703c);
+}
+
+.work-status-banner--appeal {
+  border-color: color-mix(in srgb, var(--summer, #3b9c80) 30%, var(--line, #f3dde5));
+  background: var(--summer-pale, #d4f0e4);
+}
+
+.work-status-banner--appeal .work-status-copy b {
+  color: var(--summer, #3b9c80);
+}
+
+.work-status-banner--appeal :deep(.n-icon) {
+  color: var(--summer, #3b9c80);
+}
+
+.work-status-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.work-status-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.appeal-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.appeal-modal-seal {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sakura-pale, #ffe9f0);
+  color: var(--sakura-deep, #c93a63);
+  font-weight: 700;
+}
+
+.appeal-modal-head b {
+  display: block;
+  font-size: 16px;
+  color: var(--ink, #4a2b35);
+}
+
+.appeal-modal-head span {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted, #63474f);
+}
+
+.appeal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.appeal-hint {
+  margin: 0 0 2px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm, 10px);
+  background: var(--sakura-wash, #fff0f5);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted, #63474f);
+}
+
+.appeal-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #4a2b35);
+}
+
+.appeal-inline-error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--autumn, #b5703c);
+}
+
+.appeal-alert {
+  margin: 0;
+}
+
+.appeal-legal {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--faint, #a88a94);
+}
+
+.appeal-legal a {
+  color: var(--sakura-deep, #c93a63);
+}
+
+.appeal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+@media (max-width: 560px) {
+  .work-status-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .work-status-actions :deep(.n-button) {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .appeal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .appeal-actions :deep(.n-button) {
+    width: 100%;
+  }
+}
+
 </style>

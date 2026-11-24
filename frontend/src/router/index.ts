@@ -168,6 +168,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, requiresAuditor: true },
       },
       {
+        path: 'appeals',
+        name: 'Appeals',
+        component: () => import('../views/admin/Appeals.vue'),
+        meta: { requiresAuth: true, requiresAuditor: true },
+      },
+      {
         path: 'ai-usage',
         name: 'AiUsage',
         component: () => import('../views/admin/AiUsage.vue'),
@@ -255,6 +261,8 @@ const ROUTE_TITLES: Record<string, string> = {
   Dashboard: '仪表盘 · 视觉百花后台',
   PhotoReview: '审核队列 · 视觉百花后台',
   AiUsage: 'AI 成本 · 视觉百花后台',
+  Reports: '举报处理 · 视觉百花后台',
+  Appeals: '复核申诉 · 视觉百花后台',
   NotFound: '页面未找到 · 视觉百花',
 }
 
