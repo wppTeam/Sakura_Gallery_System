@@ -29,10 +29,20 @@
       <template v-else-if="detail">
         <div class="detail-grid">
           <div class="detail-media">
-            <DetailImageStage :detail="detail" :kind-label="kindLabel" @expand="lightboxOpen = true" />
+            <DetailImageStage
+              :detail="detail"
+              :kind-label="kindLabel"
+              @expand="lightboxOpen = true"
+              @dblclick="lightboxOpen = true"
+            />
             <div class="detail-media-foot">
               <span class="media-note">
-                原图仅做尺寸压缩、不裁切构图；点击图片可查看大图。
+                <template v-if="detail.isRedacted">
+                  人像作品已脱敏：原图仅作者与管理员可查看，当前为强模糊 + 像素化的脱敏图。
+                </template>
+                <template v-else>
+                  原图仅做尺寸压缩、不裁切构图。</template>
+                单击图片查看大图，双击可直接放大；大图内 Esc 关闭、← → 切换、+/− 缩放。
               </span>
               <span v-if="detail.season" class="media-season">{{ detail.season }}作品</span>
             </div>
@@ -44,6 +54,7 @@
             :favorited="favorited"
             :favorite-count="favoriteCount"
             :favorite-pending="favoritePending"
+            :is-author="isAuthor"
             @toggle-favorite="toggleFavorite"
           />
         </div>
@@ -59,6 +70,19 @@
 
         <DetailLightbox :show="lightboxOpen" :detail="detail" @close="lightboxOpen = false" />
       </template>
+
+      <Transition name="backtop">
+        <button
+          v-if="showBackTop"
+          type="button"
+          class="back-to-top"
+          aria-label="回到页面顶部"
+          title="回到顶部"
+          @click="scrollToTop"
+        >
+          <n-icon :component="ArrowUpOutline" :size="18" />
+        </button>
+      </Transition>
     </div>
   </div>
 </template>
@@ -67,7 +91,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NIcon, useMessage } from 'naive-ui'
-import { ArrowBackOutline } from '@vicons/ionicons5'
+import { ArrowBackOutline, ArrowUpOutline } from '@vicons/ionicons5'
 import { useAuthStore } from '../stores/auth'
 import { incrementView } from '../api/stats'
 import DetailImageStage from '../components/detail/DetailImageStage.vue'
@@ -112,6 +136,30 @@ const favoriteCount = ref<number | null>(null)
 const favoritePending = ref(false)
 
 const lightboxOpen = ref(false)
+
+/** 当前用户是否作者：人像作品的原图/隐私视角提示用（服务端仍做最终鉴权） */
+const isAuthor = computed(() => {
+  if (!detail.value?.uploaderId || !auth.user) return false
+  return auth.user.id === detail.value.uploaderId
+})
+
+/** 长页回到顶部按钮：滚动超过约两屏才出现 */
+const showBackTop = ref(false)
+function onScroll() {
+  const maxScroll = Math.max(
+    0,
+    document.documentElement.scrollHeight - window.innerHeight,
+  )
+  // 长页：约 1.5 屏；短页：滚到底前 120px 也出现（避免阈值高于可滚动距离导致永不出现）
+  const threshold = Math.min(window.innerHeight * 1.5, Math.max(0, maxScroll - 120))
+  showBackTop.value = window.scrollY > threshold
+}
+function prefersReduced(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: prefersReduced() ? 'auto' : 'smooth' })
+}
 
 const kindLabel = computed(() => {
   const kind = detail.value?.kind.toLowerCase() || 'photo'
@@ -236,9 +284,12 @@ watch(workId, () => {
 
 onMounted(() => {
   void load()
+  window.addEventListener('scroll', onScroll, { passive: true })
+  onScroll()
 })
 
 onBeforeUnmount(() => {
   document.title = '视觉百花 Sakura Gallery'
+  window.removeEventListener('scroll', onScroll)
 })
 </script>

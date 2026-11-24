@@ -48,7 +48,20 @@
           <RouterLink class="fallback-link" :to="`/photo/${photo.id}`">去详情页</RouterLink>
         </div>
 
-        <span v-if="photo.aigc" class="aigc-badge">AI 生成</span>
+        <div v-if="photo.aigc || photo.privacyLevel === 'sensitive'" class="badge-stack">
+          <span v-if="photo.aigc" class="aigc-badge">AI 生成</span>
+          <span
+            v-if="photo.privacyLevel === 'sensitive'"
+            class="privacy-badge"
+            :title="photo.isRedacted ? '人像作品默认隐藏，当前展示的是脱敏图' : '人像作品：你看到的是原图'"
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 4.5a7.5 7.5 0 0 0-7.5 7.5 7.5 7.5 0 0 0 15 0A7.5 7.5 0 0 0 12 4.5Z" stroke="currentColor" stroke-width="1.8" />
+              <path d="M9 14v1.5M15 14v1.5M8.5 9.5h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+            {{ photo.isRedacted ? '人像 · 已脱敏' : '人像' }}
+          </span>
+        </div>
 
         <div class="shade" aria-hidden="true" />
 
@@ -57,7 +70,7 @@
           <span class="author-name">{{ photo.author }}</span>
         </span>
 
-        <div class="card-actions">
+        <div v-if="photo.canViewOriginal" class="card-actions">
           <a
             class="card-act"
             :href="photo.downloadUrl"
@@ -244,25 +257,46 @@ const authorInitial = computed(() => (props.photo.author || '匿').slice(0, 1))
   text-underline-offset: 3px;
 }
 
-/* AIGC 显式角标：法定标识，常显 */
-.aigc-badge {
+/* 角标栈：AI 生成（法定显式标识）与人像脱敏角标并列时不互相挤压 */
+.badge-stack {
   position: absolute;
   top: 10px;
   left: 10px;
   z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: calc(100% - 20px);
+  pointer-events: none;
+}
+
+.aigc-badge,
+.privacy-badge {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   height: 24px;
   padding: 0 9px;
-  border: 1px solid rgba(74, 43, 53, 0.1);
   border-radius: var(--r-pill);
-  /* 法定显式标识：纯白底 + 深墨字（对比度约 12:1），不依赖模糊，任何图片上都可读 */
-  background: var(--surface, #fff);
-  color: var(--ink, #4a2b35);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
+  white-space: nowrap;
   box-shadow: 0 2px 8px rgba(74, 43, 53, 0.18);
+}
+
+/* 法定显式标识：纯白底 + 深墨字（对比度约 12:1），不依赖模糊，任何图片上都可读 */
+.aigc-badge {
+  border: 1px solid rgba(74, 43, 53, 0.1);
+  background: var(--surface, #fff);
+  color: var(--ink, #4a2b35);
+}
+
+/* 人像脱敏角标：深樱底 + 白字（对比度约 5.2:1），与 AI 角标一眼可分 */
+.privacy-badge {
+  border: 1px solid rgba(74, 43, 53, 0.14);
+  background: var(--sakura-deep, #c93a63);
+  color: var(--on-accent, #fff);
 }
 
 .shade {

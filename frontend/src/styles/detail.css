@@ -187,3 +187,54 @@
     margin-left: auto;
   }
 }
+
+/* ── 长页回到顶部（只在超过约两屏后出现，尊重减少动效） ───────── */
+.back-to-top {
+  position: fixed;
+  right: clamp(16px, 2.4vw, 28px);
+  bottom: clamp(18px, 2.6vw, 30px);
+  z-index: var(--z-sticky, 30);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--sakura-deep);
+  box-shadow: var(--shadow-lift);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+
+.back-to-top:hover {
+  background: var(--sakura-deep);
+  color: var(--on-accent);
+  transform: translateY(-2px);
+}
+
+.back-to-top:focus-visible {
+  outline: 3px solid var(--sakura);
+  outline-offset: 3px;
+}
+
+.backtop-enter-active,
+.backtop-leave-active {
+  transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
+}
+
+.backtop-enter-from,
+.backtop-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .back-to-top,
+  .backtop-enter-active,
+  .backtop-leave-active {
+    transition: none;
+  }
+}

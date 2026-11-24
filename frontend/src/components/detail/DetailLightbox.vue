@@ -12,7 +12,10 @@
         <header class="lightbox-bar">
           <div class="lightbox-caption">
             <strong class="lightbox-title">{{ detail.title }}</strong>
-            <span class="lightbox-sub">{{ detail.author }} · {{ sizeLabel }}</span>
+            <span class="lightbox-sub">
+              {{ detail.author }} · {{ sizeLabel }}
+              <template v-if="detail.isRedacted"> · 已脱敏</template>
+            </span>
           </div>
           <div class="lightbox-actions">
             <span v-if="zoom !== 1" class="lightbox-zoom" aria-live="polite">{{ Math.round(zoom * 100) }}%</span>
@@ -27,7 +30,13 @@
               <n-icon :component="isEnlarged ? ContractOutline : ExpandOutline" :size="18" />
               <span>{{ isEnlarged ? '适应屏幕' : '原始尺寸' }}</span>
             </button>
-            <a class="lightbox-btn" :href="detail.downloadUrl" :download="downloadName" title="下载原图">
+            <a
+              v-if="detail.canViewOriginal"
+              class="lightbox-btn"
+              :href="detail.downloadUrl"
+              :download="downloadName"
+              title="下载原图"
+            >
               <n-icon :component="DownloadOutline" :size="18" />
               <span>下载原图</span>
             </a>
@@ -86,6 +95,11 @@
             {{ item.label }}
           </button>
         </footer>
+
+        <p class="lightbox-hint" aria-hidden="true">
+          <template v-if="detail.isRedacted">这是脱敏大图 · </template>
+          双击图片放大 / 再次单击还原 · 点击背景或按 Esc 关闭 · ← → 切换版本 · +/− 缩放
+        </p>
       </div>
     </Transition>
   </Teleport>
@@ -480,6 +494,22 @@ onBeforeUnmount(() => {
 
   .lightbox-next {
     right: 8px;
+  }
+}
+
+.lightbox-hint {
+  flex: none;
+  padding: 10px 20px 16px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .lightbox-hint {
+    padding-bottom: 12px;
+    font-size: 11px;
   }
 }
 </style>

@@ -88,6 +88,15 @@ export interface WorkDetail {
   license: WorkLicense | null
   aigc: WorkAigcInfo | null
 
+  /** 人像隐私分级：sensitive 作品默认隐藏，非作者只看脱敏图 */
+  privacyLevel: 'normal' | 'sensitive'
+  /** 当前图片是否为脱敏版本（后端按访问者身份返回） */
+  isRedacted: boolean
+  /** 上传者 id：用于前端判断「这是你的作品」，不展示 */
+  uploaderId: string | null
+  /** 是否可查看/下载原图：脱敏版本一律不可（服务端同样 403） */
+  canViewOriginal: boolean
+
   views: number | null
   likes: number | null
   favorites: number | null
@@ -362,6 +371,12 @@ export function normalizeWorkDetail(raw: RawPhoto): WorkDetail {
   const variants = normalizeVariants(raw, id)
   const displayVariant = pickDisplayVariant(variants)
   const displayUrl = displayVariant?.url || getPhotoUrl(id, 'compressed')
+  // 脱敏作品的 original/thumbnail/compressed 端点都会返回脱敏图；原图端点对非作者 403，
+  // 因此脱敏时把「原图」退化为脱敏大图，并禁止下载。
+  const isRedacted = raw.is_redacted === true
+  const privacyLevel: 'normal' | 'sensitive' =
+    raw.privacy_level === 'sensitive' || isRedacted ? 'sensitive' : 'normal'
+  const canViewOriginal = !isRedacted
 
   const title = displayPhotoTitle(raw) || '未命名作品'
   const rawAuthor = displayPhotoAuthor(raw)
@@ -392,8 +407,8 @@ export function normalizeWorkDetail(raw: RawPhoto): WorkDetail {
 
     thumbUrl: getPhotoUrl(id, 'thumbnail'),
     displayUrl,
-    originalUrl: getPhotoUrl(id, 'original'),
-    downloadUrl: getPhotoDownloadUrl(id),
+    originalUrl: canViewOriginal ? getPhotoUrl(id, 'original') : displayUrl,
+    downloadUrl: canViewOriginal ? getPhotoDownloadUrl(id) : '',
     variants,
 
     season: seasonLabel(raw),
@@ -411,6 +426,11 @@ export function normalizeWorkDetail(raw: RawPhoto): WorkDetail {
     license: normalizeLicense(raw),
     aigc: normalizeAigc(raw),
 
+    privacyLevel,
+    isRedacted,
+    uploaderId: textOf(raw.uploader_id) || null,
+    canViewOriginal,
+
     views: firstNumber(raw.views, raw.view_count),
     likes: firstNumber(raw.likes, raw.like_count),
     favorites: firstNumber(raw.favorite_count, raw.favorites),
@@ -424,6 +444,16 @@ export async function fetchWorkDetail(id: string): Promise<WorkDetail> {
   try {
     raw = (await getPublicPhotoById(id)) as unknown as RawPhoto
   } catch (publicError) {
+    // 未登录时不要再打鉴权接口：敏感作品匿名访问是 404，调用 /photos/{id} 会 401
+    // 并触发全局跳转 /login，破坏「友好 404」体验。已登录才回退（作者查看自己的待审稿件）。
+    const hasToken = (() => {
+      try {
+        return Boolean(localStorage.getItem('auth_token'))
+      } catch {
+        return false
+      }
+    })()
+    if (!hasToken) throw publicError
     try {
       raw = (await getPhotoById(id)) as unknown as RawPhoto
     } catch {

@@ -43,8 +43,18 @@
       <button type="button" class="stage-retry" @click="retry">重新加载</button>
     </div>
 
-    <!-- AI 生成内容显式标识（合规要求：展示层必须有） -->
-    <span v-if="detail.aigc" class="stage-badge">AI 生成</span>
+    <!-- 角标：AI 生成（法定显式标识）与 人像脱敏（隐私分级） -->
+    <div class="stage-badges">
+      <span v-if="detail.aigc" class="stage-badge">AI 生成</span>
+      <span
+        v-if="detail.isRedacted"
+        class="stage-badge stage-badge--privacy"
+        title="人像作品默认隐藏，当前展示的是脱敏图"
+      >
+        <n-icon :component="ShieldCheckmarkOutline" :size="12" />
+        人像 · 已脱敏
+      </span>
+    </div>
 
     <figcaption class="stage-meta">
       <span class="stage-meta-item">{{ detail.width }} × {{ detail.height }}</span>
@@ -55,12 +65,12 @@
     <button
       type="button"
       class="stage-expand"
-      aria-label="查看大图"
-      title="查看大图"
+      :aria-label="detail.isRedacted ? '查看脱敏大图' : '查看原图'"
+      :title="detail.isRedacted ? '查看脱敏大图' : '查看原图'"
       @click="$emit('expand')"
     >
       <n-icon :component="ExpandOutline" :size="18" />
-      <span>查看原图</span>
+      <span>{{ detail.isRedacted ? '查看大图' : '查看原图' }}</span>
     </button>
   </figure>
 </template>
@@ -68,7 +78,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { NIcon } from 'naive-ui'
-import { ExpandOutline } from '@vicons/ionicons5'
+import { ExpandOutline, ShieldCheckmarkOutline } from '@vicons/ionicons5'
 import type { WorkDetail } from './workDetail'
 import { formatFileSize } from '../../utils/format'
 
@@ -121,7 +131,8 @@ function handleLoad() {
 }
 
 function handleError() {
-  if (attempt.value === 0) {
+  // 脱敏作品没有可回退的原始大图（原图端点对非作者 403），一次失败即报错
+  if (attempt.value === 0 && props.detail.canViewOriginal) {
     attempt.value = 1
   } else {
     failed.value = true
@@ -166,6 +177,18 @@ watch(
   box-shadow: inset 0 0 0 1px rgba(201, 58, 99, 0.08);
   pointer-events: none;
   z-index: 3;
+}
+
+.stage-badges {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: calc(100% - 24px);
+  pointer-events: none;
 }
 
 .stage-lqip {
@@ -303,10 +326,9 @@ watch(
 }
 
 .stage-badge {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 5px 12px;
   border-radius: 999px;
   font-size: 12px;
@@ -314,6 +336,11 @@ watch(
   color: #fff;
   background: linear-gradient(135deg, var(--sakura, #e8628c), var(--sakura-deep, #c93a63));
   box-shadow: 0 4px 14px rgba(201, 58, 99, 0.28);
+}
+
+/* 人像脱敏标签：实色深樱，与 AI 生成角标可区分 */
+.stage-badge--privacy {
+  background: var(--sakura-deep, #c93a63);
 }
 
 .stage-meta {

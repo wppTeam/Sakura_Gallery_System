@@ -1,6 +1,48 @@
 <template>
   <aside class="info">
 
+    <!-- 人像隐私说明卡：sensitive 作品（默认隐藏，非作者只看脱敏图） -->
+    <section
+      v-if="detail.privacyLevel === 'sensitive'"
+      class="privacy-card"
+      :class="{ 'is-author': isAuthor }"
+      aria-label="人像隐私说明"
+    >
+      <div class="privacy-head">
+        <span class="privacy-seal">
+          <n-icon :component="detail.isRedacted ? LockClosedOutline : PersonCircleOutline" :size="13" />
+          {{ detail.isRedacted ? '人像 · 已脱敏' : '人像作品' }}
+        </span>
+        <span class="privacy-kicker">
+          {{ detail.isRedacted ? '隐私保护 · 默认隐藏' : isAuthor ? '作者视角 · 原图可见' : '审核视角 · 原图可见' }}
+        </span>
+      </div>
+
+      <template v-if="detail.isRedacted">
+        <p class="privacy-lead">
+          这类作品含可识别人像，默认不在公共列表展示。你现在看到的是<strong>脱敏图</strong>：强模糊 + 像素化处理，只缩不裁。
+        </p>
+        <ul class="privacy-list">
+          <li>原图仅作者本人与站点管理员（审核员）可查看；</li>
+          <li>下载与原图查看对普通访问者关闭，脱敏图仅用于浏览；</li>
+          <li>如需原图或使用授权，请联系作者 <strong>{{ detail.author }}</strong> 或站点管理员。</li>
+        </ul>
+      </template>
+
+      <template v-else-if="isAuthor">
+        <p class="privacy-lead">
+          这是你的作品，原图仅你与站点管理员可见；其他访问者看到的是脱敏图。下载按钮仍可用。
+        </p>
+        <p class="privacy-foot">如需调整隐私级别，可在「我的投稿」中修改，或联系管理员。</p>
+      </template>
+
+      <template v-else>
+        <p class="privacy-lead">
+          你以审核视角查看该人像作品，可查看原图；普通访问者默认看到脱敏图。
+        </p>
+      </template>
+    </section>
+
     <!-- AI 生成声明摘要卡：法定显式标识（仅 AIGC 作品渲染） -->
     <section v-if="detail.aigc" class="aigc-summary-card" aria-label="AI 生成声明">
       <div class="aigc-summary-head">
@@ -105,7 +147,7 @@
         <span>{{ favorited ? '已收藏' : '收藏' }}</span>
       </button>
 
-      <div ref="menuRef" class="download-wrap">
+      <div v-if="detail.canViewOriginal" ref="menuRef" class="download-wrap">
         <button type="button" class="btn-download" :aria-expanded="menuOpen" @click="menuOpen = !menuOpen">
           <n-icon :component="DownloadOutline" :size="18" />
           <span>下载</span>
@@ -247,7 +289,9 @@ import {
   EyeOutline,
   HeartOutline,
   LocationOutline,
+  LockClosedOutline,
   OpenOutline,
+  PersonCircleOutline,
   ShareSocialOutline,
   ShieldCheckmarkOutline,
   SparklesOutline,
@@ -261,6 +305,8 @@ const props = defineProps<{
   favorited: boolean
   favoriteCount: number | null
   favoritePending: boolean
+  /** 当前登录用户是否是该作品作者（用于人像原图视角提示） */
+  isAuthor: boolean
 }>()
 
 defineEmits<{ 'toggle-favorite': [] }>()
@@ -1092,5 +1138,82 @@ onBeforeUnmount(() => {
   .exif-row dt {
     width: 5em;
   }
+}
+
+/* ── 人像隐私说明卡 ───────────────────────────── */
+.privacy-card {
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(201, 58, 99, 0.18);
+  border-left: 3px solid var(--sakura-deep, #c93a63);
+  border-radius: var(--r-sm, 10px);
+  background: linear-gradient(135deg, var(--sakura-wash, #fff1f6), var(--surface, #fff) 70%);
+}
+
+.privacy-card.is-author {
+  border-left-color: var(--summer, #3b9c80);
+  background: linear-gradient(135deg, var(--summer-pale, #d4f0e4), var(--surface, #fff) 70%);
+}
+
+.privacy-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.privacy-seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--r-pill, 999px);
+  background: var(--sakura-deep, #c93a63);
+  color: var(--on-accent, #fff);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.privacy-card.is-author .privacy-seal {
+  background: var(--summer, #3b9c80);
+}
+
+.privacy-kicker {
+  color: var(--muted, #63474f);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.privacy-lead {
+  margin-top: 10px;
+  color: var(--ink, #4a2b35);
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.privacy-lead strong {
+  font-weight: 600;
+  color: var(--sakura-deep, #c93a63);
+}
+
+.privacy-list {
+  margin-top: 8px;
+  padding-left: 18px;
+  color: var(--ink-soft, #63474f);
+  font-size: 13px;
+  line-height: 1.8;
+  list-style: disc;
+}
+
+.privacy-list li::marker {
+  color: var(--sakura, #e8628c);
+}
+
+.privacy-foot {
+  margin-top: 8px;
+  color: var(--faint, #a98590);
+  font-size: 12px;
+  line-height: 1.7;
 }
 </style>

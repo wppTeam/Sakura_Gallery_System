@@ -19,6 +19,22 @@ type RequestFn = {
 }
 
 // 全局错误处理器(在App.vue中设置)
+/** 查询参数值：布尔值按 "true"/"false" 序列化（axios 原生也能处理，这里收口类型与空值） */
+export type QueryValue = string | number | boolean | null | undefined
+
+/** 序列化 GET 查询参数：跳过 null/undefined/空串，布尔值转字符串 */
+export function encodeQueryParams(
+  query: object,
+): Record<string, string | number> {
+  const source = query as Record<string, QueryValue>
+  const out: Record<string, string | number> = {}
+  for (const [key, value] of Object.entries(source)) {
+    if (value === undefined || value === null || value === '') continue
+    out[key] = typeof value === 'boolean' ? (value ? 'true' : 'false') : value
+  }
+  return out
+}
+
 let globalErrorHandler: ((message: string, type: 'error' | 'warning' | 'info') => void) | null = null
 
 export function setGlobalErrorHandler(handler: (message: string, type: 'error' | 'warning' | 'info') => void) {

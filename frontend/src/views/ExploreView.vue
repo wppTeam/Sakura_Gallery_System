@@ -87,6 +87,27 @@
             清除筛选
           </button>
         </div>
+
+        <div class="privacy-row">
+          <label class="privacy-switch" :class="{ 'is-locked': !isAuthed }">
+            <input
+              type="checkbox"
+              role="switch"
+              class="privacy-input"
+              :checked="includeSensitive"
+              :aria-checked="includeSensitive"
+              aria-label="显示人像作品（已脱敏）"
+              @change="onToggleSensitive"
+            />
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb" /></span>
+            <span class="switch-text">显示人像作品（已脱敏）</span>
+            <svg v-if="authReady && !isAuthed" class="lock" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="5" y="10.5" width="14" height="9" rx="2" stroke="currentColor" stroke-width="1.8" />
+              <path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" stroke="currentColor" stroke-width="1.8" />
+            </svg>
+          </label>
+          <p class="privacy-hint">人像作品默认隐藏，展示的是脱敏图；原图仅作者与管理员可见。</p>
+        </div>
       </div>
     </div>
 
@@ -141,7 +162,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useMessage } from 'naive-ui'
 import { fetchPublicPhotos, type PublicPhoto } from '../api/public'
+import { useAuthStore } from '../stores/auth'
 import {
   EIGHT_VIEWS,
   SEASONS,
@@ -185,6 +208,15 @@ const category = ref('')
 /** 景名目前只从 URL 进入（首页八景卡片），不占一个下拉位 */
 const landscape = ref('')
 const sort = ref<SortKey>('new')
+/** 是否纳入人像作品（仅登录后生效；状态存 localStorage，刷新后保持） */
+const includeSensitive = ref(false)
+const INCLUDE_SENSITIVE_KEY = 'sakura:include-sensitive'
+const PENDING_SENSITIVE_KEY = 'sakura:include-sensitive-pending'
+const auth = useAuthStore()
+const message = useMessage()
+const isAuthed = computed(() => auth.isAuthenticated)
+/** 登录态初始化完成前先不显示锁标，避免「一秒锁」闪烁 */
+const authReady = ref(false)
 
 const landscapeName = computed(
   () => EIGHT_VIEWS.find((view) => view.node === landscape.value)?.name || landscape.value,
@@ -221,6 +253,7 @@ function baseQuery() {
     landscape: landscape.value || undefined,
     sort_by,
     sort_order,
+    include_sensitive: includeSensitive.value && isAuthed.value ? true : undefined,
   }
 }
 
@@ -357,20 +390,149 @@ function backToTop() {
   window.scrollTo({ top: 0, behavior: prefersReduced() ? 'auto' : 'smooth' })
 }
 
+/* ---------- 人像作品开关（登录后生效，localStorage 保持） ---------- */
+function readStoredSensitive(): boolean {
+  try {
+    return localStorage.getItem(INCLUDE_SENSITIVE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function storeSensitive(value: boolean) {
+  try {
+    if (value) localStorage.setItem(INCLUDE_SENSITIVE_KEY, '1')
+    else localStorage.removeItem(INCLUDE_SENSITIVE_KEY)
+  } catch {
+    // localStorage 不可用（隐私模式）时只影响记忆，不影响当前会话
+  }
+}
+
+function onToggleSensitive(event: Event) {
+  const checked = (event.target as HTMLInputElement).checked
+  if (!checked) {
+    includeSensitive.value = false
+    storeSensitive(false)
+    applyFilters()
+    return
+  }
+  if (!isAuthed.value) {
+    // 未登录：还原开关并引导登录，登录后回到探索页
+    includeSensitive.value = false
+    try {
+      localStorage.setItem(PENDING_SENSITIVE_KEY, '1')
+    } catch {
+      // 忽略
+    }
+    message.info('登录后可以查看已脱敏的人像作品')
+    void router.push({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+  includeSensitive.value = true
+  storeSensitive(true)
+  applyFilters()
+}
+
+/** 登录回来后自动恢复用户想看的开关 */
+function syncSensitiveWithAuth() {
+  if (!isAuthed.value) {
+    if (includeSensitive.value) {
+      includeSensitive.value = false
+      storeSensitive(false)
+      void loadPage(true)
+    }
+    return
+  }
+  let pending = false
+  try {
+    pending = localStorage.getItem(PENDING_SENSITIVE_KEY) === '1'
+    if (pending) localStorage.removeItem(PENDING_SENSITIVE_KEY)
+  } catch {
+    // 忽略
+  }
+  if (pending) {
+    includeSensitive.value = true
+    storeSensitive(true)
+    void loadPage(true)
+  } else if (!includeSensitive.value) {
+    includeSensitive.value = readStoredSensitive()
+    if (includeSensitive.value) void loadPage(true)
+  }
+}
+
+/* ---------- 滚动位置恢复：从详情页返回时回到原来的位置 ---------- */
+const SCROLL_KEY = 'sakura:explore-scroll'
+let restoringScroll = false
+
+function saveScroll() {
+  try {
+    sessionStorage.setItem(SCROLL_KEY, JSON.stringify({ path: route.fullPath, y: window.scrollY }))
+  } catch {
+    // 忽略
+  }
+}
+
+function restoreScroll() {
+  if (restoringScroll) return
+  let saved: { path?: string; y?: number } | null = null
+  try {
+    saved = JSON.parse(sessionStorage.getItem(SCROLL_KEY) || 'null')
+  } catch {
+    saved = null
+  }
+  try {
+    sessionStorage.removeItem(SCROLL_KEY)
+  } catch {
+    // 忽略
+  }
+  if (!saved || saved.path !== route.fullPath || !saved.y || saved.y < 80) return
+  restoringScroll = true
+  requestAnimationFrame(() => {
+    const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+    window.scrollTo({ top: Math.min(saved?.y ? saved.y : 0, maxY), behavior: 'auto' })
+    restoringScroll = false
+  })
+}
+
 watch(
   () => route.query,
   () => {
     if (route.path !== '/explore') return
-    if (applyQuery()) void loadPage(true)
+    if (applyQuery()) void loadPage(true).then(restoreScrollAfterLoad)
   },
 )
 
-onMounted(() => {
+watch(isAuthed, syncSensitiveWithAuth)
+
+function restoreScrollAfterLoad() {
+  // 首屏数据渲染后（Masonry 需要 measure）再恢复
+  setTimeout(restoreScroll, 120)
+}
+
+onMounted(async () => {
+  void auth.whenReady().finally(() => {
+    authReady.value = true
+  })
+  // 登录状态决定是否恢复人像开关；登录跳转回来时消费「待开启」意图
+  includeSensitive.value = isAuthed.value ? readStoredSensitive() : false
+  if (isAuthed.value) {
+    try {
+      if (localStorage.getItem(PENDING_SENSITIVE_KEY) === '1') {
+        localStorage.removeItem(PENDING_SENSITIVE_KEY)
+        includeSensitive.value = true
+        storeSensitive(true)
+      }
+    } catch {
+      // 忽略
+    }
+  }
   applyQuery()
-  void loadPage(true)
+  await loadPage(true)
+  restoreScrollAfterLoad()
 })
 
 onBeforeUnmount(() => {
+  saveScroll()
   observer?.disconnect()
   observer = null
 })
@@ -597,6 +759,114 @@ onBeforeUnmount(() => {
 
   .more-skeleton {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- 人像作品开关（隐私分级） ---------- */
+.privacy-row {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding-top: 2px;
+}
+
+.privacy-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 13px 5px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+
+.privacy-switch:hover {
+  border-color: var(--sakura);
+}
+
+.privacy-switch:focus-within {
+  border-color: var(--sakura-deep);
+  box-shadow: 0 0 0 3px var(--sakura-mist);
+}
+
+.privacy-switch.is-locked {
+  color: var(--muted);
+}
+
+.privacy-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.switch-track {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  border-radius: var(--r-pill);
+  background: var(--line-strong);
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(74, 43, 53, 0.25);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.privacy-input:checked + .switch-track {
+  background: var(--sakura-deep);
+}
+
+.privacy-input:checked + .switch-track .switch-thumb {
+  transform: translateX(14px);
+}
+
+.privacy-input:focus-visible + .switch-track {
+  outline: 3px solid var(--sakura);
+  outline-offset: 2px;
+}
+
+.privacy-hint {
+  color: var(--faint);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch-track,
+  .switch-thumb {
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .privacy-switch {
+    font-size: var(--fs-xs);
+  }
+
+  .privacy-hint {
+    flex-basis: 100%;
+    margin: 0;
   }
 }
 </style>

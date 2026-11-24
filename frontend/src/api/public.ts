@@ -6,7 +6,7 @@
  * 公开响应里可能出现 uploader_name 等字段，但展示只用 username/display 语义，
  * 不展示学号；若后端后续收紧，前端不受影响。
  */
-import request from './index'
+import request, { encodeQueryParams } from './index'
 import type { Photo, PhotoListResponse, TaxonomyValue } from '../types/photo'
 import { getImageUrl, getPhotoDownloadUrl, getPhotoUrl } from '../utils/format'
 import { displayPhotoAuthor, displayPhotoTitle } from '../utils/photoDisplay'
@@ -51,6 +51,14 @@ export interface PublicPhoto {
   createdAt: string | null
   /** AIGC 显式角标（法定要求）：由后端 is_aigc / kind / aigc_label 归一化 */
   aigc: boolean
+  /** 人像隐私分级：sensitive 作品默认不在公共列表展示 */
+  privacyLevel: 'normal' | 'sensitive'
+  /** 当前图片是否为脱敏版本（非作者查看 sensitive 作品时 true） */
+  isRedacted: boolean
+  /** 是否可查看/下载原图：脱敏版本一律不可（服务端同样会 403） */
+  canViewOriginal: boolean
+  /** 上传者 id：用于判断「这是你的作品」，不对外展示 */
+  uploaderId: string | null
   license: string | null
   tags: string[]
   blurhash: string | null
@@ -78,6 +86,8 @@ export interface PublicPhotoQuery {
   tag?: string
   sort_by?: 'created_at' | 'views' | 'published_at'
   sort_order?: 'asc' | 'desc'
+  /** 是否纳入人像作品（仅登录后生效；后端仍受 portrait_visibility 约束） */
+  include_sensitive?: boolean
 }
 
 export interface PublicPhotoPage {
@@ -156,6 +166,9 @@ interface RawPhotoExtra {
   aigc_label?: string | boolean | null
   aigc_meta?: Record<string, unknown> | null
   label_written?: boolean | null
+  privacy_level?: string | null
+  is_redacted?: boolean | null
+  uploader_id?: string | null
   license?: string
   blurhash?: string | null
   lqip?: string | null
@@ -214,6 +227,9 @@ export function toPublicPhoto(photo: Photo): PublicPhoto {
   const campus = taxonomyName(photo.classifications?.campus) || labelOf(CAMPUS_LABEL, photo.campus)
   const category = labelOf(CATEGORY_LABEL, photo.category)
   const photoType = taxonomyName(photo.classifications?.photo_type)
+  const isRedacted = extra.is_redacted === true
+  const privacyLevel: 'normal' | 'sensitive' =
+    extra.privacy_level === 'sensitive' || isRedacted ? 'sensitive' : 'normal'
 
   return {
     id: photo.id,
@@ -235,6 +251,10 @@ export function toPublicPhoto(photo: Photo): PublicPhoto {
     capturedAt: photo.captured_at,
     createdAt: photo.published_at || photo.created_at,
     aigc: aigcDeclared,
+    privacyLevel,
+    isRedacted,
+    canViewOriginal: !isRedacted,
+    uploaderId: extra.uploader_id ?? photo.uploader_id ?? null,
     license: extra.license ?? null,
     tags: [...(photo.tags || []), ...(photo.free_tags || [])],
     blurhash: extra.blurhash ?? null,
@@ -244,14 +264,9 @@ export function toPublicPhoto(photo: Photo): PublicPhoto {
   }
 }
 
-/** 去除空参数，避免 URL 里出现 season=&campus= */
+/** 去除空参数；include_sensitive 等布尔参数统一序列化为 "true"/"false" */
 function cleanQuery(query: PublicPhotoQuery): Record<string, string | number> {
-  const out: Record<string, string | number> = {}
-  for (const [key, value] of Object.entries(query)) {
-    if (value === undefined || value === null || value === '') continue
-    out[key] = value as string | number
-  }
-  return out
+  return encodeQueryParams(query)
 }
 
 /**

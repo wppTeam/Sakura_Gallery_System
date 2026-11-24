@@ -63,6 +63,10 @@ export interface Photo {
   label_written?: boolean | null
   /** 响应式变体；缺失/老图为 null，前端回退单图 */
   variants?: PhotoVariants | null
+  /** 人像隐私分级：normal 默认展示；sensitive 默认隐藏，非作者只给脱敏图 */
+  privacy_level?: 'normal' | 'sensitive' | string | null
+  /** 当前响应里的图片是否为脱敏版本（非作者查看 sensitive 作品时为 true） */
+  is_redacted?: boolean | null
   /** 首页占位（后端 LQIP） */
   lqip?: string | null
   lqip_color?: string | null
@@ -125,6 +129,8 @@ export interface SearchInterpretation {
 export interface PhotoListParams {
   skip?: number
   limit?: number
+  /** 公开列表是否纳入人像作品（默认排除；仍受 portrait_visibility 约束，未登录无效） */
+  include_sensitive?: boolean
   status?: string
   season?: string
   category?: string
