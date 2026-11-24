@@ -360,7 +360,7 @@ async def sitemap_xml():
 
         photos = (
             await db.execute(
-                select(Photo.id, Photo.updated_at)
+                select(Photo.id, Photo.title, Photo.published_at, Photo.updated_at, Photo.exif_data)
                 .where(
                     Photo.status == "approved",
                     or_(Photo.privacy_level.is_(None), Photo.privacy_level != "sensitive"),
@@ -369,18 +369,41 @@ async def sitemap_xml():
                 .limit(5000)
             )
         ).all()
-        for photo_id, updated_at in photos:
-            entries.append((f"{base}/photo/{photo_id}", _iso(updated_at)))
 
     body = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+        (
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+            'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">'
+        ),
     ]
     for loc, lastmod in entries:
         body.append("  <url>")
         body.append(f"    <loc>{xml_escape(loc)}</loc>")
         if lastmod:
             body.append(f"    <lastmod>{lastmod}</lastmod>")
+        body.append("  </url>")
+    for photo_id, title, published_at, updated_at, exif_data in photos:
+        caption = None
+        if isinstance(exif_data, dict):
+            raw = exif_data.get("_ai_caption")
+            if isinstance(raw, str) and raw.strip():
+                caption = raw.strip()[:300]
+        body.append("  <url>")
+        body.append(f"    <loc>{xml_escape(f'{base}/photo/{photo_id}')}</loc>")
+        lastmod = _iso(updated_at or published_at)
+        if lastmod:
+            body.append(f"    <lastmod>{lastmod}</lastmod>")
+        body.append("    <image:image>")
+        # 媒体经 307 跳对象存储，Google 图片可跟随重定向；不要放预签名 URL（会过期）
+        body.append(
+            f"      <image:loc>{xml_escape(f'{base}/api/v1/photos/{photo_id}/image/compressed')}</image:loc>"
+        )
+        if title:
+            body.append(f"      <image:title>{xml_escape(str(title))}</image:title>")
+        if caption:
+            body.append(f"      <image:caption>{xml_escape(caption)}</image:caption>")
+        body.append("    </image:image>")
         body.append("  </url>")
     body.append("</urlset>")
     return Response(

@@ -1223,3 +1223,17 @@ location ^~ /api/v1/photos/public/```），不能用正则。
   开微缓存后混合读约 301 req/s。生产有 Cloudflare 在前，静态资源与限流部分由边缘承担。
 - 若要做「多 IP 总吞吐」压测，应在**预发布环境**临时移除 `limit_req`，或从多台机器打；不要在线上
   为了压测放开限流。
+
+### 17.8 图片 sitemap 与作品 lastmod（2026-11-24）
+
+`/sitemap.xml` 已升级为**图片 sitemap**（Google image sitemap 扩展）：
+
+- `urlset` 增加 `xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"`；
+- 每件公开作品除 `<loc>`（`/photo/{id}`）+ `<lastmod>`（updated_at / published_at）外，
+  追加 `<image:image>`：`<image:loc>` 指向稳定端点
+  `/api/v1/photos/{id}/image/compressed`（307 → COS，**不放预签名 URL**，避免过期）、
+  `<image:title>` 作品标题、`<image:caption>` 取 AI 打标 `_ai_caption`（≤300 字）。
+- 敏感（privacy_level=sensitive）与待审作品仍不收录；测试见
+  `backend/tests/test_seo_endpoints.py::test_sitemap_includes_image_entries`。
+
+nginx 对 `/sitemap.xml` 已是 1h 反代缓存，改动后重新部署 backend 即可生效。

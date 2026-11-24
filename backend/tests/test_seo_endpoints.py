@@ -126,3 +126,13 @@ def test_sitemap_filters_private_and_pending(seo_env: TestClient):
     assert "33333333-3333-3333-3333-333333333333" not in body  # 待审不收录
     assert "seo-published" in body
     assert "seo-draft" not in body
+
+
+def test_sitemap_includes_image_entries(seo_env: TestClient):
+    """图片 sitemap 扩展：公开作品带 image:loc/title，敏感作品不出现。"""
+    body = seo_env.get("/sitemap.xml").text
+    assert 'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"' in body
+    assert "<image:image>" in body
+    assert "<image:loc>https://example.test/api/v1/photos/11111111-1111-1111-1111-111111111111/image/compressed</image:loc>" in body
+    assert "<image:title>公开作品</image:title>" in body
+    assert "22222222-2222-2222-2222-222222222222" not in body

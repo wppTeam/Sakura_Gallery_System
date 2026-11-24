@@ -342,6 +342,7 @@ Body: {"model":"qwen-image-3.0-pro",
 
 - 凭据、服务器 IP、SSH 账号、sudo 口令写入仓库任何文件
 - 公开响应暴露学号、真实姓名、完整 EXIF、GPS
+- 在图片 sitemap 里放会过期的预签名 URL（用稳定的媒体端点）
 - 裁切用户原图构图
 - AIGC 作品不带显式与隐式标识就放行
 - 把 Milvus / torch 变成必装依赖
