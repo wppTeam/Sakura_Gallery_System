@@ -158,6 +158,28 @@ template_meta work_id, file_key, format, slides, ratio, fonts[],
   `scripts/backfill_portrait_privacy.py`（存量回填）。
 - 脱敏失败不阻断审核，但公共端在缺脱敏图时拒绝返回该作品（宁可不展示）。
 
+### 认证、邮箱验证与登录安全（2026-11 落地）
+
+- **登录方式**：学号 / 邮箱 / `username` + 密码；另支持**邮箱验证码免密登录**
+  （`POST /auth/login-with-code`，`ALLOW_PASSWORDLESS_EMAIL_LOGIN`）。
+- **邮箱验证码**：`email_verification_codes` 表只存 HMAC 哈希（不存明文），
+  6 位数字、10 分钟有效、60 秒冷却、每小时 10 次上限、最多 5 次尝试；
+  用途 `register / login / reset_password / verify_email`。
+  发信通道 `EMAIL_PROVIDER=console|smtp|resend`（实现 `backend/app/services/email.py`），
+  生产用 Resend/SMTP；**未配置发信通道时 `REQUIRE_EMAIL_VERIFICATION` 必须为 false**，
+  否则注册会被 503 拦住（有意 fail-closed）。
+- **注册**：`REQUIRE_EMAIL_VERIFICATION=true` 或显式传 `email_code` 时必须校验邮箱验证码，
+  通过后置 `email_verified=true`。
+- **找回密码**：`/auth/password/forgot` 对未注册账号返回同样提示（防账号枚举）；
+  `/auth/password/reset` 成功后 `token_version++`（旧 token 全部失效）并清空登录锁定。
+- **登录安全**：连续失败 `LOGIN_MAX_FAILED_ATTEMPTS` 次锁定 `LOGIN_LOCK_MINUTES` 分钟；
+  敏感端点用 slowapi 限流（email-code 5/min、register 5/min、login 10/min），429 带 `Retry-After`。
+- **管理端**：`GET /admin/users` 支持 `search/role/is_active/email_verified/sort`；
+  `GET /admin/users/stats` 返回用户概览（含 `recent_logins`）；
+  `POST /admin/users/{id}/verify-email` 手动标记邮箱已验证（写审计日志）。
+- **禁止**：验证码明文存库、响应里回显验证码（`dev_code` 仅 `DEBUG=true` 且
+  `EMAIL_ENABLED=false` 时返回，生产不出现）、发信密钥写进仓库或日志。
+
 ## 6. 图像与资产管线
 
 **原图只读、保留原始构图，禁止裁切。**

@@ -148,7 +148,10 @@ async def get_users(
     skip: int = 0,
     limit: int = 100,
     search: Optional[str] = None,
-    role: Optional[str] = None
+    role: Optional[str] = None,
+    is_active: Optional[bool] = None,
+    email_verified: Optional[bool] = None,
+    sort: str = "created_at_desc",
 ) -> Tuple[List[User], int]:
     """
     获取用户列表（支持分页和搜索）
@@ -170,9 +173,11 @@ async def get_users(
     if search:
         # 支持搜索邮箱、姓名或学号
         search_filter = (
-            (User.email.ilike(f"%{search}%")) | 
+            (User.email.ilike(f"%{search}%")) |
             (User.full_name.ilike(f"%{search}%")) |
-            (User.student_id.ilike(f"%{search}%"))
+            (User.student_id.ilike(f"%{search}%")) |
+            (User.username.ilike(f"%{search}%")) |
+            (User.display_name.ilike(f"%{search}%"))
         )
         query = query.filter(search_filter)
         count_query = count_query.filter(search_filter)
@@ -181,9 +186,28 @@ async def get_users(
     if role:
         query = query.filter(User.role == role)
         count_query = count_query.filter(User.role == role)
-    
+
+    # 启用状态 / 邮箱验证过滤
+    if is_active is not None:
+        query = query.filter(User.is_active == is_active)
+        count_query = count_query.filter(User.is_active == is_active)
+    if email_verified is not None:
+        query = query.filter(User.email_verified == email_verified)
+        count_query = count_query.filter(User.email_verified == email_verified)
+
+    # 排序（白名单，避免任意列注入）
+    sort_orders = {
+        "created_at_desc": User.created_at.desc(),
+        "created_at_asc": User.created_at.asc(),
+        "last_login_desc": User.last_login_at.desc(),
+        "last_login_asc": User.last_login_at.asc(),
+        "login_count_desc": User.login_count.desc(),
+        "student_id_asc": User.student_id.asc(),
+    }
+    order_by = sort_orders.get(sort or "created_at_desc", User.created_at.desc())
+
     # 排序和分页
-    query = query.order_by(User.created_at.desc()).offset(skip).limit(limit)
+    query = query.order_by(order_by).offset(skip).limit(limit)
     
     # 执行查询
     result = await db.execute(query)
@@ -210,7 +234,13 @@ async def update_user_by_admin(
         return None
     
     update_data = user_data.model_dump(exclude_unset=True)
-    
+
+    # 邮箱验证状态（管理员可手动置为已验证/未验证）
+    if "email_verified" in update_data:
+        verified = update_data.pop("email_verified")
+        if verified is not None:
+            user.email_verified = bool(verified)
+
     # 处理密码
     if "password" in update_data and update_data["password"]:
         update_data["hashed_password"] = get_password_hash(update_data.pop("password"))

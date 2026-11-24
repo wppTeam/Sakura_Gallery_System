@@ -7,7 +7,7 @@ User Pydantic schemas
 from datetime import datetime
 from typing import Optional
 from enum import Enum
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 def validate_password_strength(password: str) -> str:
@@ -50,8 +50,13 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    """用户注册 schema (公开注册)"""
+    """用户注册 schema (公开注册)
+
+    email_code：邮箱验证码。REQUIRE_EMAIL_VERIFICATION=True 时必填；
+    为 False 时如果填了也会校验（用于「注册即验证」的可选流程）。
+    """
     password: str
+    email_code: Optional[str] = Field(default=None, min_length=4, max_length=12)
 
     @field_validator("password")
     @classmethod
@@ -94,6 +99,7 @@ class UserUpdateByAdmin(BaseModel):
     is_active: Optional[bool] = None
     role: Optional[RoleEnum] = None
     student_id: Optional[str] = None
+    email_verified: Optional[bool] = None
 
 
 class UserRoleUpdate(BaseModel):

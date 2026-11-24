@@ -59,6 +59,65 @@ Content-Type: application/json
 }
 ```
 
+### 邮箱验证码
+
+```http
+POST /api/v1/auth/email-code
+Content-Type: application/json
+
+{ "email": "user@example.com", "purpose": "register" }
+# purpose: register | login | reset_password | verify_email（verify_email 需登录）
+```
+
+**响应**：`{ ok, message, expires_in, cooldown_seconds, delivered, dev_code }`
+（`dev_code` 只在本地 `DEBUG=true` 且 `EMAIL_ENABLED=false` 时返回，生产不出现）。
+
+### 邮箱验证码免密登录
+
+```http
+POST /api/v1/auth/login-with-code
+Content-Type: application/json
+
+{ "email": "user@example.com", "code": "123456" }
+```
+
+响应与 `/auth/login` 相同（`access_token` + `user`）。
+
+### 注册（可选邮箱验证码）
+
+```http
+POST /api/v1/auth/register
+Content-Type: application/json
+
+{
+  "student_id": "20260001",
+  "username": "newuser",
+  "email": "user@example.com",
+  "email_code": "123456",
+  "password": "Sakura2026!"
+}
+```
+
+`REQUIRE_EMAIL_VERIFICATION=true` 时必须带 `email_code`，通过后 `email_verified=true`。
+
+### 忘记 / 重置密码
+
+```http
+POST /api/v1/auth/password/forgot   # { "identifier": "邮箱/学号/用户名" }
+POST /api/v1/auth/password/reset    # { "identifier": "...", "code": "123456", "new_password": "..." }
+```
+
+`forgot` 对未注册账号也返回同样提示（防枚举）；`reset` 成功后旧 token 全部失效。
+
+### 登录后验证邮箱
+
+```http
+POST /api/v1/auth/email/send-verification   # 需 Bearer token
+POST /api/v1/auth/email/verify              # { "code": "123456" }，返回 { detail, email_verified }
+```
+
+限流：email-code 5/min、register 5/min、login 10/min、forgot/reset 5/min（429 带 `Retry-After`）。
+
 ---
 
 ## 📷 照照管理
@@ -438,8 +497,13 @@ Content-Type: application/json
 ### 用户管理
 
 ```http
-GET    /api/v1/admin/users          # 获取用户列表
-PUT    /api/v1/admin/users/{id}     # 更新用户信息
+GET    /api/v1/admin/users          # 用户列表：search / role / is_active / email_verified /
+                                    # sort=created_at_desc|created_at_asc|last_login_desc|
+                                    #      last_login_asc|login_count_desc|student_id_asc
+GET    /api/v1/admin/users/stats    # 概览：total/active/inactive/admins/auditors/pending_approval/
+                                    # email_unverified/new_last_7_days/recent_logins[8]
+POST   /api/v1/admin/users/{id}/verify-email  # 管理员手动标记邮箱已验证（写审计日志）
+PUT    /api/v1/admin/users/{id}     # 更新用户信息（含 email_verified）
 DELETE /api/v1/admin/users/{id}     # 删除用户
 ```
 

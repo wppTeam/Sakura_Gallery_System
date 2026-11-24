@@ -18,6 +18,7 @@ from app.models.ai_usage import AIUsageEvent
 from app.models.moderation import ModerationReview
 from app.models.collection import Collection, CollectionPhoto
 from app.models.search_trace import AgentSearchTrace
+from app.models.email_code import EmailVerificationCode
 
 __all__ = [
     "User",
@@ -48,5 +49,6 @@ __all__ = [
     "AIUsageEvent",
     "ModerationReview",
     "AgentSearchTrace",
+    "EmailVerificationCode",
 ]
 

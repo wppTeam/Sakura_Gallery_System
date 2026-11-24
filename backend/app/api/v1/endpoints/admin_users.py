@@ -3,8 +3,10 @@
 
 仅限超级管理员访问，用于用户的增删改查、角色管理和密码重置。
 """
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db, get_current_admin_user
@@ -27,8 +29,11 @@ router = APIRouter(prefix="/users")
 async def get_users(
     skip: int = Query(0, ge=0, description="跳过记录数"),
     limit: int = Query(20, ge=1, le=100, description="返回记录数"),
-    search: Optional[str] = Query(None, description="搜索关键词（邮箱或姓名）"),
+    search: Optional[str] = Query(None, description="搜索关键词（学号/邮箱/用户名/姓名/昵称）"),
     role: Optional[str] = Query(None, description="按角色过滤"),
+    is_active: Optional[bool] = Query(None, description="按启用状态过滤"),
+    email_verified: Optional[bool] = Query(None, description="按邮箱验证状态过滤"),
+    sort: str = Query("created_at_desc", description="排序：created_at_desc/created_at_asc/last_login_desc/login_count_desc/student_id_asc"),
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_admin_user),
 ):
@@ -36,10 +41,77 @@ async def get_users(
     获取用户列表
 
     - 仅限管理员访问
-    - 支持分页和搜索
+    - 支持分页、搜索、角色/状态/邮箱验证筛选与排序
     """
-    users, total = await user_crud.get_users(db, skip=skip, limit=limit, search=search, role=role)
+    users, total = await user_crud.get_users(
+        db,
+        skip=skip,
+        limit=limit,
+        search=search,
+        role=role,
+        is_active=is_active,
+        email_verified=email_verified,
+        sort=sort,
+    )
     return UserList(users=[UserSchema.model_validate(u) for u in users], total=total)
+
+
+@router.get("/stats")
+async def get_user_stats(
+    db: AsyncSession = Depends(get_db),
+    _current_user: User = Depends(get_current_admin_user),
+):
+    """用户概览统计（管理员仪表盘用）。"""
+
+    async def _count(*filters) -> int:
+        stmt = select(func.count()).select_from(User)
+        for f in filters:
+            stmt = stmt.where(f)
+        return int((await db.execute(stmt)).scalar_one() or 0)
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    week_ago = now - timedelta(days=7)
+
+    total = await _count()
+    active = await _count(User.is_active.is_(True))
+    inactive = await _count(User.is_active.is_(False))
+    admins = await _count(User.role == "admin")
+    auditors = await _count(User.role == "auditor")
+    pending_approval = await _count(User.is_active.is_(False), User.role == "user")
+    email_unverified = await _count(User.email_verified.is_(False))
+    new_last_7_days = await _count(User.created_at >= week_ago)
+
+    recent_rows = (
+        await db.execute(
+            select(User)
+            .where(User.last_login_at.is_not(None))
+            .order_by(User.last_login_at.desc())
+            .limit(8)
+        )
+    ).scalars().all()
+    recent_logins = [
+        {
+            "id": u.id,
+            "username": u.username,
+            "display_name": u.display_name,
+            "role": u.role,
+            "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
+            "login_count": u.login_count or 0,
+        }
+        for u in recent_rows
+    ]
+
+    return {
+        "total": total,
+        "active": active,
+        "inactive": inactive,
+        "admins": admins,
+        "auditors": auditors,
+        "pending_approval": pending_approval,
+        "email_unverified": email_unverified,
+        "new_last_7_days": new_last_7_days,
+        "recent_logins": recent_logins,
+    }
 
 
 @router.post("", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
@@ -129,6 +201,35 @@ async def update_user(
 
     updated_user = await user_crud.update_user_by_admin(db, user_id, user_data)
     return UserSchema.model_validate(updated_user)
+
+
+@router.post("/{user_id}/verify-email", response_model=UserSchema)
+async def admin_verify_user_email(
+    user_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """管理员手动把用户邮箱标记为已验证（用于历史账号/邮件异常时兜底）。"""
+    user = await user_crud.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+    if not user.email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该用户未绑定邮箱")
+
+    user.email_verified = True
+    await db.commit()
+    await db.refresh(user)
+    await log_audit(
+        db,
+        user_id=current_user.id,
+        action="user.verify_email",
+        resource_type="user",
+        resource_id=user.id,
+        detail=f"管理员手动验证邮箱: {user.email}",
+        request=request,
+    )
+    return UserSchema.model_validate(user)
 
 
 @router.put("/{user_id}/role", response_model=UserSchema)

@@ -168,6 +168,32 @@ class Settings(BaseSettings):
     # 注册审批配置
     REQUIRE_REGISTRATION_APPROVAL: bool = False  # 是否开启注册审批
 
+    # ── 邮箱验证码 / 邮件发送 ──
+    # EMAIL_ENABLED=False 时不真实发送（本地开发用 console 输出到日志），
+    # 生产通过 SMTP 或 Resend API 发送；注册/找回密码是否强制验证码见下方开关。
+    EMAIL_ENABLED: bool = False
+    EMAIL_PROVIDER: str = "console"  # console | smtp | resend
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 465
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "视觉百花 <noreply@buct-sakura.cn>"
+    SMTP_USE_SSL: bool = True
+    SMTP_USE_TLS: bool = False
+    RESEND_API_KEY: str = ""
+    RESEND_FROM: str = "视觉百花 <noreply@buct-sakura.cn>"
+    EMAIL_CODE_LENGTH: int = 6
+    EMAIL_CODE_TTL_SECONDS: int = 600  # 验证码有效期（秒）
+    EMAIL_CODE_COOLDOWN_SECONDS: int = 60  # 同一邮箱同一用途的重发冷却
+    EMAIL_CODE_MAX_ATTEMPTS: int = 5  # 单条验证码最多尝试次数
+    EMAIL_CODE_HOURLY_LIMIT: int = 10  # 同一邮箱每小时最多发码次数
+    REQUIRE_EMAIL_VERIFICATION: bool = False  # 注册是否强制邮箱验证（生产建议 True）
+    ALLOW_PASSWORDLESS_EMAIL_LOGIN: bool = True  # 是否允许邮箱验证码免密登录
+
+    # 登录保护
+    LOGIN_MAX_FAILED_ATTEMPTS: int = 5
+    LOGIN_LOCK_MINUTES: int = 15
+
     # CORS 配置
     ALLOWED_ORIGINS: list[str] = [
         "http://localhost:5173",
