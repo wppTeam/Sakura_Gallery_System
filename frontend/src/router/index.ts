@@ -20,6 +20,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: false },
   },
   {
+    path: '/register',
+    name: 'Register',
+    component: () => import('../views/RegisterView.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
     path: '/',
     component: () => import('../layouts/PublicLayout.vue'),
     children: [
@@ -190,6 +196,7 @@ const ROUTE_TITLES: Record<string, string> = {
   MySubmissions: '我的投稿 · 视觉百花',
   Profile: '个人中心 · 视觉百花',
   Login: '登录 · 视觉百花',
+  Register: '注册 · 视觉百花',
   TaggingWorkspace: '标注工作台 · 视觉百花后台',
   Dashboard: '仪表盘 · 视觉百花后台',
   PhotoReview: '审核队列 · 视觉百花后台',
@@ -233,7 +240,7 @@ router.beforeEach(async (to) => {
   if (requiresTagger && !authStore.isTagger) {
     return '/'
   }
-  if (to.path === '/login' && authStore.isAuthenticated) {
+  if ((to.path === '/login' || to.path === '/register') && authStore.isAuthenticated) {
     return '/'
   }
   return true

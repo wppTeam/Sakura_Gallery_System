@@ -20,7 +20,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.models.email_code import EmailVerificationCode
-from app.services.email import EmailDeliveryError, send_verification_code_email
+from app.services.email import (
+    EmailDeliveryError,
+    is_email_configured,
+    send_verification_code_email,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +97,12 @@ async def issue_code(
     email = normalize_email(email)
     if not email:
         raise EmailCodeError("请填写邮箱", status_code=422)
+
+    # 生产环境未配置发信通道时明确失败，不要假装发送成功（本地 console 模式除外）
+    if not settings.DEBUG and not is_email_configured():
+        raise EmailCodeError(
+            "站点尚未配置邮件发送服务，请联系管理员", status_code=503
+        )
 
     await _purge_expired(db)
 

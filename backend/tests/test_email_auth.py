@@ -218,6 +218,19 @@ def test_verify_own_email(email_env):
     assert verified.json()["email_verified"] is True
 
 
+def test_email_code_unavailable_when_not_configured_in_prod(email_env):
+    settings = email_env["settings"]
+    settings.DEBUG = False
+    settings.EMAIL_ENABLED = False
+    client = email_env["client"]
+    resp = client.post(
+        "/api/v1/auth/email-code",
+        json={"email": "student@example.com", "purpose": "register"},
+    )
+    assert resp.status_code == 503
+    assert "邮件" in resp.json()["detail"]
+
+
 def test_admin_user_stats_and_filters(email_env):
     Session = email_env["Session"]
 

@@ -5,7 +5,7 @@
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { User, UserRole } from '../types/user'
+import type { LoginResponse, User, UserRole } from '../types/user'
 import * as authApi from '../api/auth'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -98,17 +98,36 @@ export const useAuthStore = defineStore('auth', () => {
     return initFromStorage()
   }
 
-  // 用户登录（支持学号或邮箱）
-  async function login(identifier: string, password: string) {
-    const response = await authApi.login({ identifier, password })
+  /**
+   * 写入会话：remember=true 存 localStorage（长期），false 存 sessionStorage（关标签页即失效）。
+   * 两处互斥，避免旧 token 残留导致「记住我」失效。
+   */
+  function persistSession(response: LoginResponse, remember = true) {
     token.value = response.access_token
     refreshTokenValue.value = response.refresh_token
     user.value = response.user
 
-    // 保存 token 到 localStorage
-    localStorage.setItem('auth_token', response.access_token)
-    localStorage.setItem('refresh_token', response.refresh_token)
+    const storage = remember ? localStorage : sessionStorage
+    const other = remember ? sessionStorage : localStorage
+    other.removeItem('auth_token')
+    other.removeItem('refresh_token')
+    storage.setItem('auth_token', response.access_token)
+    storage.setItem('refresh_token', response.refresh_token)
+  }
 
+  // 用户登录（支持学号 / 邮箱 / 用户名）
+  async function login(identifier: string, password: string, remember = true) {
+    const response = await authApi.login({ identifier, password })
+    persistSession(response, remember)
+    return response
+  }
+
+  /**
+   * 邮箱验证码登录（免密码）。
+   */
+  async function loginWithCode(email: string, code: string, remember = true) {
+    const response = await authApi.loginWithCode({ email, code })
+    persistSession(response, remember)
     return response
   }
 
@@ -166,6 +185,7 @@ export const useAuthStore = defineStore('auth', () => {
     initFromStorage,
     whenReady,
     login,
+    loginWithCode,
     logout,
     fetchCurrentUser,
     refreshAccessToken,

@@ -1,0 +1,281 @@
+/**
+ * 登录 / 注册页共享表单样式（页面级，依赖 tokens.css 变量）。
+ * 两页通过 <script setup> 里 import '../styles/auth.css' 引入，随路由 chunk 懒加载。
+ */
+
+/* ── 提示条 ─────────────────────────────────────────── */
+.auth-alert {
+  margin-bottom: 16px;
+  border-radius: var(--r-sm, 10px);
+}
+
+/* ── 分段控件 ───────────────────────────────────────── */
+.auth-segmented {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 20px;
+  border-radius: var(--r-pill, 999px);
+  background: var(--sakura-wash, rgba(232, 98, 140, 0.08));
+  border: 1px solid var(--line, #f3dde5);
+}
+
+.segmented-btn {
+  appearance: none;
+  border: none;
+  border-radius: var(--r-pill, 999px);
+  padding: 9px 12px;
+  font-family: var(--font, 'Noto Sans SC', sans-serif);
+  font-size: var(--fs-sm, 14px);
+  font-weight: 600;
+  color: var(--muted, #63474f);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color var(--dur-fast, 160ms) var(--ease-out, ease),
+    background var(--dur-fast, 160ms) var(--ease-out, ease),
+    box-shadow var(--dur-fast, 160ms) var(--ease-out, ease);
+}
+.segmented-btn:hover {
+  color: var(--sakura-deep, #c93a63);
+}
+.segmented-btn.is-active {
+  color: var(--on-accent, #fff);
+  background: var(--sakura-deep, #c93a63);
+  box-shadow: 0 4px 12px rgba(201, 58, 99, 0.24);
+}
+.segmented-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring, 0 0 0 3px rgba(201, 58, 99, 0.35));
+}
+
+/* ── 表单 ───────────────────────────────────────────── */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.auth-label {
+  font-size: var(--fs-sm, 14px);
+  font-weight: 600;
+  color: var(--ink, #4a2b35);
+}
+
+.auth-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.auth-required {
+  margin-left: 2px;
+  color: var(--sakura-deep, #c93a63);
+}
+.auth-optional {
+  margin-left: 2px;
+  font-weight: 400;
+  font-size: var(--fs-xs, 12px);
+  color: var(--faint, #9a8088);
+}
+
+.auth-field-hint {
+  margin: 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--faint, #9a8088);
+}
+
+.auth-inline-error {
+  margin: 0;
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.5;
+  color: var(--sakura-deep, #c93a63);
+}
+
+.auth-text-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-family: var(--font, 'Noto Sans SC', sans-serif);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 500;
+  color: var(--sakura-deep, #c93a63);
+  cursor: pointer;
+}
+.auth-text-btn:hover { text-decoration: underline; }
+.auth-text-btn:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--focus-ring, 0 0 0 3px rgba(201, 58, 99, 0.35));
+}
+
+/* ── 复选框行 ───────────────────────────────────────── */
+.auth-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.6;
+  color: var(--muted, #63474f);
+  cursor: pointer;
+  user-select: none;
+}
+.auth-check input {
+  appearance: none;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  border-radius: 5px;
+  border: 1.5px solid var(--line-strong, #e7c6d2);
+  background: var(--surface, #fff);
+  cursor: pointer;
+  position: relative;
+  transition: background var(--dur-fast, 160ms) var(--ease-out, ease), border-color var(--dur-fast, 160ms) var(--ease-out, ease);
+}
+.auth-check input:checked {
+  background: var(--sakura-deep, #c93a63);
+  border-color: var(--sakura-deep, #c93a63);
+}
+.auth-check input:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--on-accent, #fff);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.auth-check input:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring, 0 0 0 3px rgba(201, 58, 99, 0.35));
+}
+.auth-check--terms {
+  padding: 10px 12px;
+  border-radius: var(--r-sm, 10px);
+  background: var(--surface-soft, #fff9fb);
+  border: 1px solid var(--line, #f3dde5);
+}
+
+/* ── 提交按钮 ───────────────────────────────────────── */
+.auth-submit {
+  margin-top: 4px;
+  --n-height: 46px !important;
+  --n-border-radius: var(--r-pill, 999px) !important;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.auth-hint-center {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fs-xs, 12px);
+  color: var(--faint, #9a8088);
+}
+
+/* ── 底部切换 ───────────────────────────────────────── */
+.auth-switch {
+  margin: 16px 0 0;
+  text-align: center;
+  font-size: var(--fs-sm, 14px);
+  line-height: 1.7;
+  color: var(--muted, #63474f);
+}
+.auth-switch a {
+  color: var(--sakura-deep, #c93a63);
+  font-weight: 600;
+  text-decoration: none;
+}
+.auth-switch a:hover { text-decoration: underline; }
+.auth-switch-sep {
+  margin: 0 8px;
+  color: var(--line-strong, #e7c6d2);
+}
+
+.auth-terms {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: var(--fs-xs, 12px);
+  color: var(--faint, #9a8088);
+}
+.auth-terms-link {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: var(--sakura-deep, #c93a63);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ── Naive 组件主题（仅登录/注册页） ────────────────── */
+/* Naive 会把主题变量以行内 style 写在组件根节点上，普通类选择器覆盖不到，
+   需要用更高特异性 + !important 才能让公共端樱粉主题生效。 */
+.auth-page .auth-submit.n-button.n-button--primary-type {
+  --n-color: var(--sakura-deep, #c93a63) !important;
+  --n-color-hover: var(--sakura-deep-hover, #a82c50) !important;
+  --n-color-pressed: var(--sakura-deep-hover, #a82c50) !important;
+  --n-color-focus: var(--sakura-deep-hover, #a82c50) !important;
+  --n-text-color: var(--on-accent, #fff) !important;
+  --n-text-color-hover: var(--on-accent, #fff) !important;
+  --n-text-color-pressed: var(--on-accent, #fff) !important;
+  --n-text-color-focus: var(--on-accent, #fff) !important;
+  --n-border: 1px solid var(--sakura-deep, #c93a63) !important;
+  --n-border-hover: 1px solid var(--sakura-deep-hover, #a82c50) !important;
+  --n-border-pressed: 1px solid var(--sakura-deep-hover, #a82c50) !important;
+  --n-border-focus: 1px solid var(--sakura-deep-hover, #a82c50) !important;
+  --n-border-radius: var(--r-pill, 999px) !important;
+  --n-height: 46px !important;
+  --n-font-weight: 600 !important;
+}
+.auth-page .n-input {
+  --n-border-radius: var(--r-sm, 10px) !important;
+  --n-border: 1px solid var(--line-strong, #e7c6d2) !important;
+  --n-border-hover: 1px solid var(--sakura, #e8628c) !important;
+  --n-border-focus: 1px solid var(--sakura, #e8628c) !important;
+  --n-box-shadow-focus: 0 0 0 3px rgba(232, 98, 140, 0.16) !important;
+  --n-color: var(--surface, #fff) !important;
+  --n-color-focus: var(--surface, #fff) !important;
+  --n-height: 44px !important;
+}
+.auth-page .n-button.n-button--secondary-type {
+  --n-text-color: var(--sakura-deep, #c93a63) !important;
+  --n-text-color-hover: var(--sakura-deep-hover, #a82c50) !important;
+  --n-color: var(--sakura-wash, rgba(232, 98, 140, 0.08)) !important;
+  --n-color-hover: var(--sakura-pale, #ffe9f0) !important;
+  --n-border-radius: var(--r-pill, 999px) !important;
+}
+
+/* ── 响应式 ─────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .auth-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .auth-form { gap: 14px; }
+  .auth-segmented { margin-bottom: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segmented-btn,
+  .auth-check input { transition: none; }
+}
