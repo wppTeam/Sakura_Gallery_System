@@ -130,6 +130,7 @@ import {
   PricetagsOutline,
   SearchOutline,
   ServerOutline,
+  WalletOutline,
   SettingsOutline,
 } from '@vicons/ionicons5'
 import type { MenuOption } from 'naive-ui'
@@ -177,6 +178,7 @@ const avatarText = computed(() => (displayName.value || '?').trim().slice(0, 1).
 const PAGE_TITLES: Record<string, string> = {
   Dashboard: '仪表盘',
   PhotoReview: '照片审核',
+  AiUsage: 'AI 成本',
   TagManagement: '自由标签',
   TaxonomyManagement: '分类治理',
   TaggingTaskManagement: '标注任务',
@@ -233,6 +235,7 @@ const contentMenuOptions: MenuOption[] = [
 const adminMenuOptions: MenuOption[] = [
   { label: '批量导入', key: 'PhotoImport', icon: renderMenuIcon(CloudUploadOutline) },
   { label: '用户管理', key: 'UserManagement', icon: renderMenuIcon(PeopleOutline) },
+  { label: 'AI 成本', key: 'AiUsage', icon: renderMenuIcon(WalletOutline) },
   { label: '审计日志', key: 'AuditLog', icon: renderMenuIcon(DocumentTextOutline) },
   { label: '数据库管理', key: 'DatabaseManagement', icon: renderMenuIcon(ServerOutline) },
   { label: '系统设置', key: 'SystemSettings', icon: renderMenuIcon(SettingsOutline) },

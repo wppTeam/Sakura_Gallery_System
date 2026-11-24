@@ -126,6 +126,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, requiresAuditor: true },
       },
       {
+        path: 'ai-usage',
+        name: 'AiUsage',
+        component: () => import('../views/admin/AiUsage.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true },
+      },
+      {
         path: 'tags',
         name: 'TagManagement',
         component: () => import('../views/admin/TagManagement.vue'),
@@ -200,6 +206,7 @@ const ROUTE_TITLES: Record<string, string> = {
   TaggingWorkspace: '标注工作台 · 视觉百花后台',
   Dashboard: '仪表盘 · 视觉百花后台',
   PhotoReview: '审核队列 · 视觉百花后台',
+  AiUsage: 'AI 成本 · 视觉百花后台',
   NotFound: '页面未找到 · 视觉百花',
 }
 

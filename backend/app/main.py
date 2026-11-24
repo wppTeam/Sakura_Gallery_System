@@ -12,7 +12,7 @@ from xml.sax.saxutils import escape as xml_escape
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import JSONResponse, PlainTextResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -410,6 +410,177 @@ async def sitemap_xml():
         "\n".join(body),
         media_type="application/xml",
         headers={"Cache-Control": "public, max-age=3600"},
+    )
+
+
+# ────────────────────────────────────────────────────────────
+# 分享卡：给爬虫 / 社交平台（微信、Twitter、Telegram、Discord…）
+# 返回带 Open Graph 标签的最小 HTML（nginx 按 UA 把 /photo/{id}、
+# /collections/{slug} 转到这两个路径；普通浏览器仍然走 SPA）。
+# ────────────────────────────────────────────────────────────
+_SHARE_TTL_HEADERS = {"Cache-Control": "public, max-age=600"}
+
+
+def _share_html(
+    *,
+    title: str,
+    description: str,
+    canonical: str,
+    image_url: str | None,
+    image_alt: str | None = None,
+) -> str:
+    """拼最小分享页；所有值做 HTML 转义，避免标题注入。"""
+    from html import escape
+
+    site = "视觉百花 Sakura Gallery"
+    parts = [
+        "<!doctype html>",
+        '<html lang="zh-CN">',
+        "<head>",
+        '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        f"<title>{escape(title)} · {escape(site)}</title>",
+        f'<meta name="description" content="{escape(description)}">',
+        f'<link rel="canonical" href="{escape(canonical)}">',
+        '<meta property="og:type" content="article">',
+        f'<meta property="og:site_name" content="{escape(site)}">',
+        f'<meta property="og:title" content="{escape(title)}">',
+        f'<meta property="og:description" content="{escape(description)}">',
+        f'<meta property="og:url" content="{escape(canonical)}">',
+        '<meta name="twitter:card" content="summary_large_image">',
+        f'<meta name="twitter:title" content="{escape(title)}">',
+        f'<meta name="twitter:description" content="{escape(description)}">',
+    ]
+    if image_url:
+        parts.append(f'<meta property="og:image" content="{escape(image_url)}">')
+        parts.append(f'<meta property="og:image:alt" content="{escape(image_alt or title)}">')
+        parts.append(f'<meta name="twitter:image" content="{escape(image_url)}">')
+    parts += [
+        "</head>",
+        "<body>",
+        f'<p><a href="{escape(canonical)}">{escape(title)}</a></p>',
+        "</body>",
+        "</html>",
+    ]
+    return "\n".join(parts)
+
+
+def _share_not_found() -> HTMLResponse:
+    return HTMLResponse(
+        "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\">"
+        "<title>页面不存在 · 视觉百花</title></head><body>"
+        '<p>没有找到这个作品或专题，<a href="/">回到首页</a>。</p></body></html>',
+        status_code=404,
+        headers=_SHARE_TTL_HEADERS,
+    )
+
+
+@app.get("/api/v1/share/photo/{photo_id}", include_in_schema=False, response_class=HTMLResponse)
+async def share_photo_page(photo_id: str):
+    """作品分享卡：仅 approved 且非 sensitive 作品；其余 404（不泄露存在性）。"""
+    from app.models.photo import Photo
+
+    base = _site_base_url()
+    canonical = f"{base}/photo/{photo_id}"
+    async with AsyncSessionLocal() as db:
+        photo = (
+            await db.execute(
+                select(Photo).where(
+                    Photo.id == photo_id,
+                    Photo.status == "approved",
+                    or_(Photo.privacy_level.is_(None), Photo.privacy_level != "sensitive"),
+                )
+            )
+        ).scalar_one_or_none()
+    if photo is None:
+        return _share_not_found()
+
+    title = (photo.title or "校园影像作品").strip()
+    caption = None
+    if isinstance(photo.exif_data, dict):
+        raw = photo.exif_data.get("_ai_caption")
+        if isinstance(raw, str) and raw.strip():
+            caption = raw.strip()[:300]
+    description = (caption or (photo.description or "").strip() or "视觉百花 Sakura Gallery · 北化学生创作资源共享平台")
+    return HTMLResponse(
+        _share_html(
+            title=title,
+            description=description,
+            canonical=canonical,
+            image_url=f"{base}/api/v1/photos/{photo.id}/image/compressed",
+            image_alt=title,
+        ),
+        headers=_SHARE_TTL_HEADERS,
+    )
+
+
+@app.get("/api/v1/share/collection/{slug}", include_in_schema=False, response_class=HTMLResponse)
+async def share_collection_page(slug: str):
+    """专题分享卡：published + public 专题，封面取第一张公开作品。"""
+    from sqlalchemy import func
+
+    from app.models.collection import Collection, CollectionPhoto
+    from app.models.photo import Photo
+
+    base = _site_base_url()
+    canonical = f"{base}/collections/{slug}"
+    async with AsyncSessionLocal() as db:
+        collection = (
+            await db.execute(
+                select(Collection).where(
+                    Collection.slug == slug,
+                    Collection.status == "published",
+                    Collection.visibility == "public",
+                )
+            )
+        ).scalar_one_or_none()
+        if collection is None:
+            return _share_not_found()
+        public_filter = or_(Photo.privacy_level.is_(None), Photo.privacy_level != "sensitive")
+        cover_url = None
+        cover_row = (
+            await db.execute(
+                select(Photo.id)
+                .join(CollectionPhoto, CollectionPhoto.photo_id == Photo.id)
+                .where(
+                    CollectionPhoto.collection_id == collection.id,
+                    Photo.status == "approved",
+                    public_filter,
+                )
+                .order_by(CollectionPhoto.position, CollectionPhoto.added_at)
+                .limit(1)
+            )
+        ).first()
+        if cover_row is not None:
+            cover_url = f"{base}/api/v1/photos/{cover_row[0]}/image/compressed"
+        count = (
+            await db.execute(
+                select(func.count())
+                .select_from(CollectionPhoto)
+                .join(Photo, Photo.id == CollectionPhoto.photo_id)
+                .where(
+                    CollectionPhoto.collection_id == collection.id,
+                    Photo.status == "approved",
+                    public_filter,
+                )
+            )
+        ).scalar_one()
+
+    title = (collection.title or "策展专题").strip()
+    description = (collection.subtitle or collection.description or "").strip()
+    if not description:
+        description = "视觉百花 Sakura Gallery 策展专题"
+    if count:
+        description = f"{description}（{int(count)} 件作品）"
+    return HTMLResponse(
+        _share_html(
+            title=title,
+            description=description,
+            canonical=canonical,
+            image_url=cover_url,
+            image_alt=title,
+        ),
+        headers=_SHARE_TTL_HEADERS,
     )
 
 

@@ -136,3 +136,51 @@ def test_sitemap_includes_image_entries(seo_env: TestClient):
     assert "<image:loc>https://example.test/api/v1/photos/11111111-1111-1111-1111-111111111111/image/compressed</image:loc>" in body
     assert "<image:title>公开作品</image:title>" in body
     assert "22222222-2222-2222-2222-222222222222" not in body
+
+
+# ---------------------------------------------------------------------------
+# 分享卡（og 标签）：nginx 按 UA 把 /photo/{id}、/collections/{slug} 转发到这里
+# ---------------------------------------------------------------------------
+
+def test_share_photo_page_has_og_tags(seo_env: TestClient):
+    resp = seo_env.get("/api/v1/share/photo/11111111-1111-1111-1111-111111111111")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/html")
+    body = resp.text
+    assert '<meta property="og:title" content="公开作品">' in body
+    assert (
+        '<meta property="og:image" '
+        'content="https://example.test/api/v1/photos/11111111-1111-1111-1111-111111111111/image/compressed">'
+    ) in body
+    assert '<meta property="og:url" content="https://example.test/photo/11111111-1111-1111-1111-111111111111">' in body
+    assert '<meta name="twitter:card" content="summary_large_image">' in body
+    assert "cache-control" in {k.lower() for k in resp.headers}
+
+
+def test_share_photo_page_hides_sensitive_pending_and_unknown(seo_env: TestClient):
+    for photo_id in (
+        "22222222-2222-2222-2222-222222222222",  # sensitive
+        "33333333-3333-3333-3333-333333333333",  # pending
+        "99999999-9999-9999-9999-999999999999",  # 不存在
+    ):
+        resp = seo_env.get(f"/api/v1/share/photo/{photo_id}")
+        assert resp.status_code == 404, photo_id
+        assert "og:image" not in resp.text  # 404 页不泄露图片
+
+
+def test_share_collection_page(seo_env: TestClient):
+    resp = seo_env.get("/api/v1/share/collection/seo-published")
+    assert resp.status_code == 200
+    body = resp.text
+    assert '<meta property="og:title" content="公开专题">' in body
+    assert (
+        '<meta property="og:image" '
+        'content="https://example.test/api/v1/photos/11111111-1111-1111-1111-111111111111/image/compressed">'
+    ) in body
+    assert "/collections/seo-published" in body
+
+    draft = seo_env.get("/api/v1/share/collection/seo-draft")
+    assert draft.status_code == 404
+
+    unknown = seo_env.get("/api/v1/share/collection/does-not-exist")
+    assert unknown.status_code == 404

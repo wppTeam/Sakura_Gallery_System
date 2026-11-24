@@ -1053,6 +1053,20 @@ docker logs sakura-quick 2>&1 | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com'
   curl -s https://buct-sakura.cn/sitemap.xml | grep -c '<url>'   # 期望 = 3 + 专题数 + 公开作品数
   ```
   2026-11-24 本地实测：71 条（3 + 12 专题 + 56 公开作品）。
+- **分享卡（og 标签，2026-11-24 落地）**：微信/Twitter/Telegram 等抓取页面时只读 HTML、
+  不执行 JS，因此后端提供两个极简 HTML 端点（`backend/app/main.py`）：
+  - `GET /api/v1/share/photo/{id}`：og:title / og:description（优先 AI caption）/ og:image
+    （`/image/compressed` 稳定端点）/ og:url / twitter:card；**sensitive、pending、不存在一律 404**；
+  - `GET /api/v1/share/collection/{slug}`：专题标题/简介/作品数 + 第一张公开作品封面。
+  nginx 用 `map $http_user_agent $sakura_share_bot` 把爬虫/社交平台的
+  `/photo/{id}`、`/collections/{slug}` rewrite 到这两个路径（普通浏览器仍回 SPA）。
+  验证：
+  ```bash
+  curl -s -H 'User-Agent: Twitterbot/1.0' https://buct-sakura.cn/photo/<work-id> | grep -E 'og:title|og:image'
+  curl -s -H 'User-Agent: MicroMessenger/8.0' https://buct-sakura.cn/collections/<slug> | grep og:title
+  curl -s https://buct-sakura.cn/photo/<work-id> | head -c 100   # 普通 UA 仍是 SPA
+  ```
+  注意：rewrite 正则里的 `{}` 量词**必须加引号**，否则 nginx 会把 `{` 当 block 开始导致 `nginx -t` 失败。
 - **注意**：Cloudflare 代理下 sitemap 响应会带 `X-Cache-Status: BYPASS`（nginx 层不缓存，后端自身 1h 缓存头）；
   若发现 sitemap 不更新，先在 Cloudflare 面板对该路径 Purge。
 
