@@ -934,7 +934,7 @@ S3_PRESIGN_EXPIRE_SECONDS=600
 
 补充（2026-11-24）：存量 64 张作品的 AI 标签已在本机回填（58 张成功 / 3 张空结果 / $0.0363），并以「tags / photo_tags / photo_classifications / photos.exif_data」四组数据同步到生产库；线上检索 `q=樱花` 已能通过标签命中 5 条。
 
-### 15.3 Cloudflare Tunnel 接入（token 已装、DNS 待配）
+### 15.3 Cloudflare Tunnel 接入（token 已装、连接已注册、待 ingress）
 
 tunnel token 写进服务器 `.env.prod` 的 `TUNNEL_TOKEN=`，再：
 
@@ -951,6 +951,14 @@ Cloudflare Zero Trust 面板（Networks → Tunnels → 该 tunnel → Public Ho
 |---|---|
 | `buct-sakura.cn` | `http://nginx:80` |
 | `www.buct-sakura.cn` | `http://nginx:80` |
+
+**2026-11-24 现状**：tunnel 容器 `sakura-prod-tunnel` 已注册 4 条连接（QUIC，lax01/lax05），
+两条 CNAME（`buct-sakura.cn`、`www.buct-sakura.cn` → `a835caea-….cfargotunnel.com`，proxied）
+也已用 API 建好；**只差 ingress 规则**，因此访问仍返回 503
+（cloudflared 日志：`No ingress rules were defined … will return 503`）。
+给到的 API token 只有 zone DNS 权限（`/accounts` 为空、`PUT .../cfd_tunnel/{id}/configurations`
+返回 `1001 Not authorized`），所以需要在面板补 Public Hostname，或把 token 权限改为
+`Account → Cloudflare Tunnel → Edit` 后重跑上面的脚本。
 
 面板添加时会自动建 CNAME 到 `<tunnel_id>.cfargotunnel.com`。若拿到带
 `Zone:DNS:Edit` + `Account:Cloudflare Tunnel:Edit` 权限的 API token，可一条命令代劳：
