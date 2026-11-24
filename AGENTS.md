@@ -157,6 +157,21 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
   推荐开源免费商用字体：思源系列、霞鹜系列、站酷系列。
 - **肖像权**：涉可识别人物需被摄者同意，走 L2。
 
+### 内容举报与「通知—删除」（2026-11-25 落地）
+
+公开站点必须有侵权投诉渠道（《信息网络传播权保护条例》/《民法典》第 1195 条），实现：
+
+- **匿名可投诉**：`POST /api/v1/reports`，body `{target_type: photo|collection, target_id, reason_code, reason_text(≥5 字), contact?}`；
+  reason_code ∈ `copyright / portrait / illegal / misinformation / spam / other`；限流 10 次/小时/IP；
+  同一 IP 对同一对象 24h 内重复提交返回 429。
+- **管理端受理**：`GET /api/v1/admin/reports`（待处理优先）、`GET /api/v1/admin/reports/stats`、
+  `POST /api/v1/admin/reports/{id}/resolve`（`decision: accept|reject`，accept 可选 `action: takedown`）。
+  accept + takedown 对作品置 `photos.status = rejected` 并站内通知上传者；对专题置 `status = draft`。
+  所有受理写 `audit_logs`（`report.accept` / `report.reject`）。已处理过再提交 → 409。
+- **前端**：作品详情页「举报 / 侵权投诉」入口（服务条款 `/terms`、隐私政策 `/privacy` 页脚可达）；
+  管理后台 `/admin/reports` 举报处理页。
+- 约定：举报记录只存投诉文本与联系方式，不存证据文件；公开响应不返回投诉人联系方式（仅管理端可见）。
+
 ### 人像隐私分级（2026-11-24 落地）
 
 - `photos.privacy_level`：`normal` | `sensitive`。审核快筛/复核命中

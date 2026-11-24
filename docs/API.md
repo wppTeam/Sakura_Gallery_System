@@ -296,6 +296,22 @@ GET /api/v1/photos/{photo_id}/collections
 
 ---
 
+## 🚩 举报 / 侵权投诉
+
+公开端（匿名可提交，登录后自动记录投诉人）：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/reports` | 提交投诉。body：`target_type`(photo/collection)、`target_id`、`reason_code`(copyright/portrait/illegal/misinformation/spam/other)、`reason_text`(≥5 字)、`contact`(可选)。201 → `{ok,id,status,message}`；404 对象不存在；422 字段非法；429 同 IP 24 小时内重复投诉 |
+
+管理端（admin / auditor）：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/admin/reports?status=&target_type=&limit=&offset=` | 列表，待处理优先；返回 `items`（含 target_title/target_url/reason_label/contact/reporter）、`total` |
+| GET | `/api/v1/admin/reports/stats?days=7` | 概览：total/pending/accepted/rejected/by_reason/last_7_days |
+| POST | `/api/v1/admin/reports/{id}/resolve` | body `{decision: accept\|reject, note?, action: takedown\|none}`；accept+takedown 下架作品并通知上传者；已处理 → 409 |
+
 ## ❤️ 收藏
 
 作品详情页的收藏按钮与「我的收藏」页消费这组接口（均需登录）。

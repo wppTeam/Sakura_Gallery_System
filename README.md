@@ -252,6 +252,7 @@ cd backend && pytest
 | 易用性提升 | ✅ 2026-11-24 探索页筛选与滚动位置恢复、回到顶部、Lightbox 键盘/双击操作提示 |
 | AI 成本观测 | ✅ 2026-11-24 `GET /api/v1/admin/ai/usage`（总量/按日/按链路/按模型 tokens 与 USD + 最近事件），后台「AI 成本」页（7/30/90 天、成本占比、失败行高亮） |
 | 分享卡（OG） | ✅ 2026-11-24 `/api/v1/share/photo/{id}`、`/api/v1/share/collection/{slug}` 生成 OpenGraph/Twitter 卡片；nginx 按 UA 把爬虫/IM 抓取路由到 HTML、普通用户仍走 SPA；敏感与未发布一律 404 |
+| 内容举报 / 侵权投诉 ✅ | `POST /api/v1/reports` + 管理端受理下架；服务条款 `/terms`、隐私政策 `/privacy`（2026-11-25） |
 | 移动端与可访问性 | ✅ 2026-11-24 触屏可点 ≥44px、全站 focus-visible、Skip link、灯箱 Tab 焦点陷阱与焦点归还、图片 alt/label 补全、reduced-motion 降级、图片渐显 420ms、18 组合（390/768/1440×6 页）无横向溢出 |
 | 收藏 | ✅ 详情页收藏按钮 + `GET /photos/favorites/my` 返回可直接渲染的公开作品分页（只含 approved）；前端「我的收藏」页（列表/加载更多/空态）+ 个人中心入口 |
 | Agent 审核 | ✅ 规则前置 + VLM 快筛 + 难例复核 + 自动放行 + 人工队列 API；队列持久化（重启不丢、SKIP LOCKED 防重复领取） |
