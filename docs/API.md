@@ -290,6 +290,39 @@ GET /api/v1/collections/light?per_period=4
 权限：未登录 401；非作者 403（admin 可管理任意专辑）。封面只能取专辑内作品；
 空专辑不进入公开列表。
 
+### AI 策展助手（需登录）
+
+```http
+POST /api/v1/collections/assistant
+Content-Type: application/json
+
+{"prompt": "黄昏的校园"}
+```
+
+从作者自己的已通过作品里挑一组，生成**可编辑的专辑提案**（不创建专辑、不改作品）：
+标题、副标题、简介、按观展节奏排好的 `photo_ids`、每张作品的挑选理由、可选 `note`。
+前端在作品集编辑页确认后才调 `POST /api/v1/collections` 创建。
+
+```json
+{
+  "title": "暮色落在钟塔与花枝上",
+  "subtitle": "从斜阳压过钟塔，到路灯亮起的那些分钟",
+  "description": "傍晚的校园同时发生两件事：光在退，人开始慢下来。…",
+  "photo_ids": ["41f40cb8-…", "b3f90c6a-…"],
+  "picks": [{"photo": {"id": "…", "title": "…", "variants": {"…": "…"}}, "reason": "钟塔立在黄昏山色前，为整场展出定下时间"}],
+  "note": null,
+  "candidates": 56,
+  "cost_usd": 0.000932,
+  "latency_ms": 5634,
+  "model_id": "deepseek-v4.1-flash-1017"
+}
+```
+
+- 候选只含**本人** `approved` 且非 `sensitive` 的作品（最多 60 张，按发布时间倒序）；模型用 `P01` 这类编号引用，未知/重复编号会被丢弃。
+- 返回 3–24 张；不足 3 张时 `note` 会提示放宽主题。
+- 错误：未登录 401；`prompt` 为空或 >200 字 422；没有可策展作品 400；AI 渠道失败 503「AI 策展助手暂时不可用」；限流 `5/minute`（IP）→ 429。
+- 每次调用约 $0.001、6–10 秒（推理型模型，`max_tokens=8192`）；耗时会记入后台「AI 成本」（`operation=collection.assist`）。
+
 ### 专题列表（公开）
 
 ```http

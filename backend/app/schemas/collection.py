@@ -127,3 +127,32 @@ class LightPeriodResponse(BaseModel):
 class LightPeriodsResponse(BaseModel):
     periods: list[LightPeriodResponse]
     total: int
+
+
+# ── AI 策展助手（一句话从自己的作品里挑一组）────────────────────────
+
+
+class CuratorAssistRequest(BaseModel):
+    """作者的一句话策展主题，例如「雨天的校园」「黄昏的操场」。"""
+
+    prompt: str = Field(..., min_length=2, max_length=200)
+
+
+class CuratorPickItem(BaseModel):
+    photo: PhotoResponse
+    reason: str | None = None
+
+
+class CuratorAssistResponse(BaseModel):
+    """只读提案：前端确认后才创建专辑，不会自动落库。"""
+
+    title: str
+    subtitle: str | None = None
+    description: str | None = None
+    photo_ids: list[str] = Field(default_factory=list)
+    picks: list[CuratorPickItem] = Field(default_factory=list)
+    note: str | None = None
+    candidates: int = 0
+    cost_usd: float = 0.0
+    latency_ms: int = 0
+    model_id: str | None = None

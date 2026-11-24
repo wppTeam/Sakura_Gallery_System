@@ -8,10 +8,13 @@
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status as http_status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status as http_status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,16 +31,23 @@ from app.schemas.collection import (
     CollectionPhotosUpdate,
     CollectionSummary,
     CollectionUpdate,
+    CuratorAssistResponse,
+    CuratorAssistRequest,
+    CuratorPickItem,
     LightPeriodResponse,
     LightPeriodsResponse,
     SpectrumResponse,
     SpectrumSwatch,
 )
 from app.schemas.photo import PhotoResponse
+from app.services.ai_client import AIError
 from app.services.audit import log_audit
+from app.services.curation_assistant import propose_collection
 from app.services.light_of_day import LIGHT_PERIODS
 from app.services.spectrum import PALETTES, SPECTRUM_SLUGS
 
+logger = logging.getLogger(__name__)
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter()
 
 _MAX_LIMIT = 50
@@ -404,6 +414,59 @@ async def list_light_periods(
 
 
 # ── 作者手账（用户自建专辑）──────────────────────────────────────────
+
+
+@router.post(
+    "/assistant",
+    response_model=CuratorAssistResponse,
+    summary="AI 策展助手：一句话从我的作品里挑一组（只读提案，不落库）",
+)
+@limiter.limit("5/minute")
+async def assist_collection(
+    request: Request,
+    payload: CuratorAssistRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CuratorAssistResponse:
+    """把作者的一句话主题 + 自己已通过作品的紧凑目录交给文本模型，返回可编辑的专辑提案。
+
+    不创建专辑、不改作品；前端在编辑页里确认后才走 `POST /collections`。
+    """
+    try:
+        proposal = await propose_collection(db, current_user, payload.prompt)
+    except AIError as exc:
+        logger.warning("curation assistant failed: %s", exc)
+        raise HTTPException(
+            status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI 策展助手暂时不可用，请稍后再试",
+        ) from exc
+
+    if proposal.candidates == 0:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="你还没有已通过审核的作品，先投稿几张再来策展吧",
+        )
+
+    # ai_client 只 flush 记量事件、由调用方提交；这里提交才能让后台「AI 成本」看到这次调用。
+    await db.commit()
+
+    picks: list[CuratorPickItem] = []
+    for item in proposal.picks:
+        picks.append(
+            CuratorPickItem(photo=await serialize_photo(db, item.photo), reason=item.reason)
+        )
+    return CuratorAssistResponse(
+        title=proposal.title,
+        subtitle=proposal.subtitle,
+        description=proposal.description,
+        photo_ids=[str(item.photo.id) for item in proposal.picks],
+        picks=picks,
+        note=proposal.note,
+        candidates=proposal.candidates,
+        cost_usd=proposal.cost_usd,
+        latency_ms=proposal.latency_ms,
+        model_id=proposal.model_id,
+    )
 
 
 @router.get("/mine", response_model=CollectionMineResponse)

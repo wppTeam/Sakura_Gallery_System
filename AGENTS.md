@@ -126,6 +126,15 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
   CRUD 接口：`POST /api/v1/collections`、`GET /mine`、`GET /{id}/manage`、`PATCH /{id}`、
   `PUT /{id}/photos`（整体替换并保序）、`DELETE /{id}`；只能收录自己的 approved 作品，
   一次 ≤100 件、每人 ≤50 个专辑。
+- **AI 策展助手**（`POST /api/v1/collections/assistant`，需登录）：作者写一句话主题
+  （≤200 字），模型只从**本人 approved 且非 sensitive** 的作品里挑 3–24 张、按观展节奏
+  排序，返回标题/副标题/简介/每张的挑选理由（`picks[].reason`），**只出提案、不落库**，
+  前端在编辑页确认后才调 `POST /collections` 创建。候选上限 60 张（按发布时间倒序），
+  目录行格式 `P01 | 标题 | 季节·时段·校区 | 标签 | 画面描述`，模型用编号引用；不认识的
+  编号/重复编号会被丢弃。实现 `backend/app/services/curation_assistant.py`，
+  每次调用约 3.7k prompt + 0.5–1.6k completion tokens（≈$0.001）、6–10 秒；
+  推理型模型必须给足 `max_tokens`（当前 8192，给小了可见输出会被思维链吃光）。
+  限流 5 次/分钟/IP；AI 不可用返回 503、没有可策展作品返回 400。
 
 公开接口：`GET /api/v1/collections/public`（只返回至少 1 张公开作品的专题）、
 `GET /api/v1/collections/{slug}`（含 `owner{username,display_name}`）、
@@ -338,7 +347,8 @@ backend/.venv/bin/python scripts/check_ai.py
 # 种子演示数据（幂等；读 NAS/本地清单，口令写 backend/.seed-demo-credentials.json，0600 且不入库）
 backend/.venv/bin/python scripts/seed_demo.py --limit 63
 
-# 视觉截图（CDP；必须 fromSurface=False，headless 自带 --screenshot 会丢图片层）
+# 视觉截图（CDP；截图必须 fromSurface=True，否则淡入 / Ken Burns 这类合成层会缺层）
+# headless 自带 --screenshot 也会丢图片层；动画 hero 可先 emulate prefers-reduced-motion 再截
 backend/.venv/bin/python scripts/shot.py <url> <out.png> --width 1440 --full --wait 3
 ```
 
