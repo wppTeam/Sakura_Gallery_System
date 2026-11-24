@@ -147,6 +147,10 @@ async def chat_json(db, *, operation, user, system=None, model=None,
 - 提示词注入**分类目录**（`build_taxonomy_catalog()` 从 DB 生成，进程内缓存 10 分钟），
   模型只从平台既有词表里选，避免自造词；
 - 落库带幂等：重复审核同一张图不会重复加标签，只有新建关联才加 `tags.usage_count`；
+- 审核记录里的 `rules.auto_tagging` 摘要：`tags`/`facets` 是**调用后作品上实际生效**的
+  标签与分类，`applied` 表示「作品当前已带有 AI 标签/分类」，`applied_now` 表示「本次是否
+  新增写入」，`added_tags`/`added_facets` 是本次新增部分（幂等重跑时 `applied=true`、
+  `applied_now=false`，管理端据此显示「已写入作品」而不是「本次无新增」）；
 - 打标失败只记 warning，审核结论照常返回；
 - 开关 `MODERATION_AUTO_TAGGING`（默认 true），标签上限 `AUTO_TAGGING_MAX_TAGS`（默认 6）；
 - 存量作品回填：`cd backend && .venv/bin/python ../scripts/backfill_auto_tags.py --dry-run`

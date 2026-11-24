@@ -157,7 +157,10 @@ def test_apply_prefilter_tags_writes_relations(auto_tag_db):
 
     summary, tags, links, classifications, photo = _run(_check())
     assert summary["applied"] is True
+    assert summary["applied_now"] is True
     assert set(summary["tags"]) == {"樱花", "校园"}  # 「摄影」是黑名单噪音
+    assert set(summary["added_tags"]) == {"樱花", "校园"}
+    assert set(summary["added_facets"]) == {"season", "campus"}
     assert summary["facets"] == {"season": "春季", "campus": "昌平校区"}
     assert tags == ["校园", "樱花"]
     assert links == 2
@@ -193,8 +196,10 @@ def test_apply_prefilter_tags_writes_relations(auto_tag_db):
             return summary2, links2, classes2, before_usage, after_usage
 
     summary2, links2, classes2, before_usage, after_usage = _run(_again())
-    assert summary2["applied"] is False
-    assert summary2["tags"] == []
+    assert summary2["applied"] is True  # 作品当前仍带这些标签/分类
+    assert summary2["applied_now"] is False  # 但本次没有新增写入
+    assert set(summary2["tags"]) == {"樱花", "校园"}
+    assert summary2["added_tags"] == []
     assert summary2["facets"] == {"season": "春季", "campus": "昌平校区"}
     assert links2 == 2
     assert classes2 == 2

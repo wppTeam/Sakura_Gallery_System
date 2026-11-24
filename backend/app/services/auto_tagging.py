@@ -176,20 +176,25 @@ def clear_catalog_cache() -> None:
     _catalog_cache.clear()
 
 
-async def _apply_tags(db: AsyncSession, photo: Photo, tag_names: list[str]) -> list[str]:
-    """把标签挂到照片上，返回实际生效的标签名（幂等）。"""
-    applied: list[str] = []
+async def _apply_tags(
+    db: AsyncSession, photo: Photo, tag_names: list[str]
+) -> tuple[list[str], list[str]]:
+    """把标签挂到照片上（幂等）。
+
+    返回 (生效标签, 本次新增标签)：生效标签表示调用后作品上实际带有的标签，
+    本次新增标签只在真正新建关联时非空（供审核记录区分「已写入」与「本次无新增」）。
+    """
+    effective: list[str] = []
+    added: list[str] = []
     for name in tag_names:
         normalized = normalize_tag_name(name)
         if not normalized:
             continue
         tag = await resolve_tag_by_name_or_alias(db, name)
-        created = False
         if tag is None:
             tag = Tag(name=normalized, category="auto")
             db.add(tag)
             await db.flush()
-            created = True
         existing = await db.execute(
             select(PhotoTag).where(PhotoTag.photo_id == photo.id, PhotoTag.tag_id == tag.id)
         )
@@ -197,18 +202,18 @@ async def _apply_tags(db: AsyncSession, photo: Photo, tag_names: list[str]) -> l
         if link is None:
             db.add(PhotoTag(photo_id=photo.id, tag_id=tag.id))
             tag.usage_count = int(tag.usage_count or 0) + 1
-            applied.append(tag.name)
-        elif created:
-            applied.append(tag.name)
-    return applied
+            added.append(tag.name)
+        if tag.name not in effective:
+            effective.append(tag.name)
+    return effective, added
 
 
 async def _apply_facets(
     db: AsyncSession, photo: Photo, facets: dict[str, str]
-) -> tuple[dict[str, str], bool]:
-    """把 facets 名称解析成节点并写分类；返回 (生效分类, 是否真的发生了写入)。"""
+) -> tuple[dict[str, str], list[str]]:
+    """把 facets 名称解析成节点并写分类；返回 (生效分类, 本次新增写入的 facet key)。"""
     applied: dict[str, str] = {}
-    changed = False
+    changed_keys: list[str] = []
     for facet_key, raw_value in facets.items():
         if facet_key not in AUTO_TAGGING_FACETS:
             continue
@@ -226,7 +231,7 @@ async def _apply_facets(
                     )
                 )
                 if node.id not in set(existing.scalars().all()):
-                    changed = True
+                    changed_keys.append(facet_key)
             await set_photo_classification(db, photo, facet_key, node)
             applied[facet_key] = node.name
         except Exception as exc:  # noqa: BLE001 - 单个分类失败不影响其它分类
@@ -237,7 +242,7 @@ async def _apply_facets(
                 raw_value,
                 exc,
             )
-    return applied, changed
+    return applied, changed_keys
 
 
 async def apply_prefilter_tags(
@@ -253,15 +258,19 @@ async def apply_prefilter_tags(
         "caption": suggestions["caption"],
         "tags": [],
         "facets": {},
+        "added_tags": [],
+        "added_facets": [],
         "requested_tags": suggestions["tags"],
+        # applied 表示「作品当前是否已带有 AI 标签/分类」，applied_now 表示本次是否新增写入
         "applied": False,
+        "applied_now": False,
     }
     if not suggestions["tags"] and not suggestions["facets"] and not suggestions["caption"]:
         return summary
 
     try:
-        applied_tags = await _apply_tags(db, photo, suggestions["tags"])
-        applied_facets, facets_changed = await _apply_facets(db, photo, suggestions["facets"])
+        applied_tags, added_tags = await _apply_tags(db, photo, suggestions["tags"])
+        applied_facets, added_facet_keys = await _apply_facets(db, photo, suggestions["facets"])
     except Exception as exc:
         logger.warning("auto tagging failed photo=%s: %s", photo.id, exc, exc_info=True)
         summary["error"] = f"{exc.__class__.__name__}: {exc}"[:300]
@@ -283,7 +292,10 @@ async def apply_prefilter_tags(
         {
             "tags": applied_tags,
             "facets": applied_facets,
-            "applied": bool(applied_tags or facets_changed),
+            "added_tags": added_tags,
+            "added_facets": added_facet_keys,
+            "applied": bool(applied_tags or applied_facets),
+            "applied_now": bool(added_tags or added_facet_keys),
         }
     )
     await db.flush()
