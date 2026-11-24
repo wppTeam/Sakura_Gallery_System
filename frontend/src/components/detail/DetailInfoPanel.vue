@@ -268,10 +268,25 @@
       </p>
     </section>
 
+    <div class="report-row">
+      <button type="button" class="report-link" @click="reportOpen = true">
+        <n-icon :component="FlagOutline" :size="14" />
+        举报 / 侵权投诉
+      </button>
+      <span class="report-note">平台按「通知—删除」规则处理</span>
+    </div>
+
     <p class="compliance-note">
       作品版权归作者所有。如作品涉及可识别人物，使用者需另行取得肖像权授权；
-      若你认为本作品侵犯了你的权益，请联系站点管理员处理。
+      若你认为本作品侵犯了你的权益，请通过上方「举报 / 侵权投诉」提交，或联系站点管理员处理。
     </p>
+
+    <ReportDialog
+      v-model:show="reportOpen"
+      target-type="photo"
+      :target-id="detail.id"
+      :target-title="detail.title"
+    />
   </aside>
 </template>
 
@@ -287,6 +302,7 @@ import {
   CopyOutline,
   DownloadOutline,
   EyeOutline,
+  FlagOutline,
   HeartOutline,
   LocationOutline,
   LockClosedOutline,
@@ -297,6 +313,7 @@ import {
   SparklesOutline,
 } from '@vicons/ionicons5'
 import { formatDate, formatFileSize, getPhotoUrl } from '../../utils/format'
+import ReportDialog from './ReportDialog.vue'
 import type { WorkDetail } from './workDetail'
 import { fetchPhotoCollections, type PhotoCollectionRef } from '../../api/collections'
 
@@ -331,6 +348,9 @@ watch(
   },
   { immediate: true },
 )
+
+// ── 举报 / 侵权投诉 ─────────────────────────────────────
+const reportOpen = ref(false)
 
 // ── 顶部标签 ────────────────────────────────────────────
 const kindLabel = computed(() => {
@@ -1215,5 +1235,49 @@ onBeforeUnmount(() => {
   color: var(--faint, #a98590);
   font-size: 12px;
   line-height: 1.7;
+}
+
+.report-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 14px 0 2px;
+}
+
+.report-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.report-link:hover {
+  color: var(--sakura-deep);
+  border-color: var(--sakura-mist);
+  background: var(--sakura-wash);
+}
+
+.report-link:focus-visible {
+  outline: 3px solid var(--focus-ring, rgba(201, 58, 99, 0.38));
+  outline-offset: 2px;
+}
+
+.report-note {
+  font-size: 12px;
+  color: var(--faint);
+}
+
+@media (max-width: 560px) {
+  .report-link {
+    min-height: 44px;
+  }
 }
 </style>

@@ -53,6 +53,10 @@
         <span class="foot-last-right">
           <a :href="`${REPO_URL}#readme`" class="foot-last-link" target="_blank" rel="noopener noreferrer">关于</a>
           <span aria-hidden="true">·</span>
+          <RouterLink class="foot-last-link" to="/terms">服务条款</RouterLink>
+          <span aria-hidden="true">·</span>
+          <RouterLink class="foot-last-link" to="/privacy">隐私政策</RouterLink>
+          <span aria-hidden="true">·</span>
           <span>本站不收集非必要个人信息</span>
         </span>
       </div>
