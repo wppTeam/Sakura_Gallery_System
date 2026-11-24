@@ -128,13 +128,13 @@ function shortModeLabel(): string {
 const resultMeta = computed(() => {
   if (!result.value) return ''
   const ms = Math.round(result.value.queryTimeMs)
-  return `用时 ${ms} ms · ${shortModeLabel()}`
+  const parts = [`共 ${formatCount(total.value)} 件`, `用时 ${ms} ms`, shortModeLabel()]
+  return parts.join(' · ')
 })
 
-const currentModeLabel = computed(() => {
-  const searchMode = result.value?.searchMode || mode.value
-  return MODE_LABELS[searchMode] || '检索'
-})
+function formatCount(value: number): string {
+  return new Intl.NumberFormat('zh-CN').format(value ?? 0)
+}
 
 const fallbackNotice = computed(() => {
   const reason = result.value?.fallbackReason
@@ -346,12 +346,15 @@ function retry() {
 }
 
 async function loadEmptySuggestions(query: string) {
+  let list: string[] = []
   try {
-    const list = await getSearchSuggestions(query)
-    emptySuggestions.value = list.filter((item) => item && item.trim()).slice(0, 6)
+    list = await getSearchSuggestions(query)
   } catch {
-    emptySuggestions.value = []
+    list = []
   }
+  const cleaned = list.filter((item) => item && item.trim()).slice(0, 6)
+  // 建议接口没命中时给一组通用换词方向，保证空态始终可执行
+  emptySuggestions.value = cleaned.length ? cleaned : IDLE_SUGGESTIONS
 }
 
 async function loadFacets() {

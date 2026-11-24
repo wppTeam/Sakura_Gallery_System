@@ -34,10 +34,22 @@
         :key="review.id || review.photoId"
         :review="review"
         :active="review.photoId === selectedPhotoId"
+        :selected="selectedIds.includes(review.photoId)"
+        :selectable="selectable"
         :data-photo-id="review.photoId"
         @select="emit('select', $event)"
+        @toggle-select="emit('toggle-select', $event)"
       />
-      <p v-if="loading" class="queue-loading-hint" aria-live="polite">正在刷新…</p>
+      <div v-if="loadingMore" class="queue-more-skeleton" aria-busy="true">
+        <div v-for="index in 2" :key="index" class="queue-skeleton-item">
+          <span class="sk-thumb" />
+          <span class="sk-lines">
+            <i class="sk-line sk-line-title" />
+            <i class="sk-line sk-line-summary" />
+          </span>
+        </div>
+      </div>
+      <p v-if="loading && items.length" class="queue-loading-hint" aria-live="polite">正在刷新…</p>
     </div>
   </section>
 </template>
@@ -48,17 +60,24 @@ import { ImagesOutline } from '@vicons/ionicons5'
 import type { ModerationReview } from '../../api/moderation'
 import QueueItem from './QueueItem.vue'
 
-const props = defineProps<{
-  items: ModerationReview[]
-  loading: boolean
-  selectedPhotoId: string
-  emptyTitle: string
-  emptyHint: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    items: ModerationReview[]
+    loading: boolean
+    loadingMore?: boolean
+    selectedPhotoId: string
+    emptyTitle: string
+    emptyHint: string
+    selectable?: boolean
+    selectedIds?: string[]
+  }>(),
+  { loadingMore: false, selectable: false, selectedIds: () => [] },
+)
 
 const emit = defineEmits<{
   select: [review: ModerationReview]
   refresh: []
+  'toggle-select': [photoId: string]
 }>()
 
 function onKeydown(event: KeyboardEvent) {
@@ -103,10 +122,16 @@ function onKeydown(event: KeyboardEvent) {
   color: var(--faint, #97808a);
 }
 
-.queue-skeleton {
+.queue-skeleton,
+.queue-more-skeleton {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.queue-more-skeleton {
+  margin-top: 8px;
+  opacity: 0.7;
 }
 
 .queue-skeleton-item {

@@ -1,7 +1,11 @@
 <template>
   <div
     class="queue-item"
-    :class="{ 'is-active': active, 'is-failed': review.status === 'failed' }"
+    :class="{
+      'is-active': active,
+      'is-failed': review.status === 'failed',
+      'is-selected': selected,
+    }"
     role="button"
     tabindex="0"
     :aria-current="active ? 'true' : undefined"
@@ -10,6 +14,24 @@
     @keydown.enter.prevent="emit('select', review)"
     @keydown.space.prevent="emit('select', review)"
   >
+    <label
+      v-if="selectable"
+      class="queue-select"
+      :title="selected ? '取消选择' : '选择用于批量操作'"
+      @click.stop
+    >
+      <input
+        type="checkbox"
+        class="queue-check"
+        :checked="selected"
+        :aria-label="`选择 ${photoTitle}`"
+        @change.stop="emit('toggle-select', review.photoId)"
+        @click.stop
+        @keydown.stop
+      />
+      <span class="queue-check-box" aria-hidden="true" />
+    </label>
+
     <div class="queue-thumb">
       <img
         v-if="review.photo?.thumbUrl && !thumbFailed"
@@ -87,13 +109,19 @@ import {
   uploaderLabel,
 } from './reviewDisplay'
 
-const props = defineProps<{
-  review: ModerationReview
-  active: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    review: ModerationReview
+    active: boolean
+    selectable?: boolean
+    selected?: boolean
+  }>(),
+  { selectable: false, selected: false },
+)
 
 const emit = defineEmits<{
   select: [review: ModerationReview]
+  'toggle-select': [photoId: string]
 }>()
 
 const thumbFailed = ref(false)
@@ -294,5 +322,70 @@ const confidence = computed(() => {
   .queue-item {
     transition: none;
   }
+}
+</style>
+
+
+<style scoped>
+.queue-select {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+}
+
+.queue-check {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.queue-check-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--line-strong, #eccdd8);
+  border-radius: 6px;
+  background: var(--surface, #fff);
+  transition:
+    background var(--dur-fast, 160ms) var(--ease-out, ease),
+    border-color var(--dur-fast, 160ms) var(--ease-out, ease);
+}
+
+.queue-check-box::after {
+  content: '';
+  width: 8px;
+  height: 4.5px;
+  border-bottom: 2px solid var(--on-accent, #fff);
+  border-left: 2px solid var(--on-accent, #fff);
+  transform: rotate(-45deg) scale(0.6);
+  opacity: 0;
+  transition: opacity var(--dur-fast, 160ms) var(--ease-out, ease);
+}
+
+.queue-check:checked + .queue-check-box {
+  border-color: var(--sakura-deep, #c93a63);
+  background: var(--sakura-deep, #c93a63);
+}
+
+.queue-check:checked + .queue-check-box::after {
+  opacity: 1;
+}
+
+.queue-check:focus-visible + .queue-check-box {
+  outline: 3px solid var(--focus-ring, rgba(201, 58, 99, 0.4));
+  outline-offset: 2px;
+}
+
+.queue-item.is-selected {
+  border-color: var(--sakura, #e8628c);
+  background: var(--sakura-wash, #fff5f8);
 }
 </style>

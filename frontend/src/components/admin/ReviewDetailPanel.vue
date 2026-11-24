@@ -77,7 +77,16 @@
       </header>
 
       <section class="photo-preview">
-        <div class="photo-frame" :style="{ aspectRatio: previewAspect }">
+        <div
+          class="photo-frame is-clickable"
+          :style="{ aspectRatio: previewAspect }"
+          role="button"
+          tabindex="0"
+          title="点击查看大图（可缩放，Esc 关闭）"
+          @click="emit('preview')"
+          @keydown.enter.prevent="emit('preview')"
+          @keydown.space.prevent="emit('preview')"
+        >
           <img
             v-if="!imageFailed && imageSrc"
             :src="imageSrc"
@@ -89,12 +98,17 @@
             <n-icon :size="26" color="#c9a6b2"><ImageOutline /></n-icon>
             <span>预览加载失败，可打开原图查看</span>
           </div>
+          <span class="photo-zoom-hint" aria-hidden="true">
+            <n-icon :size="14"><EyeOutline /></n-icon>
+            点击查看大图
+          </span>
           <a
             v-if="photo"
             class="photo-open"
             :href="originalUrl"
             target="_blank"
             rel="noopener noreferrer"
+            @click.stop
           >
             <n-icon :size="14"><OpenOutline /></n-icon>
             在新标签页查看原图
@@ -168,6 +182,7 @@ const emit = defineEmits<{
   run: []
   retry: []
   close: []
+  preview: []
   'submit-decision': [payload: DecisionPayload]
 }>()
 
@@ -333,6 +348,37 @@ watch(
   flex: none;
 }
 
+.photo-frame.is-clickable {
+  cursor: zoom-in;
+}
+
+.photo-frame.is-clickable:hover .photo-zoom-hint,
+.photo-frame.is-clickable:focus-visible .photo-zoom-hint {
+  opacity: 1;
+}
+
+.photo-frame.is-clickable:focus-visible {
+  outline: 3px solid var(--sakura, #e8628c);
+  outline-offset: 3px;
+}
+
+.photo-zoom-hint {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: var(--r-pill, 999px);
+  background: rgba(74, 43, 53, 0.72);
+  color: #fff;
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast, 160ms) var(--ease-out, ease);
+}
+
 .photo-preview {
   border: 1px solid var(--line, #f3dde5);
   border-radius: var(--r-card, 20px);
@@ -461,7 +507,38 @@ watch(
 
 @media (max-width: 768px) {
   .detail-head,
-  .photo-preview {
+  .photo-frame.is-clickable {
+  cursor: zoom-in;
+}
+
+.photo-frame.is-clickable:hover .photo-zoom-hint,
+.photo-frame.is-clickable:focus-visible .photo-zoom-hint {
+  opacity: 1;
+}
+
+.photo-frame.is-clickable:focus-visible {
+  outline: 3px solid var(--sakura, #e8628c);
+  outline-offset: 3px;
+}
+
+.photo-zoom-hint {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: var(--r-pill, 999px);
+  background: rgba(74, 43, 53, 0.72);
+  color: #fff;
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast, 160ms) var(--ease-out, ease);
+}
+
+.photo-preview {
     padding: 11px;
     border-radius: var(--r-md, 14px);
   }

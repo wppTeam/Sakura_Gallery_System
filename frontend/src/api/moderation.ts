@@ -579,3 +579,62 @@ export const DECISION_LABELS: Record<ModerationDecision, string> = {
   reject: '驳回',
   hold: '挂起待补',
 }
+
+// ────────────────────────────────────────────────────────────
+// 批量终判（POST /api/v1/admin/moderation/batch-decision）
+// ────────────────────────────────────────────────────────────
+
+export interface BatchDecisionPayload {
+  photoIds: string[]
+  decision: ModerationDecision
+  reason?: string
+  finalTier?: ModerationTier
+}
+
+export interface BatchDecisionItem {
+  photoId: string
+  ok: boolean
+  decision: string
+  error: string
+}
+
+export interface BatchDecisionResponse {
+  ok: boolean
+  processed: number
+  succeeded: number
+  failed: number
+  items: BatchDecisionItem[]
+}
+
+/**
+ * 批量人工终判。后端逐条独立提交，单张失败不影响其它，失败原因通过 items[i].error 返回。
+ * photo_ids 上限 50，超过时前端需分批。
+ */
+export async function submitBatchDecision(payload: BatchDecisionPayload): Promise<BatchDecisionResponse> {
+  const body: UnknownRecord = {
+    photo_ids: payload.photoIds,
+    decision: payload.decision,
+  }
+  const reason = payload.reason?.trim()
+  if (reason) body.reason = reason
+  if (payload.finalTier) body.final_tier = payload.finalTier
+
+  const raw = await request.post<UnknownRecord>('/api/v1/admin/moderation/batch-decision', body)
+  const itemsRaw = Array.isArray(raw.items) ? raw.items : []
+  const items: BatchDecisionItem[] = itemsRaw.map((entry) => {
+    const item = isRecord(entry) ? entry : {}
+    return {
+      photoId: firstString(item.photo_id, item.photoId),
+      ok: toBoolean(item.ok) === true,
+      decision: firstString(item.decision, item.final_decision),
+      error: firstString(item.error, item.detail, item.message),
+    }
+  })
+  return {
+    ok: toBoolean(raw.ok) !== false,
+    processed: toNumber(raw.processed, items.length),
+    succeeded: toNumber(raw.succeeded, items.filter((item) => item.ok).length),
+    failed: toNumber(raw.failed, items.filter((item) => !item.ok).length),
+    items,
+  }
+}
