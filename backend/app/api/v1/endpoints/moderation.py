@@ -37,6 +37,7 @@ from app.models.moderation import ModerationReview
 from app.models.photo import Photo
 from app.models.user import User
 from app.services.audit import log_audit
+from app.services.curation import sync_photo_curation
 from app.services.moderation import VALID_TIERS
 from app.services.moderation_worker import (
     enqueue_moderation,
@@ -522,6 +523,9 @@ async def _apply_decision(
     elif decision == "reject":
         photo.status = "rejected"
     # hold：照片保持 pending，等待上传者补充材料或下一轮复审
+
+    # 策展自动归档：approve 加入「光的一日 / 樱色光谱」，reject 从这两个自动策展里移出
+    await sync_photo_curation(db, photo)
 
     detail = {
         "decision": decision,

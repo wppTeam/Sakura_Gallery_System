@@ -35,6 +35,7 @@ from app.schemas.report import (
     ReportStats,
 )
 from app.services.audit import log_audit
+from app.services.curation import sync_photo_curation
 from app.services.notification import notify_user
 
 logger = logging.getLogger(__name__)
@@ -281,6 +282,9 @@ async def resolve_report(
         if report.target_type == "photo":
             target.status = "rejected"
             action_taken = "photo.takedown"
+            # 下架后从「光的一日 / 樱色光谱」的自动策展里移除（数据不脏，专题页也不会留空挂）
+            target_model = target
+            await sync_photo_curation(db, target_model)
             await notify_user(
                 db,
                 user_id=target.uploader_id,

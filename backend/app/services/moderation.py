@@ -28,6 +28,7 @@ from app.prompts.moderation import (
     get_prefilter_prompt,
 )
 from app.services import auto_tagging, moderation_rules, privacy
+from app.services.curation import sync_photo_curation
 from app.services.ai_client import (
     AIJSONResult,
     chat_json,
@@ -515,6 +516,8 @@ async def moderate_photo(
             review.final_decision = "approve"
             review.final_tier = "L0"
             review.reviewed_at = datetime.utcnow()
+            # 免审即发的作品同样要进策展（否则首页「光的一日」只能靠手动跑 seed）
+            await sync_photo_curation(db, photo)
 
         await db.flush()
         return review

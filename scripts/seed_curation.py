@@ -39,80 +39,8 @@ from app.services.light_of_day import LIGHT_SLUGS, period_for_hour  # noqa: E402
 from app.services.spectrum import PALETTES, classify_image  # noqa: E402
 from app.services.storage import get_storage  # noqa: E402
 
-LIGHT_COLLECTIONS: dict[str, dict] = {
-    "light-dawn": {
-        "title": "晨 · 还没醒的校园",
-        "subtitle": "六点到九点，光比人先到",
-        "description": (
-            "清晨的校园是另一座校园：长椅上还有露水，食堂后门在卸货，"
-            "第一节课的自行车铃从很远的地方传来。这一册只收天亮之后、"
-            "热闹之前的那些光。"
-        ),
-        "sort_order": 20,
-    },
-    "light-noon": {
-        "title": "昼 · 光在正上方",
-        "subtitle": "十点到十五点，影子最短的时刻",
-        "description": (
-            "正午的光最诚实，没有阴影可以躲：花被照得发白，湖面亮成一块锡纸，"
-            "人走在路上都眯着眼睛。它不好拍，但拍下来都很干净。"
-        ),
-        "sort_order": 21,
-    },
-    "light-dusk": {
-        "title": "暮 · 一日将尽",
-        "subtitle": "十五点以后，光开始变软",
-        "description": (
-            "下午四点以后，校园像被谁调低了饱和度：红砖变暖，湖面变金，"
-            "走廊尽头的窗把光切成一格一格。这是一天里最容易想起谁的时刻，"
-            "所以这一册最长。"
-        ),
-        "sort_order": 22,
-    },
-    "light-night": {
-        "title": "夜 · 灯与星",
-        "subtitle": "十九点以后，另一种校园",
-        "description": (
-            "晚上十点以后还在外面的人，会遇见另一种校园：路灯把树影放大，"
-            "自习室的窗户像一格格灯箱，偶尔抬头能看见星。夜晚的颜色少，"
-            "但每一块都很沉。"
-        ),
-        "sort_order": 23,
-    },
-}
-
-SPECTRUM_COLLECTIONS: dict[str, dict] = {
-    "spectrum-pink": {
-        "title": "樱粉光谱",
-        "subtitle": "花瓣、暮色与一点点少女感",
-        "description": "被主色判为樱粉的作品合集：从玉兰到晚霞，从操场跑道到食堂的灯光。",
-        "sort_order": 30,
-    },
-    "spectrum-gold": {
-        "title": "金色光谱",
-        "subtitle": "阳光、灯与暖色织物",
-        "description": "金色是时间留下的颜色：晒过的墙、傍晚的湖、秋天的银杏和橘子汽水。",
-        "sort_order": 31,
-    },
-    "spectrum-green": {
-        "title": "绿色光谱",
-        "subtitle": "草木、山野与生长",
-        "description": "校园里最不缺的颜色。叶子、球场、雨后的草坪，以及所有正在长高的东西。",
-        "sort_order": 32,
-    },
-    "spectrum-blue": {
-        "title": "蓝色光谱",
-        "subtitle": "天空、水面与夜色",
-        "description": "蓝色是留白最多的颜色：晴天的天、冬天的湖、熄灯后的走廊。",
-        "sort_order": 33,
-    },
-    "spectrum-ink": {
-        "title": "墨色光谱",
-        "subtitle": "低饱和、逆光与静谧的黑",
-        "description": "不是没有颜色，而是颜色都很轻：雾天、逆光、深夜，和所有不好意思太鲜艳的时刻。",
-        "sort_order": 34,
-    },
-}
+# 专题元信息与审核链路的自动归档共用同一份定义（避免两处文案漂移）。
+from app.services.curation import LIGHT_COLLECTIONS, SPECTRUM_COLLECTIONS  # noqa: E402,F811
 
 
 def _light_bucket(captured_at: datetime | None) -> str | None:

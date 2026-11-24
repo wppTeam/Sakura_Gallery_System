@@ -115,6 +115,13 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
 - `editorial`（自动策展）：**光的一日**按 `captured_at` 归入 晨/昼/暮/夜、**樱色光谱**
   按作品主色归入 樱粉/金/绿/蓝/墨（`app/services/spectrum.py`，采样缩略图 64×64 的 HSV）。
   两者都由 `scripts/seed_curation.py` 幂等生成，不需要人工选图。
+  **成员自动归档（审核链路内）**：`backend/app/services/curation.py` —— 作品过审
+  （人工终判 `_apply_decision` 与快筛自动放行两条路径）、被驳回或被举报下架时，
+  自动加入/移出「光的一日」「樱色光谱」的对应专题；只动 `light-*` / `spectrum-*`
+  两个前缀，不碰人工 editorial 与作者手账，成员追加到末尾不重排既有顺序。
+  存量校正用 `scripts/sync_curation_membership.py [--dry-run]`（幂等，可反复跑，
+  容器内 `docker exec -w /app -e PYTHONPATH=/app` 执行）；专题文案/顺序以
+  `seed_curation.py` 为准，标题与引言单源在 `curation.py`（seed 直接 import）。
 - `user`（作者手账）：用户自建专辑，**不需要管理员批准**（落 AGENTS.md §4 的「自助」原则）。
   CRUD 接口：`POST /api/v1/collections`、`GET /mine`、`GET /{id}/manage`、`PATCH /{id}`、
   `PUT /{id}/photos`（整体替换并保序）、`DELETE /{id}`；只能收录自己的 approved 作品，
