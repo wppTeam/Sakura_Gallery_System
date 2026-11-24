@@ -331,10 +331,15 @@ function open() {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* 无头截图 / reduced-motion 下 opacity 过渡会停在 0，图片永远不显示；直接不淡入 */
   .work-card__img,
   .work-card__actions {
-    transition: opacity 200ms linear;
+    transition: none;
     transform: none;
+  }
+
+  .work-card__img.is-loaded {
+    opacity: 1;
   }
 
   .work-card:hover .work-card__img.is-loaded,
