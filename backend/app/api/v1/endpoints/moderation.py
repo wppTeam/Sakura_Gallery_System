@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timedelta
 from typing import Any, Literal, Optional
 
@@ -43,6 +44,8 @@ from app.services.moderation_worker import (
     process_pending_reviews,
 )
 from app.services.notification import notify_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/moderation", tags=["AI 审核"])
 settings = get_settings()
@@ -129,6 +132,30 @@ class ModerationDecisionRequest(BaseModel):
     decision: DecisionLiteral
     reason: Optional[str] = Field(None, max_length=1000, description="人工判定理由（写入审计日志）")
     final_tier: Optional[TierLiteral] = Field(None, description="人工确认的发布级别")
+
+
+class ModerationBatchDecisionRequest(BaseModel):
+    """批量人工终判请求（一次最多 50 张）。"""
+
+    photo_ids: list[str] = Field(..., min_length=1, max_length=50, description="照片 ID 列表")
+    decision: DecisionLiteral
+    reason: Optional[str] = Field(None, max_length=1000, description="统一理由（写入审计日志）")
+    final_tier: Optional[TierLiteral] = Field(None, description="统一确认的发布级别")
+
+
+class ModerationBatchItemResult(BaseModel):
+    photo_id: str
+    ok: bool
+    decision: Optional[str] = None
+    error: Optional[str] = None
+
+
+class ModerationBatchDecisionResponse(BaseModel):
+    ok: bool = True
+    processed: int
+    succeeded: int
+    failed: int
+    items: list[ModerationBatchItemResult]
 
 
 class ModerationDrainResponse(BaseModel):
@@ -465,6 +492,63 @@ async def run_moderation_for_photo(
     return ModerationRunResponse(photo_id=photo_id, review_id=review.id)
 
 
+async def _apply_decision(
+    db: AsyncSession,
+    photo: Photo,
+    review: ModerationReview,
+    *,
+    decision: str,
+    reason: Optional[str],
+    final_tier: Optional[str],
+    request: Request,
+    current_user: User,
+) -> None:
+    """把人工终判写进 review / photo，并记审计与通知（不 commit，由调用方决定事务边界）。"""
+    resolved_tier = final_tier or review.tier or "L2"
+    if resolved_tier not in VALID_TIERS:  # 双保险：Pydantic 已限制
+        resolved_tier = "L2"
+
+    review.final_decision = decision
+    review.final_tier = resolved_tier
+    review.tier = resolved_tier
+    review.reviewer_id = current_user.id
+    review.reviewed_at = datetime.utcnow()
+    if decision == "hold" and review.status != "completed":
+        review.status = "completed"
+
+    if decision == "approve":
+        photo.status = "approved"
+        photo.published_at = photo.published_at or datetime.utcnow()
+    elif decision == "reject":
+        photo.status = "rejected"
+    # hold：照片保持 pending，等待上传者补充材料或下一轮复审
+
+    detail = {
+        "decision": decision,
+        "final_tier": resolved_tier,
+        "review_id": review.id,
+        "reason": reason,
+    }
+    await log_audit(
+        db,
+        user_id=current_user.id,
+        action=f"moderation.{decision}",
+        resource_type="photo",
+        resource_id=photo.id,
+        detail=json.dumps(detail, ensure_ascii=False),
+        request=request,
+    )
+    if decision in ("approve", "reject"):
+        await notify_user(
+            db,
+            user_id=photo.uploader_id,
+            type="photo_approved" if decision == "approve" else "photo_rejected",
+            title="您的照片已通过审核" if decision == "approve" else "您的照片未通过审核",
+            content=(reason or "")[:500] or None,
+            related_id=photo.id,
+        )
+
+
 @router.post("/{photo_id}/decision", response_model=ModerationReviewOut, summary="人工终判")
 async def decide_moderation(
     photo_id: str,
@@ -487,54 +571,91 @@ async def decide_moderation(
     if review.final_decision in ("approve", "reject"):
         raise HTTPException(status_code=409, detail="该照片已有终判，不能重复决策")
 
-    decision = payload.decision
-    final_tier = payload.final_tier or review.tier or "L2"
-    if final_tier not in VALID_TIERS:  # 双保险：Pydantic 已限制
-        final_tier = "L2"
-
-    review.final_decision = decision
-    review.final_tier = final_tier
-    review.tier = final_tier
-    review.reviewer_id = current_user.id
-    review.reviewed_at = datetime.utcnow()
-    if decision == "hold" and review.status != "completed":
-        review.status = "completed"
-
-    if decision == "approve":
-        photo.status = "approved"
-        photo.published_at = photo.published_at or datetime.utcnow()
-    elif decision == "reject":
-        photo.status = "rejected"
-    # hold：照片保持 pending，等待上传者补充材料或下一轮复审
-
-    detail = {
-        "decision": decision,
-        "final_tier": final_tier,
-        "review_id": review.id,
-        "reason": payload.reason,
-    }
-    await log_audit(
+    await _apply_decision(
         db,
-        user_id=current_user.id,
-        action=f"moderation.{decision}",
-        resource_type="photo",
-        resource_id=photo_id,
-        detail=json.dumps(detail, ensure_ascii=False),
+        photo,
+        review,
+        decision=payload.decision,
+        reason=payload.reason,
+        final_tier=payload.final_tier,
         request=request,
+        current_user=current_user,
     )
-    if decision in ("approve", "reject"):
-        await notify_user(
-            db,
-            user_id=photo.uploader_id,
-            type="photo_approved" if decision == "approve" else "photo_rejected",
-            title="您的照片已通过审核" if decision == "approve" else "您的照片未通过审核",
-            content=(payload.reason or "")[:500] or None,
-            related_id=photo_id,
-        )
-
     await db.commit()
     await db.refresh(review)
     return _review_out(review, photo)
+
+
+@router.post(
+    "/batch-decision",
+    response_model=ModerationBatchDecisionResponse,
+    summary="批量人工终判",
+)
+async def batch_decide_moderation(
+    payload: ModerationBatchDecisionRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_auditor_user),
+):
+    """批量 approve / reject / hold。
+
+    逐条独立提交：某一张失败（不存在 / 已有终判 / 异常）不会影响其它照片，
+    结果里逐条返回 ``ok`` 与 ``error``，前端据此报告。
+    """
+    results: list[ModerationBatchItemResult] = []
+    for photo_id in payload.photo_ids:
+        photo = await db.get(Photo, photo_id)
+        if photo is None:
+            results.append(
+                ModerationBatchItemResult(photo_id=photo_id, ok=False, error="照片不存在")
+            )
+            continue
+        try:
+            review = await get_latest_review(db, photo_id)
+            if review is None:
+                review = ModerationReview(photo_id=photo_id, status="completed")
+                db.add(review)
+                await db.flush()
+            if review.final_decision in ("approve", "reject"):
+                results.append(
+                    ModerationBatchItemResult(
+                        photo_id=photo_id, ok=False, error="该照片已有终判，不能重复决策"
+                    )
+                )
+                continue
+            await _apply_decision(
+                db,
+                photo,
+                review,
+                decision=payload.decision,
+                reason=payload.reason,
+                final_tier=payload.final_tier,
+                request=request,
+                current_user=current_user,
+            )
+            await db.commit()
+            results.append(
+                ModerationBatchItemResult(
+                    photo_id=photo_id, ok=True, decision=payload.decision
+                )
+            )
+        except Exception as exc:  # noqa: BLE001 - 逐条容错，把原因带回前端
+            await db.rollback()
+            logger.warning("批量终判失败 photo=%s: %s", photo_id, exc)
+            results.append(
+                ModerationBatchItemResult(
+                    photo_id=photo_id, ok=False, error="处理失败，请稍后重试"
+                )
+            )
+
+    succeeded = sum(1 for item in results if item.ok)
+    return ModerationBatchDecisionResponse(
+        ok=True,
+        processed=len(results),
+        succeeded=succeeded,
+        failed=len(results) - succeeded,
+        items=results,
+    )
 
 
 __all__ = ["router"]

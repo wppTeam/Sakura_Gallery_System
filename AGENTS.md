@@ -99,6 +99,7 @@ template_meta work_id, file_key, format, slides, ratio, fonts[],
 
 审核 API（`/api/v1/admin`，admin+auditor）：`GET /moderation/queue`、`GET /moderation/{photo_id}`、
 `POST /moderation/{photo_id}/run`、`POST /moderation/{photo_id}/decision`（approve/reject/hold，写 AuditLog + Notification）、
+`POST /moderation/batch-decision`（批量终判，逐条独立提交并返回每条 ok/error）、
 `GET /moderation/stats`、`POST /moderation/drain`（运维手动消费队列）。所有模型调用统一走 `backend/app/services/ai_client.py` 的 `chat_json()`
 （渠道解析、预算闸门、重试、JSON 修复、用量与成本落 `ai_usage_events`）。
 架构、配置项与降级矩阵见 [`docs/AI_PLATFORM.md`](docs/AI_PLATFORM.md)。

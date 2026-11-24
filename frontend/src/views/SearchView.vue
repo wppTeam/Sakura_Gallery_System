@@ -18,6 +18,7 @@ import {
   type SearchMode,
   type SearchWork,
 } from '../api/search'
+import SkeletonCard from '../components/public/SkeletonCard.vue'
 import ClarifyCard from '../components/search/ClarifyCard.vue'
 import FacetChips from '../components/search/FacetChips.vue'
 import ResultMasonry from '../components/search/ResultMasonry.vue'
@@ -27,6 +28,9 @@ import '../styles/search.css'
 
 const PAGE_SIZE = 24
 const IDLE_SUGGESTIONS = ['樱花大道的春天', '操场夜景', '图书馆里的人', '秋天的银杏']
+const HISTORY_KEY = 'sakura:search-history'
+const HISTORY_LIMIT = 8
+const SKELETON_SHAPES = [4 / 3, 3 / 4, 1, 3 / 4, 4 / 3, 1, 3 / 4, 4 / 3]
 
 const MODE_LABELS: Record<string, string> = {
   agent: 'Agent 智能检索',
@@ -82,7 +86,11 @@ const suggestions = ref<string[]>([])
 const suggestionsOpen = ref(false)
 const activeSuggestion = ref(-1)
 const searchBox = ref<HTMLElement | null>(null)
+const searchInput = ref<InstanceType<typeof NInput> | null>(null)
 const showBackToTop = ref(false)
+const history = ref<string[]>(readHistory())
+const emptySuggestions = ref<string[]>([])
+const activeResultIndex = ref(-1)
 
 let searchSeq = 0
 let suggestSeq = 0
@@ -101,11 +109,26 @@ const hasFacets = computed(
 )
 const hasMore = computed(() => works.value.length > 0 && works.value.length < total.value)
 
+const showSkeleton = computed(() => loading.value && works.value.length === 0)
+const hasHistory = computed(() => history.value.length > 0)
+
 const totalText = computed(() => {
   if (loading.value && !works.value.length) return '正在检索…'
-  if (!total.value) return `${works.value.length} 个结果`
-  if (total.value > works.value.length) return `共 ${total.value} 个结果`
-  return `${total.value} 个结果`
+  if (!total.value) return `${works.value.length} 件`
+  return `共 ${total.value} 件`
+})
+
+function shortModeLabel(): string {
+  const searchMode = result.value?.searchMode || mode.value
+  if (searchMode === 'fast') return '快速'
+  if (searchMode === 'agent') return 'Agent'
+  return MODE_LABELS[searchMode] || '检索'
+}
+
+const resultMeta = computed(() => {
+  if (!result.value) return ''
+  const ms = Math.round(result.value.queryTimeMs)
+  return `用时 ${ms} ms · ${shortModeLabel()}`
 })
 
 const currentModeLabel = computed(() => {
@@ -245,6 +268,8 @@ async function performSearch() {
   works.value = []
   total.value = 0
   result.value = null
+  emptySuggestions.value = []
+  activeResultIndex.value = -1
   searched.value = true
   closeSuggestions()
 
@@ -261,6 +286,7 @@ async function performSearch() {
     works.value = response.works
     total.value = response.total
     if (hasFacetItems(response.facets)) facets.value = response.facets
+    if (!response.works.length && !response.total) void loadEmptySuggestions(query)
   } catch (raw) {
     if (seq !== searchSeq) return
     const described = describeError(raw)
@@ -276,6 +302,8 @@ async function performSearch() {
 
 function resetToIdle() {
   searchSeq += 1
+  activeResultIndex.value = -1
+  emptySuggestions.value = []
   loading.value = false
   loadingMore.value = false
   retrying.value = false
@@ -317,6 +345,15 @@ function retry() {
   void performSearch()
 }
 
+async function loadEmptySuggestions(query: string) {
+  try {
+    const list = await getSearchSuggestions(query)
+    emptySuggestions.value = list.filter((item) => item && item.trim()).slice(0, 6)
+  } catch {
+    emptySuggestions.value = []
+  }
+}
+
 async function loadFacets() {
   facetsLoading.value = true
   try {
@@ -326,6 +363,110 @@ async function loadFacets() {
     // facet 只是辅助筛选，失败时静默降级为不显示
   } finally {
     facetsLoading.value = false
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// 搜索历史 / 键盘快捷操作
+// ────────────────────────────────────────────────────────────
+
+function readHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY)
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).slice(0, HISTORY_LIMIT)
+  } catch {
+    return []
+  }
+}
+
+function persistHistory() {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history.value))
+  } catch {
+    // localStorage 不可用时静默降级
+  }
+}
+
+function recordHistory(keyword: string) {
+  const text = keyword.trim()
+  if (!text) return
+  history.value = [text, ...history.value.filter((item) => item !== text)].slice(0, HISTORY_LIMIT)
+  persistHistory()
+}
+
+function removeHistory(keyword: string) {
+  history.value = history.value.filter((item) => item !== keyword)
+  persistHistory()
+}
+
+function clearHistory() {
+  history.value = []
+  persistHistory()
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  const element = target as HTMLElement | null
+  if (!element) return false
+  const tag = element.tagName
+  return (
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    tag === 'SELECT' ||
+    element.isContentEditable ||
+    Boolean(element.closest('[contenteditable="true"]'))
+  )
+}
+
+function focusSearch() {
+  searchInput.value?.focus()
+  closeSuggestions()
+}
+
+function blurSearch() {
+  const element = document.activeElement as HTMLElement | null
+  if (element && searchBox.value?.contains(element)) element.blur()
+  closeSuggestions()
+}
+
+function resultCards(): HTMLElement[] {
+  return Array.from(document.querySelectorAll<HTMLElement>('.search-results .work-card'))
+}
+
+function focusResult(index: number) {
+  const cards = resultCards()
+  if (!cards.length) return
+  const next = Math.min(Math.max(index, 0), cards.length - 1)
+  activeResultIndex.value = next
+  const card = cards[next]
+  card?.focus({ preventScroll: true })
+  card?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
+
+function onGlobalKeydown(event: KeyboardEvent) {
+  if (event.defaultPrevented) return
+  const typing = isTypingTarget(event.target)
+
+  if (event.key === '/' && !typing && !event.metaKey && !event.ctrlKey && !event.altKey) {
+    event.preventDefault()
+    focusSearch()
+    return
+  }
+
+  if (event.key === 'Escape' && typing) {
+    blurSearch()
+    return
+  }
+
+  if (typing) return
+
+  if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && works.value.length && !loading.value) {
+    event.preventDefault()
+    const cardIsFocused = document.activeElement?.classList.contains('work-card')
+    const base = activeResultIndex.value >= 0 ? activeResultIndex.value : cardIsFocused ? 0 : -1
+    focusResult(event.key === 'ArrowDown' ? base + (base < 0 ? 0 : 1) : Math.max(base - 1, 0))
   }
 }
 
@@ -342,6 +483,7 @@ function submitSearch(raw?: string) {
     resetToIdle()
     return
   }
+  recordHistory(next)
   pushUrl()
   void performSearch()
 }
@@ -449,10 +591,12 @@ onMounted(() => {
   document.title = 'Agent 检索 · 视觉百花 Sakura Gallery'
   applyRoute(true)
   window.addEventListener('scroll', onScroll, { passive: true })
+  window.addEventListener('keydown', onGlobalKeydown)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', onScroll)
+  window.removeEventListener('keydown', onGlobalKeydown)
   document.title = '视觉百花 Sakura Gallery'
 })
 </script>
@@ -473,6 +617,7 @@ onBeforeUnmount(() => {
         <div ref="searchBox" class="search-box">
           <form class="search-form" @submit.prevent="onInputEnter">
             <n-input
+              ref="searchInput"
               v-model:value="queryInput"
               class="search-input"
               size="large"
@@ -492,6 +637,7 @@ onBeforeUnmount(() => {
             </n-input>
             <button type="submit" class="search-submit">检索</button>
           </form>
+          <span class="search-kbd" aria-hidden="true"><kbd>/</kbd> 按 / 搜索</span>
 
           <ul
             v-if="suggestionsOpen && suggestions.length"
@@ -583,16 +729,19 @@ onBeforeUnmount(() => {
         <div v-if="loading || (searched && works.length)" class="results-head">
           <div class="results-summary" role="status">
             <span class="results-count">{{ totalText }}</span>
-            <span v-if="result" class="results-meta">{{ currentModeLabel }} · 耗时 {{ Math.round(result.queryTimeMs) }} ms</span>
+            <span v-if="result && !loading" class="results-meta">{{ resultMeta }}</span>
           </div>
           <button v-if="hasActiveFilters" type="button" class="results-clear" @click="clearFilters">
             清除筛选
           </button>
         </div>
 
-        <div v-if="loading" class="agent-loading">
-          <span class="agent-loading__dots" aria-hidden="true"><i /><i /><i /></span>
-          <span>Agent 正在拆解意图并检索，通常需要几秒…</span>
+        <div v-if="showSkeleton" class="search-skeleton" aria-busy="true" aria-label="正在检索">
+          <SkeletonCard
+            v-for="(shape, index) in SKELETON_SHAPES"
+            :key="index"
+            :aspect-ratio="shape"
+          />
         </div>
 
         <SearchEmptyState
@@ -608,10 +757,38 @@ onBeforeUnmount(() => {
           variant="empty"
           :query="q"
           :can-clear="hasActiveFilters"
+          :suggestions="emptySuggestions"
+          @pick="submitSearch"
           :retrying="retrying"
           @retry="retry"
           @clear="clearFilters"
         />
+
+        <section
+          v-if="!loading && !searched && hasHistory"
+          class="search-history"
+          aria-label="最近搜索"
+        >
+          <div class="search-history__head">
+            <span class="search-history__label">最近搜索</span>
+            <button type="button" class="search-history__clear" @click="clearHistory">清空</button>
+          </div>
+          <div class="search-history__chips">
+            <span v-for="item in history" :key="item" class="history-chip">
+              <button type="button" class="history-chip__main" @click="submitSearch(item)">
+                {{ item }}
+              </button>
+              <button
+                type="button"
+                class="history-chip__remove"
+                :aria-label="`删除搜索历史 ${item}`"
+                @click.stop="removeHistory(item)"
+              >
+                ×
+              </button>
+            </span>
+          </div>
+        </section>
 
         <SearchEmptyState
           v-else-if="!loading && !searched"
@@ -621,7 +798,7 @@ onBeforeUnmount(() => {
         />
 
         <ResultMasonry
-          v-if="loading || works.length"
+          v-if="works.length"
           :works="works"
           :loading="loading"
           :loading-more="loadingMore"

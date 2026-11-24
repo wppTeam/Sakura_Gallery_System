@@ -65,8 +65,11 @@ const lead = computed(() => {
     <h2 class="search-empty__title">{{ title }}</h2>
     <p class="search-empty__lead">{{ lead }}</p>
 
-    <div v-if="variant === 'idle' && suggestions.length" class="search-empty__suggest">
-      <span class="search-empty__suggest-label">试试这些词</span>
+    <div
+      v-if="(variant === 'idle' || variant === 'empty') && suggestions.length"
+      class="search-empty__suggest"
+    >
+      <span class="search-empty__suggest-label">{{ variant === 'empty' ? '换个词试试' : '试试这些词' }}</span>
       <button
         v-for="suggestion in suggestions"
         :key="suggestion"

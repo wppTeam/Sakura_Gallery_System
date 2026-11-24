@@ -313,6 +313,8 @@ GET /api/v1/search/traces/{trace_id}       # 仅 admin：单次 Agent 检索的�
 **审核 API**（admin + auditor）见 [`docs/AI_PLATFORM.md`](./AI_PLATFORM.md)：
 `/api/v1/admin/moderation/{queue,stats,{photo_id}}` 与 `POST .../run`、`POST .../decision`。
 
+批量终判：`POST /api/v1/admin/moderation/batch-decision`，body `{"photo_ids": [..≤50], "decision": "approve|reject|hold", "reason?": "...", "final_tier?": "L0|L1|L2"}`，返回 `{ok, processed, succeeded, failed, items:[{photo_id, ok, decision, error}]}`；逐条独立提交，单张失败（不存在 / 已有终判 / 异常）不影响其它照片。
+
 ## 🏷️ 标签管理
 
 ### 获取所有标签

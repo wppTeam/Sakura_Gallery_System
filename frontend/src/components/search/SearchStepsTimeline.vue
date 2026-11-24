@@ -77,8 +77,10 @@ function argsChips(step: SearchStep): string[] {
 const modeLabel = computed(() => MODE_LABELS[props.result.searchMode] || props.result.searchMode || '检索')
 const stepCount = computed(() => props.result.steps.length)
 const summary = computed(() => {
-  if (stepCount.value === 0) return `${modeLabel.value} · 耗时 ${Math.round(props.result.queryTimeMs)} ms`
-  return `${modeLabel.value} · ${stepCount.value} 步 · 耗时 ${Math.round(props.result.queryTimeMs)} ms`
+  const seconds = (props.result.queryTimeMs / 1000).toFixed(1)
+  const short = props.result.searchMode === 'agent' ? 'Agent 检索' : modeLabel.value
+  if (stepCount.value === 0) return `${short} · ${seconds}s`
+  return `${short} · ${seconds}s · ${stepCount.value} 步`
 })
 </script>
 
