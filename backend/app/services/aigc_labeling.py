@@ -10,9 +10,9 @@
 - ``dc:creator``：上传者公开身份（username / display_name，不含学号）
 - 自定义命名空间 ``sakura``：IsAIGC / Model / Provider / Prompt（可选）/ LabeledAt / WorkID
 
-格式支持：JPEG（APP1 XMP 段）、PNG（iTXt ``XML:com.adobe.xmp``）。
-WebP/GIF 暂未实现（会返回 None，调用方降级为「原样返回 + 响应头加
-``X-AIGC-Label``」并在日志里记一条，见 docs/AI_PLATFORM.md 已知限制）。
+格式支持：JPEG（APP1 XMP 段）、PNG（iTXt ``XML:com.adobe.xmp``）、
+WebP（RIFF ``XMP `` chunk）。GIF 暂未实现（返回 None，调用方降级为
+「原样返回 + 响应头加 ``X-AIGC-Label``」并在日志里记一条，见 docs/AI_PLATFORM.md 已知限制）。
 """
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ SAKURA_NAMESPACE = "https://sakura.buct.edu.cn/ns/aigc/1.0/"
 
 PUBLIC_LABEL = "AI 生成"
 
-SUPPORTED_MIME_TYPES = frozenset({"image/jpeg", "image/png"})
+SUPPORTED_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
 
 
 def _xml_escape(value: str) -> str:
@@ -200,6 +200,53 @@ def _embed_png(data: bytes, packet: bytes) -> Optional[bytes]:
     return data[:insert_at] + chunk + data[insert_at:]
 
 
+_XMP_WEBP_CHUNK = b"XMP "
+
+
+def _embed_webp(data: bytes, packet: bytes) -> Optional[bytes]:
+    """在 WebP 的 RIFF 容器里插入/替换 ``XMP `` metadata chunk。
+
+    WebP 是 RIFF 容器：``RIFF`` + uint32LE(总长-8) + ``WEBP`` + 若干
+    ``fourcc`` + uint32LE(size) + payload（奇数长度补 1 字节 padding）。
+    XMP 规范 chunk fourcc 为 ``XMP ``（带尾空格）。插入到文件末尾最稳妥。
+    """
+    if len(data) < 12 or data[:4] != b"RIFF" or data[8:12] != b"WEBP":
+        return None
+
+    chunks: list[bytes] = []
+    pos = 12
+    while pos + 8 <= len(data):
+        fourcc = data[pos:pos + 4]
+        size = struct.unpack("<I", data[pos + 4:pos + 8])[0]
+        body_start = pos + 8
+        body_end = body_start + size
+        if body_end > len(data):
+            return None
+        chunk = data[pos:body_end]
+        pos = body_end
+        if size & 1:  # RIFF 要求偶数对齐
+            if pos >= len(data):
+                return None
+            chunk += data[pos:pos + 1]
+            pos += 1
+        if fourcc == _XMP_WEBP_CHUNK:
+            continue  # 替换：丢弃旧 XMP
+        chunks.append(chunk)
+
+    if pos < len(data):  # 未知尾部字节原样保留，避免破坏容器
+        chunks.append(data[pos:])
+
+    payload = packet
+    if len(payload) & 1:
+        payload += b"\x00"
+    chunks.append(_XMP_WEBP_CHUNK + struct.pack("<I", len(packet)) + payload)
+
+    body = b"WEBP" + b"".join(chunks)
+    if len(body) + 8 > 0xFFFFFFFF:
+        return None
+    return b"RIFF" + struct.pack("<I", len(body)) + body
+
+
 def detect_image_mime(data: bytes) -> Optional[str]:
     """按文件头嗅探真实格式（客户端声明的 MIME 可能不准，如 .jpg 实际是 PNG）。"""
     if data.startswith(b"\xff\xd8"):
@@ -224,6 +271,8 @@ def embed_aigc_label(data: bytes, mime_type: Optional[str], packet: bytes) -> Op
         return _embed_jpeg(data, packet)
     if actual == "image/png":
         return _embed_png(data, packet)
+    if actual == "image/webp":
+        return _embed_webp(data, packet)
     return None
 
 

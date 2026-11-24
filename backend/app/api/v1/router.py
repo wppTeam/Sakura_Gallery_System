@@ -6,6 +6,7 @@ API v1 版本路由聚合，注册所有端点模块。
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    admin_ai,
     admin_audit,
     admin_config,
     admin_permissions,
@@ -44,6 +45,7 @@ api_router.include_router(admin_users.router, prefix="/admin", tags=["用户管�
 api_router.include_router(admin_config.router, prefix="/admin", tags=["系统设置"])
 api_router.include_router(admin_permissions.router, prefix="/admin", tags=["授权管理"])
 api_router.include_router(admin_audit.router, prefix="/admin", tags=["审计日志"])
+api_router.include_router(admin_ai.router, prefix="/admin", tags=["AI 成本"])
 api_router.include_router(moderation_api.router, prefix="/admin", tags=["AI 审核"])
 
 # Collections（策展专题，公开）

@@ -106,11 +106,30 @@ def test_embed_png_writes_xmp_itxt():
     assert Image.open(io.BytesIO(labeled)).size == (64, 64)
 
 
-def test_embed_unsupported_format_returns_none():
-    webp = _image_bytes("WEBP")
+def test_embed_webp_inserts_xmp_chunk():
+    """WebP 走 RIFF `XMP ` chunk；二次写入稳定、Pillow 仍可解码。"""
+    data = _image_bytes("WEBP")
     packet = aigc_labeling.build_xmp_packet(_FakePhoto()).encode("utf-8")
 
-    assert aigc_labeling.embed_aigc_label(webp, "image/webp", packet) is None
+    labeled = aigc_labeling.embed_aigc_label(data, "image/webp", packet)
+    assert labeled is not None
+    assert labeled[:4] == b"RIFF"
+    assert labeled[8:12] == b"WEBP"
+    assert b"XMP " in labeled
+    assert aigc_labeling.has_aigc_xmp(labeled)
+    assert Image.open(io.BytesIO(labeled)).size == (64, 64)
+
+    labeled_twice = aigc_labeling.embed_aigc_label(labeled, "image/webp", packet)
+    assert labeled_twice is not None
+    assert len(labeled_twice) == len(labeled)  # 替换而非追加
+    assert labeled_twice.count(b"XMP ") >= 1
+
+
+def test_embed_unsupported_format_returns_none():
+    gif = _image_bytes("GIF")
+    packet = aigc_labeling.build_xmp_packet(_FakePhoto()).encode("utf-8")
+
+    assert aigc_labeling.embed_aigc_label(gif, "image/gif", packet) is None
 
 
 # ---------------------------------------------------------------------------

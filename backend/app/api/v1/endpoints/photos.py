@@ -654,8 +654,8 @@ async def get_photo_variant(
 async def _aigc_download_response(db: AsyncSession, photo: Photo) -> Response:
     """AIGC 作品下载：把隐式标识（XMP）写进返回的文件字节。
 
-    不改库内原图（原图只读），下载的每个副本都带标识；WebP/GIF 等暂不支持
-    写入的格式降级为原字节 + ``X-AIGC-Implicit-Label: unsupported-format``，
+    不改库内原图（原图只读），下载的每个副本都带标识；JPEG / PNG / WebP 支持
+    写入，未实现的格式（GIF 等）降级为原字节 + ``X-AIGC-Implicit-Label: unsupported-format``，
     由文档标注为已知限制。
     """
     from urllib.parse import quote

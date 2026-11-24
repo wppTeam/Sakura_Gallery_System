@@ -206,6 +206,16 @@ blurhash/created_at/published_at）、`total`、`query_time_ms`、`search_mode`�
 | `ai_usage_events` | 所有 AI 调用的用量与成本 | operation, provider, model_id, source, ref_type/ref_id, prompt/completion/total_tokens, cost_usd, latency_ms, success, error |
 | `agent_search_traces` | Agent 检索轨迹 | trace_id(unique), query, intent/facets/steps(JSON), result_count, clarify, explanation, model_id, latency_ms, total_tokens, cost_usd, error |
 
+### 5.1 成本与用量观测
+
+`GET /api/v1/admin/ai/usage?days=7&recent_limit=20`（仅 admin）直接对 `ai_usage_events`
+做聚合，返回 `totals`（calls/success/failed/tokens/cost_usd/avg_latency_ms）、
+`by_day`、`by_operation`、`by_model` 三个分布与 `recent` 最近事件。
+
+用途：核对 `AI_MODEL_PRICES` 与实际单价是否一致（`cost_usd / total_tokens`）、
+发现某条链路（快筛 vs 复核 vs 检索规划）成本异常、观察失败率与时延。
+实现 `backend/app/api/v1/endpoints/admin_ai.py`，测试 `backend/tests/test_admin_ai_usage.py`。
+
 迁移：`d8e9f0a1b2c3`（三表 + PG `pg_trgm` + photos.search_tokens/search_vector + GIN 索引）、
 `e9f0a1b2c3d4`（`sakura_search_tokens()` 函数 + `photos` BEFORE INSERT/UPDATE 触发器，
 自动维护 `search_tokens`，中文按汉字二元组分词）、`f0a1b2c3d4e5`（users 增加
@@ -295,7 +305,7 @@ API 进程内嵌 worker 每 5s 兜底轮询。**不需要** Redis/Celery 或独�
 1. **AIGC 法定标识（已落地，M2 完成）**：上传 `aigc_declared` 必填（缺失 400）、
    `photos.is_aigc/aigc_label/aigc_meta/label_written` 四列（迁移 `b1c2d3e4f5a6`）、
    公开响应出 `is_aigc/kind/aigc_label/aigc_meta`、下载副本写 XMP 隐式标识并回写 `label_written`。
-   已知边界：WebP/GIF 暂不支持写入（降级 `X-AIGC-Implicit-Label: unsupported-format`）；
+   已知边界：GIF 暂不支持写入（降级 `X-AIGC-Implicit-Label: unsupported-format`）；JPEG / PNG / WebP 均支持；
    客户端声明的 MIME 与真实字节不一致时按文件头嗅探（PNG 上传标 .jpg 也能正确写 iTXt）。
 2. 规则层目前不自动通知上传者「GPS 已剥离/请移除 EXIF」，只在审核结果里提示。
 3. 公开照片响应暂无 `uploader` 对象（详情页作者用 `author` 字段）；公开身份列已就绪，
@@ -352,5 +362,5 @@ XMP 字段（自定义命名空间 `https://sakura.buct.edu.cn/ns/aigc/1.0/`）�
 检索侧同步：`GET /api/v1/search` 的结果项也带 `is_aigc` / `aigc_label` / `kind`（`aigc`），
 Agent 检索卡片能直接显示「AI 生成」角标；`lexical_search.SearchHit` 与两种方言 SQL 均已带上该列。
 
-已知限制：WebP/GIF 暂不支持隐式写入（下载时头标 `unsupported-format`，文件原样）；
+已知限制：GIF 暂不支持隐式写入（下载时头标 `unsupported-format`，文件原样）；JPEG / PNG / WebP 均支持（WebP 写 RIFF `XMP ` chunk）；
 XMP 写入在下载时进行（同一作品重复下载会重新写），未缓存带标识的副本（后续可加派生文件缓存）。

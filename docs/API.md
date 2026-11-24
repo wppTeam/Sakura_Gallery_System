@@ -507,6 +507,32 @@ PUT    /api/v1/admin/users/{id}     # 更新用户信息（含 email_verified）
 DELETE /api/v1/admin/users/{id}     # 删除用户
 ```
 
+### AI 成本与用量
+
+```http
+GET /api/v1/admin/ai/usage?days=7&recent_limit=20
+```
+
+聚合 `ai_usage_events`（只含调用元信息，不含 prompt/图片）。返回：
+
+```json
+{
+  "days": 7,
+  "since": "2026-11-17T12:00:00",
+  "totals": {"calls": 42, "success": 40, "failed": 2, "prompt_tokens": 52000,
+             "completion_tokens": 4100, "total_tokens": 56100,
+             "cost_usd": 0.0421, "avg_latency_ms": 3210.5},
+  "by_day": [{"key": "2026-11-24", "calls": 12, "total_tokens": 15200, "cost_usd": 0.011}],
+  "by_operation": [{"key": "moderation.prefilter", "calls": 20, "total_tokens": 30000, "cost_usd": 0.028}],
+  "by_model": [{"key": "qwen3-vl-plus", "calls": 20, "total_tokens": 30000, "cost_usd": 0.028}],
+  "recent": [{"id": "…", "operation": "agent_search.plan", "model_id": "deepseek-v4.1-flash-1017",
+              "ref_type": "search", "total_tokens": 1000, "cost_usd": 0.0002,
+              "latency_ms": 1960, "success": true, "error": null, "created_at": "…"}]
+}
+```
+
+仅 admin 可访问（auditor 403、匿名 401）；`days` ∈ [1, 90]、`recent_limit` ∈ [1, 100]。
+
 ### 系统设置
 
 ```http

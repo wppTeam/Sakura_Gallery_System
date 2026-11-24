@@ -102,6 +102,10 @@ template_meta work_id, file_key, format, slides, ratio, fonts[],
 `POST /moderation/batch-decision`（批量终判，逐条独立提交并返回每条 ok/error）、
 `GET /moderation/stats`、`POST /moderation/drain`（运维手动消费队列）。所有模型调用统一走 `backend/app/services/ai_client.py` 的 `chat_json()`
 （渠道解析、预算闸门、重试、JSON 修复、用量与成本落 `ai_usage_events`）。
+AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usage_events`
+（总量/按日/按 operation/按 model 的 calls·tokens·USD + 最近事件），用于核对单价与失败率；
+实现 `backend/app/api/v1/endpoints/admin_ai.py`。
+
 架构、配置项与降级矩阵见 [`docs/AI_PLATFORM.md`](docs/AI_PLATFORM.md)。
 
 **策展专题（collections，已落地）**：`collections` + `collection_photos` 两张表
@@ -127,7 +131,7 @@ template_meta work_id, file_key, format, slides, ratio, fonts[],
   ③ `GET /photos/{id}/download` 对 `is_aigc` 作品在**返回字节**里写 XMP 隐式标识
     （`backend/app/services/aigc_labeling.py`：JPEG APP1 / PNG iTXt，按文件头嗅探真实格式，
     不修改库内原图），响应头 `X-AIGC-Label: AIGC`、`X-AIGC-Implicit-Label: xmp`，并回写
-    `label_written=true`；WebP/GIF 暂不支持写入，降级为 `unsupported-format`。
+    `label_written=true`；JPEG / PNG / **WebP（RIFF `XMP ` chunk）** 均支持写入，GIF 暂不支持（降级 `unsupported-format`）。
   ④ 图生图（`aigc_source_work_id`）与换脸（`aigc_face_swap`）未传 `consent_confirmed=true` 时上传 400；
     审核策略 `_apply_aigc_declaration_policy` 把声明 AIGC 的作品 tier 抬到 ≥L1，图生图/换脸强制 L2，
     且 AIGC 作品不参与自动放行（`_can_auto_approve` 要求 `not photo.is_aigc`）。
