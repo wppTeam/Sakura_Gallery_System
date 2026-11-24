@@ -116,3 +116,4 @@ docs/SAKURA_ROADMAP.md
 
 # 本地种子脚本生成的演示账号口令（勿提交）
 backend/.seed-demo-credentials.json
+.tmp-preview-*.mjs
