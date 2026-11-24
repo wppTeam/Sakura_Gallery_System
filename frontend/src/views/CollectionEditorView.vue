@@ -96,6 +96,8 @@
             />
           </label>
 
+          <CollectionAssistantPanel @apply="applyAssistantProposal" />
+
           <div class="ce-field">
             <span class="ce-label">封面</span>
             <p class="ce-hint">从右侧「已选作品」里挑一张作为专辑封面，不裁切、按原始构图展示。</p>
@@ -228,10 +230,12 @@ import {
   SaveOutline,
 } from '@vicons/ionicons5'
 import EmptyState from '../components/public/EmptyState.vue'
+import CollectionAssistantPanel from '../components/collections/CollectionAssistantPanel.vue'
 import {
   fetchManagedCollection,
   replaceCollectionPhotos,
   updateCollection,
+  type CollectionAssistantApplyPayload,
   type CollectionStatus,
   type ManagedCollection,
 } from '../api/collections'
@@ -373,6 +377,24 @@ function movePhoto(index: number, delta: number) {
 
 function setCover(id: string | null) {
   form.coverPhotoId = id
+}
+
+/**
+ * 应用 AI 提案：只填表单与已选作品，不自动保存/发布。
+ * 提案作品都来自「我的作品」，若当前列表还没加载到这些作品则补进去。
+ */
+function applyAssistantProposal(payload: CollectionAssistantApplyPayload) {
+  form.title = payload.title.slice(0, 60)
+  form.subtitle = payload.subtitle.slice(0, 100)
+  form.description = payload.description.slice(0, 500)
+  const knownIds = new Set(approvedWorks.value.map((photo) => photo.id))
+  const missing = payload.photos.filter((photo) => !knownIds.has(photo.id))
+  if (missing.length) approvedWorks.value = [...missing, ...approvedWorks.value]
+  selected.value = [...payload.photos]
+  if (form.coverPhotoId && !payload.photos.some((photo) => photo.id === form.coverPhotoId)) {
+    form.coverPhotoId = null
+  }
+  message.success(`已应用 AI 提案：${payload.photos.length} 张作品，确认后记得保存`)
 }
 
 async function save(status: CollectionStatus) {

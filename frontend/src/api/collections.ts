@@ -402,3 +402,103 @@ export async function fetchSpectrum(): Promise<SpectrumResponse> {
     total: numOf(rawObj.total) || palettes.reduce((sum, item) => sum + item.photoCount, 0),
   }
 }
+
+/* ============ AI 策展助手 ============ */
+
+export interface CollectionAssistantPick {
+  /** 完整公开作品模型（含 variants / lqip / 作者署名） */
+  photo: PublicPhoto
+  /** 模型给出的中文挑选理由，可能为 null */
+  reason: string | null
+}
+
+export interface CollectionAssistantProposal {
+  title: string
+  subtitle: string
+  description: string
+  /** 按观展节奏排好序的作品 id（与 picks 顺序一致） */
+  photoIds: string[]
+  picks: CollectionAssistantPick[]
+  /** 例如「只找到 3 张贴合主题的作品…」 */
+  note: string | null
+  candidates: number
+  costUsd: number | null
+  latencyMs: number | null
+  modelId: string | null
+}
+
+export interface CollectionAssistantApplyPayload {
+  title: string
+  subtitle: string
+  description: string
+  photos: PublicPhoto[]
+}
+
+interface RawAssistantPick {
+  photo?: unknown
+  reason?: unknown
+}
+
+interface RawAssistant {
+  title?: unknown
+  subtitle?: unknown
+  description?: unknown
+  photo_ids?: unknown
+  picks?: unknown
+  note?: unknown
+  candidates?: unknown
+  cost_usd?: unknown
+  latency_ms?: unknown
+  model_id?: unknown
+}
+
+function numberOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function toAssistantProposal(raw: RawAssistant): CollectionAssistantProposal {
+  const picks: CollectionAssistantPick[] = Array.isArray(raw.picks)
+    ? (raw.picks as RawAssistantPick[])
+        .filter((item): item is RawAssistantPick => Boolean(item) && typeof item === 'object')
+        .map((item) => ({
+          photo: toPublicPhoto(item.photo as Photo),
+          reason: nullableText(item.reason),
+        }))
+        .filter((item) => Boolean(item.photo && item.photo.id))
+    : []
+  const pickMap = new Map(picks.map((item) => [item.photo.id, item]))
+  const rawIds = Array.isArray(raw.photo_ids)
+    ? (raw.photo_ids as unknown[]).filter((id): id is string => typeof id === 'string')
+    : []
+  // 以 photo_ids 的顺序为准；缺失/未知的 id 丢弃，picks 里有但 photo_ids 没有的追加到末尾
+  const orderedIds = rawIds.filter((id) => pickMap.has(id))
+  for (const pick of picks) {
+    if (!orderedIds.includes(pick.photo.id)) orderedIds.push(pick.photo.id)
+  }
+  return {
+    title: textOf(raw.title),
+    subtitle: textOf(raw.subtitle),
+    description: textOf(raw.description),
+    photoIds: orderedIds,
+    picks: orderedIds.map((id) => pickMap.get(id) as CollectionAssistantPick),
+    note: nullableText(raw.note),
+    candidates: numOf(raw.candidates),
+    costUsd: numberOrNull(raw.cost_usd),
+    latencyMs: numberOrNull(raw.latency_ms),
+    modelId: nullableText(raw.model_id),
+  }
+}
+
+/**
+ * AI 策展助手：作者写一句话主题，模型只从本人 approved 且非 sensitive 的作品里
+ * 挑 3–24 张并排好顺序，返回可编辑的专辑提案（只出提案、不落库）。
+ * 生成约 5–10 秒；限流 5 次/分钟。
+ */
+export async function generateCollectionAssistant(
+  prompt: string,
+): Promise<CollectionAssistantProposal> {
+  const raw = await request.post<RawAssistant>('/api/v1/collections/assistant', {
+    prompt: prompt.trim(),
+  })
+  return toAssistantProposal(raw ?? {})
+}
