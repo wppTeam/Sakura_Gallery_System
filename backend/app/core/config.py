@@ -102,6 +102,26 @@ class Settings(BaseSettings):
         }
     )
 
+    # ---- 站内 AI 生图（AI 创作台）----
+    # 生成走百炼直连异步接口（qwen-image-3.0-pro，单张约 50s）；生成图只是草稿，
+    # 发布仍走普通上传 / 审核 / AIGC 强制声明链路，因此这里只存本地临时文件。
+    AIGC_GENERATION_ENABLED: bool = True
+    AIGC_IMAGE_MODEL: str = "qwen-image-3.0-pro"
+    AIGC_IMAGE_API_BASE: str = "https://dashscope.aliyuncs.com"
+    AIGC_IMAGE_TIMEOUT: int = 180  # 秒：排队 + 生成 + 下载的总上限
+    AIGC_IMAGE_POLL_INTERVAL: float = 3.0
+    # 尺寸档位：键给前端，值传给百炼（宽*高，注意百炼用 * 而不是 x）
+    AIGC_IMAGE_SIZES: dict[str, str] = Field(
+        default_factory=lambda: {
+            "square": "1328*1328",
+            "landscape": "1664*928",
+            "portrait": "928*1664",
+        }
+    )
+    AIGC_IMAGE_DAILY_LIMIT: int = 5  # 每用户每日生成次数（失败不计）
+    AIGC_IMAGE_PRICE_USD: float = 0.0  # 按张成本；按渠道实际单价填写，用于用量页估算
+    AIGC_IMAGE_MAX_BYTES: int = 20 * 1024 * 1024
+
     # ---- Agent 审核（moderation）----
     MODERATION_ENABLED: bool = True
     MODERATION_PREFILTER_MODEL: str = ""  # 空 → AI_VISION_MODEL

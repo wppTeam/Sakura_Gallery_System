@@ -7,6 +7,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     admin_ai,
+    aigc,
     admin_audit,
     admin_config,
     admin_permissions,
@@ -57,3 +58,6 @@ api_router.include_router(collections.photo_router, prefix="/photos", tags=["Col
 
 # Search endpoint (public, no auth required)
 api_router.include_router(search.router, prefix="", tags=["Search"])
+
+# 站内 AI 生图（AI 创作台）
+api_router.include_router(aigc.router, prefix="/aigc", tags=["AI 创作台"])

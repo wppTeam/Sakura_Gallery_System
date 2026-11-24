@@ -323,6 +323,23 @@ Content-Type: application/json
 - 错误：未登录 401；`prompt` 为空或 >200 字 422；没有可策展作品 400；AI 渠道失败 503「AI 策展助手暂时不可用」；限流 `5/minute`（IP）→ 429。
 - 每次调用约 $0.001、6–10 秒（推理型模型，`max_tokens=8192`）；耗时会记入后台「AI 成本」（`operation=collection.assist`）。
 
+### AI 创作台（需登录）
+
+站内 AI 生图：生成草稿 → 预览 → 走普通上传发布为待审 AIGC 作品。生成图不直接公开。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/v1/aigc/config` | 开关、模型、尺寸档位、每日额度（可用时 `enabled=true`） |
+| POST | `/api/v1/aigc/generations` | body `{prompt, size}`，202 返回任务；3 次/分钟 + 每日额度；400/429/503 |
+| GET | `/api/v1/aigc/generations?limit=20` | 我的生成记录（含 `daily_used/daily_limit`） |
+| GET | `/api/v1/aigc/generations/{id}` | 轮询状态：`queued/running/succeeded/failed`，成功时 `image_url` |
+| GET | `/api/v1/aigc/generations/{id}/image` | 草稿图（PNG/JPEG/WebP），仅本人或管理员 |
+| DELETE | `/api/v1/aigc/generations/{id}` | 删除草稿与本地文件，204 |
+
+发布：先取草稿图（带 Bearer），再 `POST /api/v1/photos/upload`
+（multipart，`aigc_declared=true`、`aigc_model=aigc/model`、`aigc_provider=dashscope`、
+`aigc_prompt=<提示词>`），照片进入 `pending`，由审核链路决定是否公开。
+
 ### 专题列表（公开）
 
 ```http

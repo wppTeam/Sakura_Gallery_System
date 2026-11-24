@@ -136,6 +136,28 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
   推理型模型必须给足 `max_tokens`（当前 8192，给小了可见输出会被思维链吃光）。
   限流 5 次/分钟/IP；AI 不可用返回 503、没有可策展作品返回 400。
 
+### AI 创作台（站内 AI 生图）
+
+作者写一句提示词 → 后台调百炼直连异步接口（`qwen-image-3.0-pro`，单张约 50–60s）
+生成草稿图 → 作者预览满意后，走**普通上传接口**（`aigc_declared=true` + prompt/model）
+发布为待审 AIGC 作品。审核、显式角标、隐式标识、变体全部复用既有链路，
+创作台本身**不直接创建作品**。
+
+- 接口（前缀 `/api/v1`，均需登录）：
+  `GET /aigc/config`（开关、尺寸档位、每日额度）、`POST /aigc/generations`
+  （202 + 后台任务，3 次/分钟）、`GET /aigc/generations`（我的记录）、
+  `GET /aigc/generations/{id}`（前端轮询状态）、`GET /aigc/generations/{id}/image`
+  （草稿图，仅本人/管理员）、`DELETE /aigc/generations/{id}`。
+- 草稿图只落本地 `uploads/generated/`，不进作品表、不对外公开；
+- 每日额度 `AIGC_IMAGE_DAILY_LIMIT`（默认 5，失败不计），开关
+  `AIGC_GENERATION_ENABLED`，未配 `DASHSCOPE_API_KEY` 时接口返回 503；
+- 用量记 `ai_usage_events(operation="aigc.generate")`，按张成本用
+  `AIGC_IMAGE_PRICE_USD` 估算（默认 0，按实际渠道价填写）；
+- 生成图大小上限 `AIGC_IMAGE_MAX_BYTES`（默认 20MB），尺寸档位
+  `AIGC_IMAGE_SIZES`（方图 1328*1328 / 横图 1664*928 / 竖图 928*1664，百炼用 `*` 分隔）；
+- 服务重启导致卡在 queued/running 的任务，由状态接口按超时自动标 failed；
+- 迁移 `a7b8c9d0e1f2`（表 `aigc_generations`）。
+
 公开接口：`GET /api/v1/collections/public`（只返回至少 1 张公开作品的专题）、
 `GET /api/v1/collections/{slug}`（含 `owner{username,display_name}`）、
 `GET /api/v1/collections/spectrum`（五色卡 + 封面）、
