@@ -6,6 +6,7 @@ import { onClickOutside, useDebounceFn } from '@vueuse/core'
 import {
   ArrowUpOutline,
   FlashOutline,
+  GitBranchOutline,
   ImageOutline,
   SearchOutline,
   SparklesOutline,
@@ -30,6 +31,7 @@ import SearchStepsTimeline from '../components/search/SearchStepsTimeline.vue'
 import '../styles/search.css'
 
 const PAGE_SIZE = 24
+const CONTEXT_LIMIT = 3
 const IDLE_SUGGESTIONS = ['樱花大道的春天', '操场夜景', '图书馆里的人', '秋天的银杏']
 const HISTORY_KEY = 'sakura:search-history'
 const HISTORY_LIMIT = 8
@@ -95,6 +97,9 @@ const history = ref<string[]>(readHistory())
 const emptySuggestions = ref<string[]>([])
 const activeResultIndex = ref(-1)
 
+// 多轮追问上下文：最近 3 条上一轮提问（不含当前，不写 URL，仅 agent 文本检索生效）
+const contextHistory = ref<string[]>([])
+
 // 以图搜图（独立于文本检索的模式，不写入 URL）
 const imagePanelOpen = ref(false)
 const visualResult = ref<VisualSearchResponse | null>(null)
@@ -138,6 +143,23 @@ const resultMeta = computed(() => {
   const ms = Math.round(result.value.queryTimeMs)
   const parts = [`共 ${formatCount(total.value)} 件`, `用时 ${ms} ms`, shortModeLabel()]
   return parts.join(' · ')
+})
+
+const latestContext = computed(() => contextHistory.value[contextHistory.value.length - 1] || '')
+
+const assumedContext = computed(() => {
+  const assumed = result.value?.intent?.assumed ?? []
+  return assumed.find((item) => item.includes('承接')) || ''
+})
+
+// 仅当「上文非空 + agent 模式 + 有结果（或正在载入）」时显示上下文条
+const showContextBar = computed(() => {
+  if (!contextHistory.value.length) return false
+  if (mode.value !== 'agent') return false
+  if (visualResult.value || imagePanelOpen.value) return false
+  if (loading.value) return true
+  if (error.value || !result.value) return false
+  return total.value > 0 || Boolean(result.value.clarify)
 })
 
 function formatCount(value: number): string {
@@ -225,6 +247,12 @@ watch(
 // 检索
 // ────────────────────────────────────────────────────────────
 
+/** 组装发给后端的 history：仅 agent 模式且确有上文时发送，最多 3 条（只发上一轮提问，当前 query 由 q 参数承担） */
+function agentHistory(): string[] | undefined {
+  if (mode.value !== 'agent' || !contextHistory.value.length) return undefined
+  return contextHistory.value.filter((item) => item.trim().length > 0).slice(-CONTEXT_LIMIT)
+}
+
 function facetParams() {
   return {
     season: season.value || null,
@@ -289,6 +317,7 @@ async function performSearch() {
       limit: PAGE_SIZE,
       offset: 0,
       ...facetParams(),
+      history: agentHistory(),
     })
     if (seq !== searchSeq) return
     result.value = response
@@ -311,6 +340,7 @@ async function performSearch() {
 
 function resetToIdle() {
   searchSeq += 1
+  contextHistory.value = []
   visualResult.value = null
   activeResultIndex.value = -1
   emptySuggestions.value = []
@@ -336,6 +366,7 @@ async function loadMore() {
       limit: PAGE_SIZE,
       offset: works.value.length,
       ...facetParams(),
+      history: agentHistory(),
     })
     if (seq !== searchSeq) return
     const seen = new Set(works.value.map((work) => work.id))
@@ -489,20 +520,37 @@ function onGlobalKeydown(event: KeyboardEvent) {
 
 function submitSearch(raw?: string) {
   const next = (raw ?? queryInput.value).trim()
+  const previous = q.value.trim()
   queryInput.value = next
-  q.value = next
   if (!next) {
+    contextHistory.value = []
+    q.value = ''
     pushUrl()
     resetToIdle()
     return
   }
+  if (mode.value === 'agent' && previous && previous !== next) {
+    contextHistory.value = [...contextHistory.value.filter((item) => item !== previous), previous].slice(-CONTEXT_LIMIT)
+  }
+  q.value = next
   recordHistory(next)
   pushUrl()
   void performSearch()
 }
 
+/** 清除上文后，立即用当前关键词重新检索（不带 history） */
+function clearContext() {
+  if (!contextHistory.value.length) return
+  contextHistory.value = []
+  if (q.value) {
+    message.info('已清除上文，按当前关键词重新检索')
+    void performSearch()
+  }
+}
+
 function setMode(next: SearchMode) {
   if (mode.value === next) return
+  if (next === 'fast') contextHistory.value = []
   mode.value = next
   pushUrl()
   if (q.value) void performSearch()
@@ -528,6 +576,7 @@ function setFacet(key: 'season' | 'category' | 'campus', value: string) {
 }
 
 function clearFilters() {
+  contextHistory.value = []
   season.value = ''
   category.value = ''
   campus.value = ''
@@ -580,6 +629,7 @@ const fetchSuggestions = useDebounceFn(async (text: string) => {
 watch(queryInput, (value) => {
   if (programmaticQuery) return
   if (!value.trim()) {
+    contextHistory.value = []
     suggestions.value = []
     suggestionsOpen.value = false
     return
@@ -614,6 +664,7 @@ const visualTotalText = computed(() => {
 })
 
 function openImageSearch() {
+  contextHistory.value = []
   closeSuggestions()
   imagePanelOpen.value = true
 }
@@ -797,6 +848,13 @@ onBeforeUnmount(() => {
         {{ fallbackNotice }}
       </n-alert>
 
+      <div v-if="showContextBar" class="context-bar" role="status">
+        <n-icon :component="GitBranchOutline" :size="14" />
+        <span class="context-bar__text">结合上文：<strong>{{ latestContext }}</strong></span>
+        <button type="button" class="context-bar__clear" @click="clearContext">清除上下文</button>
+        <span v-if="assumedContext" class="context-bar__assumed">{{ assumedContext }}</span>
+      </div>
+
       <section class="search-results" :aria-label="visualResult ? '以图搜图结果' : '检索结果'">
         <div v-if="visualResult" class="visual-summary" role="status">
           <span
@@ -936,6 +994,74 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.context-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 4px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--sakura-wash, #ffe9f0);
+  color: var(--ink, #4a2b35);
+  font-size: var(--fs-sm, 14px);
+  line-height: 1.5;
+}
+
+.context-bar :deep(.n-icon) {
+  flex: none;
+  color: var(--sakura-deep, #c93a63);
+}
+
+.context-bar__text strong {
+  font-weight: 600;
+  color: var(--sakura-deep, #c93a63);
+}
+
+.context-bar__clear {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid color-mix(in srgb, var(--sakura-deep, #c93a63) 24%, transparent);
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  color: var(--sakura-deep, #c93a63);
+  font-size: var(--fs-sm, 14px);
+  cursor: pointer;
+  transition: background var(--dur-fast, 160ms) ease;
+}
+
+.context-bar__clear:hover {
+  background: var(--sakura-pale, #ffe9f0);
+}
+
+.context-bar__clear:focus-visible {
+  outline: 3px solid var(--sakura-deep, #c93a63);
+  outline-offset: 2px;
+}
+
+.context-bar__assumed {
+  color: var(--muted, #63474f);
+  font-size: var(--fs-xs, 12.5px);
+}
+
+@media (pointer: coarse) {
+  .context-bar__clear {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@media (max-width: 640px) {
+  .context-bar {
+    border-radius: 18px;
+    padding: 12px 14px;
+  }
+
+  .context-bar__clear {
+    min-height: 44px;
+  }
+}
+
 /* 以图搜图入口：桌面在搜索框内右侧，移动端单独一行 */
 .image-search-trigger {
   display: inline-flex;

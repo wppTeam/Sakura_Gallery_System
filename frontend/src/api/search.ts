@@ -114,6 +114,8 @@ export interface SearchStep {
 export interface SearchIntent {
   keywords: string[]
   filters: Record<string, string>
+  /** 后端推断出的「承接上文」说明，例如「承接上一轮提问，保留「春季」条件」 */
+  assumed: string[]
 }
 
 export interface FacetValue {
@@ -176,6 +178,8 @@ export interface WorkSearchParams {
   category?: string | null
   campus?: string | null
   tag?: string | null
+  /** 多轮追问上下文：上一轮提问，按时间顺序（最多 3 条，重复 query key 传输） */
+  history?: string[] | null
 }
 
 // ────────────────────────────────────────────────────────────
@@ -365,6 +369,7 @@ function normalizeIntent(raw: unknown): SearchIntent {
   return {
     keywords: stringList(intent.keywords ?? intent.terms),
     filters,
+    assumed: stringList(intent.assumed ?? intent.assumptions ?? intent.notes),
   }
 }
 
@@ -430,22 +435,43 @@ function compactParams(params: Record<string, unknown>): Record<string, string> 
 }
 
 /**
+ * 把参数序列化成 URLSearchParams：history 用重复 key（`history=a&history=b`）传输，
+ * 其余值照常拼接；axios 会原样使用 URLSearchParams 的序列化结果。
+ */
+function buildSearchParams(params: Record<string, unknown>, history?: readonly string[] | null): URLSearchParams {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (key === 'history') continue
+    if (value === null || value === undefined || value === '') continue
+    search.set(key, String(value))
+  }
+  for (const entry of history ?? []) {
+    const text = entry.trim()
+    if (text) search.append('history', text)
+  }
+  return search
+}
+
+/**
  * Agent / 快速检索。
  * 不吞错误：调用方需要区分超时、网络、5xx 等状态并展示降级提示。
  */
 export async function searchWorks(params: WorkSearchParams): Promise<AgentSearchResult> {
   const raw = await request.get<unknown>('/api/v1/search', {
     timeout: 60000,
-    params: compactParams({
-      q: params.q,
-      mode: params.mode ?? 'agent',
-      limit: params.limit ?? 24,
-      offset: params.offset ?? 0,
-      season: params.season,
-      category: params.category,
-      campus: params.campus,
-      tag: params.tag,
-    }),
+    params: buildSearchParams(
+      {
+        q: params.q,
+        mode: params.mode ?? 'agent',
+        limit: params.limit ?? 24,
+        offset: params.offset ?? 0,
+        season: params.season,
+        category: params.category,
+        campus: params.campus,
+        tag: params.tag,
+      },
+      params.history,
+    ),
   })
   return normalizeSearchResponse(raw)
 }
@@ -585,6 +611,8 @@ export interface SearchResponse {
 export interface SearchParams {
   q: string
   limit?: number
+  /** 多轮追问上下文（重复 query key） */
+  history?: string[]
   season?: string
   campus?: string
   category?: string
@@ -604,7 +632,10 @@ export interface SearchParams {
 
 /** @deprecated 旧检索接口，GalleryView 兼容用 */
 export function searchPhotos(params: SearchParams): Promise<SearchResponse> {
-  return request.get<SearchResponse>('/api/v1/search', { params })
+  const { history, ...rest } = params
+  return request.get<SearchResponse>('/api/v1/search', {
+    params: buildSearchParams(rest as Record<string, unknown>, history),
+  })
 }
 
 /** @deprecated 旧搜索理解接口 */
