@@ -27,7 +27,7 @@ from app.prompts.moderation import (
     get_escalation_prompt,
     get_prefilter_prompt,
 )
-from app.services import auto_tagging, moderation_rules
+from app.services import auto_tagging, moderation_rules, privacy
 from app.services.ai_client import (
     AIJSONResult,
     chat_json,
@@ -253,6 +253,18 @@ def _merge_tier_from_escalation(tier: str, escalation: dict[str, Any]) -> str:
     return VALID_TIERS[rank]
 
 
+def _has_identifiable_person(payload: dict[str, Any] | None) -> bool:
+    """快筛/复核结果里是否判定「含可识别的人」。"""
+    if not isinstance(payload, dict):
+        return False
+    value = payload.get("has_identifiable_person")
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "yes", "1", "是", "有")
+    return False
+
+
 def _can_auto_approve(
     *,
     rule_result: moderation_rules.RuleResult,
@@ -440,6 +452,17 @@ async def moderate_photo(
         review.prefilter = prefilter
         usage.add(prefilter_result)
 
+        # 人像隐私分级：快筛判定含可识别人像 → 标记 sensitive 并生成脱敏图，
+        # 之后公共端默认不展示、只给脱敏版本（失败不阻断审核）。
+        if _has_identifiable_person(prefilter):
+            await privacy.mark_photo_sensitive(db, photo, reason="moderation.prefilter")
+            rules_payload["privacy"] = {
+                "level": photo.privacy_level,
+                "redacted": privacy.has_redacted_media(photo),
+                "source": "moderation.prefilter",
+            }
+            review.rules = dict(rules_payload)
+
         # 审核即打标：复用同一次快筛输出，不额外调用模型；失败不影响审核结论
         if bool(getattr(settings, "MODERATION_AUTO_TAGGING", True)):
             tagging_summary = await auto_tagging.apply_prefilter_tags(
@@ -468,6 +491,14 @@ async def moderate_photo(
             review.escalation = escalation
             usage.add(escalation_result)
             tier = _merge_tier_from_escalation(tier, escalation)
+            if _has_identifiable_person(escalation):
+                await privacy.mark_photo_sensitive(db, photo, reason="moderation.escalation")
+                rules_payload["privacy"] = {
+                    "level": photo.privacy_level,
+                    "redacted": privacy.has_redacted_media(photo),
+                    "source": "moderation.escalation",
+                }
+                review.rules = dict(rules_payload)
 
         review.tier = tier
         review.status = "completed"

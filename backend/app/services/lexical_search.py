@@ -722,7 +722,14 @@ def _prepare_query(
             match_sql = " OR ".join(_sqlite_term_condition(i) for i in range(len(terms)))
         conditions.append(f"({match_sql})")
 
-    where_sql = " AND ".join(["p.status = :status", *conditions])
+    where_sql = " AND ".join(
+        [
+            "p.status = :status",
+            # 人像隐私：sensitive 作品不进公开检索（脱敏图也不进，避免被索引扩散）
+            "(p.privacy_level IS NULL OR p.privacy_level <> 'sensitive')",
+            *conditions,
+        ]
+    )
     return _QueryParts(
         caps=caps,
         terms=terms,
@@ -882,6 +889,7 @@ async def get_hits_by_ids(
         " p.campus, p.created_at, p.published_at, p.is_aigc, p.aigc_label"
         f"{detail_columns}"
         f" FROM photos p WHERE p.status = :status AND p.id IN ({', '.join(names)})"
+        " AND (p.privacy_level IS NULL OR p.privacy_level <> 'sensitive')"
     )
     rows = (await db.execute(text(sql), params)).mappings().all()
     hits: dict[str, SearchHit] = {}
@@ -1099,6 +1107,7 @@ SELECT text, kind, freq FROM (
     SELECT DISTINCT p.title AS text, 'title' AS kind, 0 AS freq
     FROM photos p
     WHERE p.status = :status AND p.title IS NOT NULL AND p.title <> ''
+      AND (p.privacy_level IS NULL OR p.privacy_level <> 'sensitive')
       AND (lower(p.title) LIKE lower(:like){title_trgm})
     UNION ALL
     SELECT tn.name AS text, 'taxonomy' AS kind, 0 AS freq

@@ -141,6 +141,22 @@ template_meta work_id, file_key, format, slides, ratio, fonts[],
   推荐开源免费商用字体：思源系列、霞鹜系列、站酷系列。
 - **肖像权**：涉可识别人物需被摄者同意，走 L2。
 
+### 人像隐私分级（2026-11-24 落地）
+
+- `photos.privacy_level`：`normal` | `sensitive`。审核快筛/复核命中
+  `has_identifiable_person`，或旧版 `category == "Portrait"`，即标为 `sensitive`。
+- **默认不展示**：公共列表/检索/专题/收藏默认排除 sensitive；前端需显式
+  `include_sensitive=true` 且达到 `portrait_visibility` 要求（默认需登录）才纳入，
+  且只给**脱敏图**。
+- 脱敏图：强高斯模糊（半径≈短边 6%）+ 14× 像素化，只缩不裁，落
+  `uploads/redacted/{id}_redacted.jpg`（1600）与 `_redacted_thumb.jpg`（640）。
+- 访问控制：匿名访问 sensitive 详情/媒体一律 404；登录用户看脱敏图；原图、
+  原图下载仅作者本人与 admin/auditor 可用。
+- 实现：`backend/app/services/privacy.py`（标记/生成/判定）、
+  `backend/app/services/moderation.py`（审核命中自动标记）、
+  `scripts/backfill_portrait_privacy.py`（存量回填）。
+- 脱敏失败不阻断审核，但公共端在缺脱敏图时拒绝返回该作品（宁可不展示）。
+
 ## 6. 图像与资产管线
 
 **原图只读、保留原始构图，禁止裁切。**

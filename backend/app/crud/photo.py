@@ -75,6 +75,7 @@ async def get_photos(
     search: Optional[str] = None,
     tag: Optional[str] = None,
     exclude_categories: Optional[List[str]] = None,
+    exclude_sensitive: bool = False,
     sort_by: str = "created_at",
     sort_order: str = "desc",
     campus: Optional[str] = None,
@@ -146,6 +147,15 @@ async def get_photos(
         )
         query = query.where(Photo.id.in_(campus_subquery))
         count_query = count_query.where(Photo.id.in_(campus_subquery))
+
+    if exclude_sensitive:
+        # 人像隐私：sensitive 作品默认不进公共列表（NULL 视为 normal 保留）
+        condition = or_(
+            Photo.privacy_level.is_(None),
+            Photo.privacy_level != "sensitive",
+        )
+        query = query.where(condition)
+        count_query = count_query.where(condition)
 
     if exclude_categories:
         # 用 IS NULL OR != 显式保留 category 为空的照片：SQL 里 NULL != 'Portrait' 是 NULL，

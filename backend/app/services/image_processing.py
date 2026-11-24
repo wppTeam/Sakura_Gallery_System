@@ -25,7 +25,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageFilter, ImageOps
 from PIL.ExifTags import TAGS
 
 from app.core.config import get_settings
@@ -416,6 +416,63 @@ def generate_variants(
             "jpeg_bytes": os.path.getsize(jpeg_path),
         }
     return variants
+
+
+def create_redacted_images(
+    original_path: str,
+    output_dir: str,
+    photo_uuid: str,
+    *,
+    long_edge: int = 1600,
+    thumb_edge: int = 640,
+    force: bool = False,
+) -> Dict[str, Dict[str, Any]]:
+    """生成人像脱敏图：强高斯模糊 + 像素化，确保无法辨认被摄者。
+
+    只缩小不放大、保留原始构图（不裁切），与原图一样按 EXIF Orientation 呈现。
+    输出 ``{output_dir}/{uuid}_redacted.jpg``（长边 1600）与
+    ``{uuid}_redacted_thumb.jpg``（长边 640）。已存在则跳过，``force=True`` 重建。
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    results: Dict[str, Dict[str, Any]] = {}
+    targets = (("redacted", long_edge), ("redacted_thumb", thumb_edge))
+    pending = [
+        (name, edge)
+        for name, edge in targets
+        if force or not os.path.exists(os.path.join(output_dir, f"{photo_uuid}_{name}.jpg"))
+    ]
+    if not pending:
+        for name, _edge in targets:
+            path = os.path.join(output_dir, f"{photo_uuid}_{name}.jpg")
+            with Image.open(path) as existing:
+                results[name] = {"path": path, "width": existing.width, "height": existing.height}
+        return results
+
+    img = _load_oriented(original_path)
+    try:
+        for name, edge in pending:
+            resized = _resize_long_edge(img, edge)
+            # 模糊半径按短边比例，缩略图也足够强（短边 6% ≈ 人像完全不可辨认）
+            radius = max(8.0, min(resized.size) * 0.06)
+            blurred = resized.filter(ImageFilter.GaussianBlur(radius=radius))
+            # 轻度像素化叠加：即使大半径模糊仍残留轮廓，也看不出五官
+            small = blurred.resize(
+                (max(8, blurred.width // 14), max(8, blurred.height // 14)),
+                Image.Resampling.BILINEAR,
+            )
+            pixelated = small.resize(blurred.size, Image.Resampling.NEAREST)
+            path = os.path.join(output_dir, f"{photo_uuid}_{name}.jpg")
+            pixelated.convert("RGB").save(
+                path, "JPEG", quality=80, optimize=True, progressive=True
+            )
+            results[name] = {
+                "path": path,
+                "width": pixelated.width,
+                "height": pixelated.height,
+            }
+    finally:
+        _release_memory()
+    return results
 
 
 def _build_placeholder(image_path: str) -> tuple[str, str]:

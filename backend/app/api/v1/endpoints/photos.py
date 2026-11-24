@@ -46,6 +46,7 @@ from app.services.image_processing import process_uploaded_image
 from app.services.runtime_settings import get_runtime_settings
 from app.services.search_interpreter import get_search_interpreter
 from app.services.storage import cleanup_staged_files, get_storage, stage_photo_upload
+from app.services import privacy
 from starlette.concurrency import run_in_threadpool
 
 from app.services.moderation_worker import enqueue_moderation
@@ -272,8 +273,15 @@ def _public_variants(photo: Photo) -> Optional[Dict[str, Dict[str, Any]]]:
     return out or None
 
 
-def _photo_common_dict(photo: Photo) -> dict:
-    """显式字段白名单（禁止 {**photo.__dict__}，避免泄漏内部/个人信息）。"""
+def _photo_common_dict(photo: Photo, *, redact: bool = False) -> dict:
+    """显式字段白名单（禁止 {**photo.__dict__}，避免泄漏内部/个人信息）。
+
+    ``redact=True``（人像 sensitive 且访问者不是作者/审核员）时，所有媒体
+    路径换成强模糊脱敏图，并去掉响应式变体（脱敏图只有一档 1600）。
+    """
+    use_redacted = bool(redact) and privacy.is_sensitive(photo)
+    redacted_path = photo.redacted_path or photo.compressed_path
+    redacted_thumb = photo.redacted_thumb_path or redacted_path
     return {
         "id": photo.id,
         "filename": photo.filename,
@@ -281,10 +289,10 @@ def _photo_common_dict(photo: Photo) -> dict:
         "author": photo.author or _parse_photo_author(photo.description),
         "description": photo.description,
         "uploader_id": photo.uploader_id,
-        "original_path": photo.original_path,
-        "processed_path": photo.processed_path,
-        "thumb_path": photo.thumb_path,
-        "compressed_path": photo.compressed_path,
+        "original_path": redacted_path if use_redacted else photo.original_path,
+        "processed_path": redacted_path if use_redacted else photo.processed_path,
+        "thumb_path": redacted_thumb if use_redacted else photo.thumb_path,
+        "compressed_path": redacted_path if use_redacted else photo.compressed_path,
         "width": photo.width,
         "height": photo.height,
         "file_size": photo.file_size,
@@ -301,22 +309,27 @@ def _photo_common_dict(photo: Photo) -> dict:
         "lqip": _internal_exif(photo, "_lqip"),
         "lqip_color": _internal_exif(photo, "_lqip_color"),
         "blurhash": _internal_exif(photo, "_blurhash"),
-        # 响应式图变体（上传时同步生成 5 档；老图为 None）
-        "variants": _public_variants(photo),
+        # 响应式图变体（上传时同步生成 5 档；老图为 None；脱敏展示时不出变体）
+        "variants": None if use_redacted else _public_variants(photo),
         # AIGC 法定标识：显式角标所需字段（隐式 XMP 标识在 /download 写入）
         "is_aigc": bool(photo.is_aigc),
         "kind": "aigc" if photo.is_aigc else "photo",
         "aigc_label": photo.aigc_label,
         "aigc_meta": photo.aigc_meta if isinstance(photo.aigc_meta, dict) else None,
         "label_written": bool(photo.label_written),
+        # 人像隐私分级：sensitive 作品对外只给脱敏图
+        "privacy_level": photo.privacy_level or privacy.PRIVACY_NORMAL,
+        "is_redacted": bool(use_redacted),
     }
 
 
-async def serialize_photo(db: AsyncSession, photo: Photo) -> PhotoResponse:
+async def serialize_photo(
+    db: AsyncSession, photo: Photo, *, redact: bool = False
+) -> PhotoResponse:
     """公开安全序列化：白名单字段 + EXIF 子集；不返回学号/真实姓名/GPS。"""
     tags = await photo_crud.get_photo_tags(db, photo.id)
     free_tags = _photo_free_tags(tags)
-    photo_dict = _photo_common_dict(photo)
+    photo_dict = _photo_common_dict(photo, redact=redact)
     photo_dict["exif_data"] = _sanitize_public_exif(photo.exif_data)
     photo_dict["tags"] = free_tags
     photo_dict["free_tags"] = free_tags
@@ -328,8 +341,18 @@ async def serialize_photo(db: AsyncSession, photo: Photo) -> PhotoResponse:
     return PhotoResponse(**photo_dict)
 
 
-async def serialize_photos(db: AsyncSession, photos: List[Photo]) -> List[PhotoResponse]:
-    return [await serialize_photo(db, photo) for photo in photos]
+async def serialize_photos(
+    db: AsyncSession,
+    photos: List[Photo],
+    *,
+    current_user: Optional[User] = None,
+) -> List[PhotoResponse]:
+    """公开列表序列化：sensitive 作品对非作者/非审核员自动脱敏。"""
+    out: List[PhotoResponse] = []
+    for photo in photos:
+        redact = privacy.should_redact_for_viewer(photo, current_user)
+        out.append(await serialize_photo(db, photo, redact=redact))
+    return out
 
 
 async def serialize_photo_admin(db: AsyncSession, photo: Photo) -> PhotoResponse:
@@ -349,6 +372,12 @@ async def serialize_photo_admin(db: AsyncSession, photo: Photo) -> PhotoResponse
 
 async def serialize_photos_admin(db: AsyncSession, photos: List[Photo]) -> List[PhotoResponse]:
     return [await serialize_photo_admin(db, photo) for photo in photos]
+
+
+def _assert_sensitive_viewer(photo: Photo, current_user: Optional[User]) -> None:
+    """sensitive 作品不向匿名访问者暴露任何媒体（含脱敏图）。"""
+    if privacy.is_sensitive(photo) and current_user is None:
+        raise HTTPException(status_code=404, detail="Photo not found")
 
 
 async def _assert_photo_access(
@@ -392,6 +421,7 @@ async def list_public_photos(
     sort_by: str = "created_at",
     sort_order: str = "desc",
     smart: bool = False,
+    include_sensitive: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user),
     portrait_visibility: str = Depends(get_portrait_visibility),
@@ -408,6 +438,20 @@ async def list_public_photos(
     elif portrait_visibility == PortraitVisibility.AUTHORIZED_ONLY:
         if not current_user or not await can_access_portrait_photo(db, current_user, portrait_visibility):
             should_filter_portrait = True
+
+    # 人像隐私：sensitive 作品默认不展示，只有显式 include_sensitive=true 且
+    # 当前访问者达到 portrait_visibility 要求时才纳入（并且仍然只给脱敏图）。
+    show_sensitive = False
+    if include_sensitive:
+        if portrait_visibility == PortraitVisibility.PUBLIC:
+            show_sensitive = True
+        elif portrait_visibility == PortraitVisibility.LOGIN_REQUIRED:
+            show_sensitive = current_user is not None
+        else:  # AUTHORIZED_ONLY
+            show_sensitive = bool(
+                current_user
+                and await can_access_portrait_photo(db, current_user, portrait_visibility)
+            )
 
     interpretation = None
     search_interpretation_data = None
@@ -453,6 +497,7 @@ async def list_public_photos(
         search=search,
         tag=tag,
         exclude_categories=["Portrait"] if should_filter_portrait else None,
+        exclude_sensitive=not show_sensitive,
         sort_by=sort_by,
         sort_order=sort_order,
         interpretation=interpretation,
@@ -461,7 +506,7 @@ async def list_public_photos(
         total=total,
         page=skip // limit + 1 if limit > 0 else 1,
         page_size=limit,
-        items=await serialize_photos(db, photos),
+        items=await serialize_photos(db, photos, current_user=current_user),
         search_interpretation=search_interpretation_data,
     )
 
@@ -494,6 +539,12 @@ async def get_public_photo(
     photo = await photo_crud.get_photo_with_tags(db, photo_id)
     if not photo or not await can_access_photo_publicly(db, photo, current_user, portrait_visibility):
         raise HTTPException(status_code=404, detail="Photo not found")
+    # 人像隐私：匿名不展示 sensitive 作品；登录用户看脱敏图；作者/审核员看原图。
+    if privacy.is_sensitive(photo):
+        if current_user is None:
+            raise HTTPException(status_code=404, detail="Photo not found")
+        redact = privacy.should_redact_for_viewer(photo, current_user)
+        return await serialize_photo(db, photo, redact=redact)
     return await serialize_photo(db, photo)
 
 
@@ -508,6 +559,12 @@ async def get_photo_image(
     if photo is None:
         raise HTTPException(status_code=404, detail="Photo not found")
     await _assert_photo_access(db, photo, current_user, portrait_visibility)
+    _assert_sensitive_viewer(photo, current_user)
+    if privacy.should_redact_for_viewer(photo, current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="该作品含可识别人像，原图仅作者本人与管理员可查看",
+        )
     return get_storage().build_media_response(photo.original_path)
 
 
@@ -522,6 +579,13 @@ async def get_photo_thumbnail(
     if photo is None:
         raise HTTPException(status_code=404, detail="Photo not found")
     await _assert_photo_access(db, photo, current_user, portrait_visibility)
+    _assert_sensitive_viewer(photo, current_user)
+    # 人像隐私：非作者/非审核员只给脱敏缩略图（缺脱敏图则拒绝，不泄露原图）
+    if privacy.should_redact_for_viewer(photo, current_user):
+        redacted = photo.redacted_thumb_path or photo.redacted_path
+        if not redacted:
+            raise HTTPException(status_code=404, detail="该作品的脱敏图暂不可用")
+        return get_storage().build_media_response(redacted)
     # Fall back to original if no thumbnail exists
     path = photo.thumb_path or photo.original_path
     return get_storage().build_media_response(path)
@@ -538,6 +602,12 @@ async def get_photo_compressed(
     if photo is None:
         raise HTTPException(status_code=404, detail="Photo not found")
     await _assert_photo_access(db, photo, current_user, portrait_visibility)
+    _assert_sensitive_viewer(photo, current_user)
+    if privacy.should_redact_for_viewer(photo, current_user):
+        redacted = photo.redacted_path
+        if not redacted:
+            raise HTTPException(status_code=404, detail="该作品的脱敏图暂不可用")
+        return get_storage().build_media_response(redacted)
     # Fall back to original if no compressed version exists
     path = photo.compressed_path or photo.original_path
     return get_storage().build_media_response(path)
@@ -561,8 +631,14 @@ async def get_photo_variant(
     if photo is None:
         raise HTTPException(status_code=404, detail="Photo not found")
     await _assert_photo_access(db, photo, current_user, portrait_visibility)
+    _assert_sensitive_viewer(photo, current_user)
 
     storage = get_storage()
+    if privacy.should_redact_for_viewer(photo, current_user):
+        redacted = photo.redacted_path
+        if not redacted:
+            raise HTTPException(status_code=404, detail="该作品的脱敏图暂不可用")
+        return storage.build_media_response(redacted)
     meta = _variant_meta(photo)
     if size.isdigit() and size in meta:
         ext = "webp" if fmt == "webp" else "jpg"
@@ -648,6 +724,12 @@ async def download_photo(
     if photo is None:
         raise HTTPException(status_code=404, detail="Photo not found")
     await _assert_photo_access(db, photo, current_user, portrait_visibility)
+    _assert_sensitive_viewer(photo, current_user)
+    if privacy.should_redact_for_viewer(photo, current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="该作品含可识别人像，原图下载仅作者本人与管理员可用",
+        )
     if photo.is_aigc:
         return await _aigc_download_response(db, photo)
     return get_storage().build_media_response(photo.original_path, download_name=photo.filename)

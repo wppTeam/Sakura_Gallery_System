@@ -2,7 +2,7 @@
 收藏 CRUD 操作
 """
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.favorite import Favorite
@@ -59,7 +59,12 @@ async def get_user_favorites(
     query = (
         select(Favorite.photo_id)
         .join(Photo, Photo.id == Favorite.photo_id)
-        .filter(Favorite.user_id == user_id, Photo.status == "approved")
+        .filter(
+            Favorite.user_id == user_id,
+            Photo.status == "approved",
+            # 人像隐私：sensitive 作品不进收藏列表（避免脱敏图扩散与原图误取）
+            or_(Photo.privacy_level.is_(None), Photo.privacy_level != "sensitive"),
+        )
         .order_by(Favorite.created_at.desc())
         .offset(skip)
         .limit(limit)
@@ -67,7 +72,11 @@ async def get_user_favorites(
     count_query = (
         select(func.count(Favorite.id))
         .join(Photo, Photo.id == Favorite.photo_id)
-        .filter(Favorite.user_id == user_id, Photo.status == "approved")
+        .filter(
+            Favorite.user_id == user_id,
+            Photo.status == "approved",
+            or_(Photo.privacy_level.is_(None), Photo.privacy_level != "sensitive"),
+        )
     )
 
     result = await db.execute(query)

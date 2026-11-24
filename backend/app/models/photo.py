@@ -38,6 +38,15 @@ class Photo(Base):
     published_at = Column(DateTime)  # 上线时间
     views = Column(Integer, default=0)  # 浏览量
 
+    # 人像隐私分级：normal（普通作品）| sensitive（含可识别人像，默认不公开展示）
+    # sensitive 作品对外只提供脱敏图（强模糊），原图仅作者/管理员可访问；
+    # 公共列表默认排除，前端需显式「显示人像作品（已脱敏）」才纳入。
+    privacy_level = Column(
+        String(16), nullable=False, default="normal", server_default="normal", index=True
+    )
+    redacted_path = Column(Text)  # 脱敏图（长边 1600，强模糊）
+    redacted_thumb_path = Column(Text)  # 脱敏缩略图（长边 640）
+
     # AIGC 法定标识（《人工智能生成合成内容标识办法》2025-09-01 施行）
     # is_aigc: 是否 AI 生成合成内容（用户声明或审核确认）
     # aigc_label: 显式标识文案（详情页/角标展示），如「AI 生成」

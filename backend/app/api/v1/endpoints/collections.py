@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.endpoints.photos import serialize_photo
@@ -43,6 +43,8 @@ async def _approved_entries(
             .where(
                 CollectionPhoto.collection_id.in_(collection_ids),
                 Photo.status == "approved",
+                # 人像隐私：sensitive 作品不进专题展示（脱敏图也不进，避免扩散）
+                or_(Photo.privacy_level.is_(None), Photo.privacy_level != "sensitive"),
             )
             .order_by(
                 CollectionPhoto.collection_id,

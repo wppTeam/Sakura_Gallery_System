@@ -513,3 +513,11 @@ curl "http://127.0.0.1:8000/api/v1/photos/public?page_size=5"
 ---
 
 *本文档由 Hermes Agent 自动生成*
+
+
+### 人像隐私分级（2026-11-24）
+
+- `GET /api/v1/photos/public` 新增 `include_sensitive`（默认 false）；
+  sensitive 作品默认不返回，显式开启且满足 `portrait_visibility` 时只给脱敏图。
+- 作品对象新增 `privacy_level` / `is_redacted`。
+- sensitive：匿名详情/媒体 404；登录非作者脱敏；原图与下载仅作者/审核员。

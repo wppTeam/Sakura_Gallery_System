@@ -128,6 +128,15 @@ class StorageBackend:
     ) -> PersistedMedia:
         raise NotImplementedError
 
+    def persist_redacted(
+        self,
+        photo_uuid: str,
+        staged_redacted_path: Optional[str],
+        staged_redacted_thumb_path: Optional[str],
+    ) -> Dict[str, Optional[str]]:
+        """把脱敏图（强模糊，人像隐私）落盘/上传，返回 {redacted_path, redacted_thumb_path}。"""
+        raise NotImplementedError
+
     def delete_file(self, file_path: Optional[str]) -> bool:
         raise NotImplementedError
 
@@ -152,10 +161,12 @@ class LocalStorageBackend(StorageBackend):
         self.thumbnails_dir = upload_dir / "thumbnails"
         self.compressed_dir = upload_dir / "compressed"
         self.variants_dir = upload_dir / "variants"
+        self.redacted_dir = upload_dir / "redacted"
         self.originals_dir.mkdir(parents=True, exist_ok=True)
         self.thumbnails_dir.mkdir(parents=True, exist_ok=True)
         self.compressed_dir.mkdir(parents=True, exist_ok=True)
         self.variants_dir.mkdir(parents=True, exist_ok=True)
+        self.redacted_dir.mkdir(parents=True, exist_ok=True)
 
     def _normalize(self, path: str) -> str:
         clean = path.replace("\\", "/")
@@ -222,6 +233,24 @@ class LocalStorageBackend(StorageBackend):
             file_size=original_target.stat().st_size if original_target.exists() else None,
             variants=variants,
         )
+
+    def persist_redacted(
+        self,
+        photo_uuid: str,
+        staged_redacted_path: Optional[str],
+        staged_redacted_thumb_path: Optional[str],
+    ) -> Dict[str, Optional[str]]:
+        result: Dict[str, Optional[str]] = {"redacted_path": None, "redacted_thumb_path": None}
+        for name, staged in (("redacted_path", staged_redacted_path), ("redacted_thumb_path", staged_redacted_thumb_path)):
+            if not staged or not os.path.exists(staged):
+                continue
+            suffix = "_redacted_thumb.jpg" if name.endswith("thumb_path") else "_redacted.jpg"
+            relative = f"redacted/{photo_uuid}{suffix}"
+            target = Path(settings.UPLOAD_DIR) / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(staged, target)
+            result[name] = relative
+        return result
 
     def delete_file(self, file_path: Optional[str]) -> bool:
         if not file_path:
@@ -411,6 +440,25 @@ class S3StorageBackend(StorageBackend):
             file_size=size,
             variants=variants,
         )
+
+    def persist_redacted(
+        self,
+        photo_uuid: str,
+        staged_redacted_path: Optional[str],
+        staged_redacted_thumb_path: Optional[str],
+    ) -> Dict[str, Optional[str]]:
+        result: Dict[str, Optional[str]] = {"redacted_path": None, "redacted_thumb_path": None}
+        for name, staged in (("redacted_path", staged_redacted_path), ("redacted_thumb_path", staged_redacted_thumb_path)):
+            if not staged or not os.path.exists(staged):
+                continue
+            suffix = "_redacted_thumb.jpg" if name.endswith("thumb_path") else "_redacted.jpg"
+            key = f"redacted/{photo_uuid}{suffix}"
+            try:
+                self.client.upload_file(staged, self.bucket, key, ExtraArgs=_s3_extra_args(key))
+            except Exception:
+                self._mc_pipe(staged, key)
+            result[name] = key
+        return result
 
     def delete_file(self, file_path: Optional[str]) -> bool:
         if not file_path:
