@@ -575,6 +575,7 @@ def process_uploaded_image(
         "variants": {},
         "mime_type": None,
         "spectrum": None,
+        "dhash": None,
     }
 
     try:
@@ -613,6 +614,18 @@ def process_uploaded_image(
             results["lqip_color"] = placeholder["color"]
             exif_data["_lqip"] = placeholder["lqip"]
             exif_data["_lqip_color"] = placeholder["color"]
+
+        # 5.6 视觉签名：缩略图 dhash，供「视觉相似」检索使用（失败不影响上传）
+        try:
+            from app.services.visual_similarity import compute_dhash
+
+            signature_source = results["thumb_path"] or results["compressed_path"] or original_path
+            dhash = compute_dhash(str(signature_source))
+            if dhash:
+                results["dhash"] = dhash
+                exif_data["_dhash"] = dhash
+        except Exception:  # noqa: BLE001 - 签名是锦上添花
+            pass
 
         # 5.5 樱色光谱：用缩略图采样主色，供「光谱」策展使用（失败不影响上传）
         try:

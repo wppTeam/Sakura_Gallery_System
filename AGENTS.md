@@ -260,6 +260,11 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
 - API：`GET /api/v1/search?q=&mode=agent|fast`、`/search/facets`、`/search/suggest`、
   `/search/traces/{trace_id}`（仅 admin）
 - 实测：fast 端到端 21–50ms；agent「校园里春季开的花」2.2s（planner ≈2.0s，解释常被预算跳过）
+- **视觉相似**（`backend/app/services/visual_similarity.py`）：上传时对缩略图算 16×16 dhash
+  写入 `exif_data["_dhash"]`，与光谱色卡 / 构图比例 / 标签 / 季节 / 校区加权（缺 dhash 的老图按可用
+  信号归一化权重）；候选集只含已发布且非敏感作品，Python 内打分（`MAX_CANDIDATES=800`），
+  近重复（汉明 ≤3）不推荐；`GET /api/v1/photos/{id}/similar?limit=` 返回 `similarity + reasons`
+  供前端「视觉相似」区展示。存量回填：`scripts/backfill_visual_signatures.py`
 - **Milvus / pgvector 本轮不做**（2c4g 装不下 Milvus standalone ≥8GB）；规模上来后加 pgvector + `text-embedding-v4` 回填
 
 ## 8. 设计系统

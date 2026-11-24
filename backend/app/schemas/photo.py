@@ -126,3 +126,17 @@ class PhotoUploadResponse(BaseModel):
     message: str = "Photo uploaded successfully"
     
     model_config = ConfigDict(from_attributes=True)
+
+
+class SimilarPhotoItem(PhotoResponse):
+    """视觉相似结果：公开安全序列化 + 相似度与理由。"""
+
+    similarity: float = Field(..., ge=0, le=1, description="相似度 0..1")
+    reasons: List[str] = Field(default_factory=list, description="面向用户的相似理由")
+
+
+class SimilarPhotosResponse(BaseModel):
+    """视觉相似作品列表。"""
+
+    items: List[SimilarPhotoItem]
+    total: int

@@ -33,7 +33,14 @@ from app.models.photo import Photo
 from app.models.system_config import PortraitVisibility
 from app.models.user import User
 from app.schemas.ai_analysis import AIAnalysisTaskCreate, AIAnalysisTaskResponse, AIApplyResponse
-from app.schemas.photo import PhotoListResponse, PhotoResponse, PhotoUpdate, PhotoUploadResponse
+from app.schemas.photo import (
+    PhotoListResponse,
+    PhotoResponse,
+    PhotoUpdate,
+    PhotoUploadResponse,
+    SimilarPhotoItem,
+    SimilarPhotosResponse,
+)
 from app.schemas.search import SearchInterpretRequest, SearchInterpretResponse
 from app.schemas.taxonomy import PhotoClassificationUpdateSchema
 from app.services.ai_tasks import (
@@ -47,6 +54,7 @@ from app.services.runtime_settings import get_runtime_settings
 from app.services.search_interpreter import get_search_interpreter
 from app.services.storage import cleanup_staged_files, get_storage, stage_photo_upload
 from app.services import privacy
+from app.services.visual_similarity import find_similar_photos
 from starlette.concurrency import run_in_threadpool
 
 from app.services.moderation_worker import enqueue_moderation
@@ -1045,6 +1053,43 @@ async def list_my_submissions(
         page_size=limit,
         items=await serialize_photos_admin(db, photos),
     )
+
+
+@router.get("/{photo_id}/similar", response_model=SimilarPhotosResponse)
+async def get_similar_photos(
+    photo_id: str,
+    limit: int = Query(8, ge=1, le=20, description="返回数量"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    portrait_visibility: str = Depends(get_portrait_visibility),
+):
+    """视觉相似作品（dhash 感知哈希 + 光谱色卡 + 标签/季节/校区）。
+
+    无向量库依赖：候选集为已发布且非人像敏感的公开作品，Python 内打分排序。
+    目标作品本身不可公开访问时按「友好 404」处理（与 /public/{id} 一致）。
+    """
+    photo = await photo_crud.get_photo_with_tags(db, photo_id)
+    if not photo or not await can_access_photo_publicly(
+        db, photo, current_user, portrait_visibility
+    ):
+        raise HTTPException(status_code=404, detail="Photo not found")
+    if privacy.is_sensitive(photo) and current_user is None:
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    hits = await find_similar_photos(db, photo, limit=limit)
+    items: List[SimilarPhotoItem] = []
+    for hit in hits:
+        base = await serialize_photo(db, hit.photo)
+        items.append(
+            SimilarPhotoItem.model_validate(
+                {
+                    **base.model_dump(),
+                    "similarity": hit.score,
+                    "reasons": list(hit.reasons),
+                }
+            )
+        )
+    return SimilarPhotosResponse(items=items, total=len(items))
 
 
 @router.get("/{photo_id}", response_model=PhotoResponse)

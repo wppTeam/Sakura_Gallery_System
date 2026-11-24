@@ -296,6 +296,14 @@ GET /api/v1/photos/{photo_id}/collections
 
 ---
 
+## 👁 视觉相似（公开）
+
+上传时记录 dhash 感知哈希 + 光谱色卡；按「构图 / 色调 / 标签 / 季节 / 校区」加权排序。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/photos/{photo_id}/similar?limit=8` | 返回 `{items:[PhotoResponse & {similarity,reasons}], total}`；候选只含已发布且非敏感作品；目标不存在/未公开 → 404 |
+
 ## 🚩 举报 / 侵权投诉
 
 公开端（匿名可提交，登录后自动记录投诉人）：
