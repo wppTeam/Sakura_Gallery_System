@@ -1055,3 +1055,57 @@ docker logs sakura-quick 2>&1 | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com'
   2026-11-24 本地实测：71 条（3 + 12 专题 + 56 公开作品）。
 - **注意**：Cloudflare 代理下 sitemap 响应会带 `X-Cache-Status: BYPASS`（nginx 层不缓存，后端自身 1h 缓存头）；
   若发现 sitemap 不更新，先在 Cloudflare 面板对该路径 Purge。
+
+### 15.5 邮箱验证码与发信通道（2026-11-24）
+
+登录/注册的邮箱验证码需要真实发信，支持 `console | smtp | resend` 三种通道（`EMAIL_PROVIDER`）。
+本地开发用 `console`（`EMAIL_ENABLED=false` + `DEBUG=true` 时接口直接返回 `dev_code`）；
+**生产必须配置真实通道，否则 `/api/v1/auth/email-code` 返回 503（fail-closed，不会假装发送成功）**。
+
+#### 方案 A：Resend（免 SMTP，推荐）
+
+1. 在 Resend 控制台 **Domains → Add Domain** 添加 `buct-sakura.cn`；
+2. 按提示把 DKIM / SPF / DMARC 记录加到 Cloudflare DNS（`buct-sakura.cn` 的 NS 已在 Cloudflare）；
+3. 等待 Resend 显示 **Verified**；
+4. 在 `deploy/.env.prod` 填：
+
+```ini
+EMAIL_ENABLED=true
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=re_xxxxxxxx
+RESEND_FROM=视觉百花 <noreply@buct-sakura.cn>
+REQUIRE_EMAIL_VERIFICATION=true   # 域名验证通过后再打开
+```
+
+5. `docker compose ... up -d --force-recreate backend`（env_file 只在 recreate 时重读）。
+
+**注意**：Resend 的 **send-only restricted key** 不能调 `/domains` 接口（返回
+`restricted_api_key`），域名验证只能在控制台做；若要自动化，需要用 **Full access** key。
+域名未验证前只能发往 Resend 账号本人邮箱（可用 `onboarding@resend.dev` 测试）。
+
+#### 方案 B：SMTP（QQ/163/企业邮箱）
+
+```ini
+EMAIL_ENABLED=true
+EMAIL_PROVIDER=smtp
+SMTP_HOST=smtp.qq.com
+SMTP_PORT=465
+SMTP_USERNAME=you@qq.com
+SMTP_PASSWORD=<SMTP 授权码，不是登录密码>
+SMTP_FROM=视觉百花 <you@qq.com>
+SMTP_USE_SSL=true
+SMTP_USE_TLS=false
+REQUIRE_EMAIL_VERIFICATION=true
+```
+
+#### 验证
+
+```bash
+curl -s -X POST https://buct-sakura.cn/api/v1/auth/email-code \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"你的邮箱@example.com","purpose":"login"}'
+# 期望 {"ok":true,...,"delivered":true}（生产不返回 dev_code）
+```
+
+安全约定：验证码只存 HMAC 哈希；60s 冷却、每小时 10 次、5 次尝试上限；
+`forgot` 对未注册邮箱返回相同提示（防枚举）；重置密码后 `token_version++` 旧 token 失效。
