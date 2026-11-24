@@ -28,11 +28,14 @@ from app.schemas.collection import (
     CollectionPhotosUpdate,
     CollectionSummary,
     CollectionUpdate,
+    LightPeriodResponse,
+    LightPeriodsResponse,
     SpectrumResponse,
     SpectrumSwatch,
 )
 from app.schemas.photo import PhotoResponse
 from app.services.audit import log_audit
+from app.services.light_of_day import LIGHT_PERIODS
 from app.services.spectrum import PALETTES, SPECTRUM_SLUGS
 
 router = APIRouter()
@@ -333,6 +336,71 @@ async def list_spectrum(db: AsyncSession = Depends(get_db)) -> SpectrumResponse:
             )
         )
     return SpectrumResponse(palettes=palettes, total=len(collections))
+
+
+# ── 光的一日（按拍摄时段自动策展）────────────────────────────────────
+
+
+@router.get("/light", response_model=LightPeriodsResponse)
+async def list_light_periods(
+    per_period: int = Query(4, ge=1, le=8),
+    db: AsyncSession = Depends(get_db),
+) -> LightPeriodsResponse:
+    """「光的一日」四个时段及其代表作品（首页 hero 与光的一日区块共用）。
+
+    - 固定返回 4 个时段（晨/昼/暮/夜），顺序稳定，前端无需自己排；
+    - 只取 published + public 的专题；专题为空（如晨间尚无作品）时
+      `photos=[]`、`photo_count=0`，前端展示「整理中」；
+    - 作品只含 approved 且非敏感，最多 `per_period` 张（默认 4）。
+    """
+    collections = (
+        await db.execute(
+            select(Collection).where(
+                Collection.slug.in_([period.slug for period in LIGHT_PERIODS]),
+                Collection.status == "published",
+                Collection.visibility == "public",
+            )
+        )
+    ).scalars().all()
+    by_slug = {collection.slug: collection for collection in collections}
+
+    entries = await _approved_entries(db, [c.id for c in collections])
+    wanted: list[tuple[object, list[str]]] = []
+    all_ids: list[str] = []
+    for period in LIGHT_PERIODS:
+        collection = by_slug.get(period.slug)
+        approved = entries.get(collection.id, []) if collection else []
+        picked = approved[:per_period]
+        wanted.append((collection, picked))
+        all_ids.extend(picked)
+
+    photo_map = await _photos_by_id(db, all_ids)
+
+    periods: list[LightPeriodResponse] = []
+    for period, (collection, picked) in zip(LIGHT_PERIODS, wanted, strict=True):
+        photos: list[PhotoResponse] = []
+        for photo_id in picked:
+            photo = photo_map.get(photo_id)
+            if photo is not None:
+                photos.append(await serialize_photo(db, photo))
+        approved_count = len(entries.get(collection.id, [])) if collection else 0
+        periods.append(
+            LightPeriodResponse(
+                key=period.key,
+                slug=period.slug,
+                label=period.label,
+                time_range=period.time_range,
+                title=collection.title if collection else f"{period.label} · 整理中",
+                subtitle=collection.subtitle if collection else period.hint,
+                intro=collection.description if collection else None,
+                photo_count=approved_count,
+                photos=photos,
+            )
+        )
+    return LightPeriodsResponse(
+        periods=periods,
+        total=sum(1 for period in periods if period.photo_count),
+    )
 
 
 # ── 作者手账（用户自建专辑）──────────────────────────────────────────

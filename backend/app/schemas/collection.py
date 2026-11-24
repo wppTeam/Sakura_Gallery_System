@@ -101,3 +101,29 @@ class SpectrumSwatch(BaseModel):
 class SpectrumResponse(BaseModel):
     palettes: list[SpectrumSwatch]
     total: int
+
+
+# ── 光的一日（按时段自动策展）────────────────────────────────────────
+
+
+class LightPeriodResponse(BaseModel):
+    """单个光时段：晨 / 昼 / 暮 / 夜。
+
+    `photos` 只含已发布且非敏感作品（公开序列化），最多 `per_period` 张；
+    没有专题或专题为空时 `photos=[]`、`photo_count=0`，前端据此展示「整理中」。
+    """
+
+    key: str
+    slug: str
+    label: str
+    time_range: str
+    title: str
+    subtitle: str | None = None
+    intro: str | None = None
+    photo_count: int = 0
+    photos: list[PhotoResponse] = Field(default_factory=list)
+
+
+class LightPeriodsResponse(BaseModel):
+    periods: list[LightPeriodResponse]
+    total: int

@@ -248,6 +248,33 @@ GET /api/v1/collections/spectrum
 可直接用 `GET /api/v1/collections/{slug}` 打开完整列表。作品由上传时采样缩略图主色自动归类
 （`backend/app/services/spectrum.py`），不是人工挑选。
 
+### 今日之光（公开）
+
+```http
+GET /api/v1/collections/light?per_period=4
+```
+
+按访问时刻把「光的一日」四个专题整理成固定结构，供首页 hero 与时段卡消费：
+
+```json
+{
+  "periods": [
+    {"key": "dawn", "slug": "light-dawn", "label": "晨", "time_range": "05:00–09:00",
+     "title": "晨 · 还没醒的校园", "subtitle": "六点到九点，光比人先到",
+     "intro": "…", "photo_count": 0, "photos": []},
+    {"key": "noon", "slug": "light-noon", "label": "昼", "time_range": "09:00–15:00", "…": "…"},
+    {"key": "dusk", "slug": "light-dusk", "label": "暮", "time_range": "15:00–19:00", "…": "…"},
+    {"key": "night", "slug": "light-night", "label": "夜", "time_range": "19:00–05:00", "…": "…"}
+  ],
+  "total": 3
+}
+```
+
+- 顺序固定为晨/昼/暮/夜；`photos` 是公开序列化的 `PhotoResponse`（`privacy_level=sensitive` 与未审核作品不出现），最多 `per_period` 张（1–8，默认 4）。
+- 空时段 `photos=[]`、`photo_count=0`，`title` 回退为「{label} · 整理中」；`total` 是有作品的时段数。
+- 时段划分单源在 `backend/app/services/light_of_day.py::period_for_hour`（05–09 晨、09–15 昼、15–19 暮、其余夜），策展种子脚本与前端选择逻辑都对齐它。
+- 该接口在 nginx 有 30s 匿名只读微缓存（`/api/v1/collections` 前缀）。
+
 ### 作者手账（用户自建专辑，需登录）
 
 | 方法 | 路径 | 说明 |

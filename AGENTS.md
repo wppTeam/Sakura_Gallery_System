@@ -123,6 +123,10 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
 公开接口：`GET /api/v1/collections/public`（只返回至少 1 张公开作品的专题）、
 `GET /api/v1/collections/{slug}`（含 `owner{username,display_name}`）、
 `GET /api/v1/collections/spectrum`（五色卡 + 封面）、
+`GET /api/v1/collections/light?per_period=4`（今日之光：固定返回 晨/昼/暮/夜 四个时段，
+每段最多 `per_period` 张公开作品，空时段 `photos=[]` 且标题回退「{label} · 整理中」，
+供首页 hero 按访问时刻选段；时段定义单源在 `app/services/light_of_day.py`，
+`scripts/seed_curation.py` 也用同一套 `period_for_hour()` 分桶）、
 `GET /api/v1/photos/{photo_id}/collections`（详情页「收录于」）。
 约定：专题只展示 `status=approved` 且非 `sensitive` 的作品；`photo_count` 与实际可见条目一致；
 封面**不裁切**（前端 `object-fit: contain`）；专题内顺序用 `position` 显式维护；

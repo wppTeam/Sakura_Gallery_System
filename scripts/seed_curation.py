@@ -35,15 +35,9 @@ from sqlalchemy import delete, select  # noqa: E402
 
 from app.core.database import AsyncSessionLocal  # noqa: E402
 from app.models import Collection, CollectionPhoto, Photo  # noqa: E402
+from app.services.light_of_day import LIGHT_SLUGS, period_for_hour  # noqa: E402
 from app.services.spectrum import PALETTES, classify_image  # noqa: E402
 from app.services.storage import get_storage  # noqa: E402
-
-LIGHT_SLUGS: tuple[str, ...] = (
-    "light-dawn",
-    "light-noon",
-    "light-dusk",
-    "light-night",
-)
 
 LIGHT_COLLECTIONS: dict[str, dict] = {
     "light-dawn": {
@@ -122,16 +116,10 @@ SPECTRUM_COLLECTIONS: dict[str, dict] = {
 
 
 def _light_bucket(captured_at: datetime | None) -> str | None:
+    """与线上 /collections/light 使用同一套时段定义（app.services.light_of_day）。"""
     if captured_at is None:
         return None
-    hour = captured_at.hour
-    if 5 <= hour < 9:
-        return "light-dawn"
-    if 9 <= hour < 15:
-        return "light-noon"
-    if 15 <= hour < 19:
-        return "light-dusk"
-    return "light-night"
+    return period_for_hour(captured_at.hour).slug
 
 
 def _compute_spectrum(photo: Photo, storage) -> dict | None:
