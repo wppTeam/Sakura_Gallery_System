@@ -1202,3 +1202,24 @@ curl -sD- -o /dev/null https://buct-sakura.cn/api/v1/photos/public/<id> | grep -
 
 注意：`location ^~ /api/` 会跳过正则 location，所以新增缓存点必须用 `^~` 前缀（```
 location ^~ /api/v1/photos/public/```），不能用正则。
+
+### 17.7 线上真机容量采样（2026-11-24）
+
+在腾讯云 2C4G 生产机上，从本机经 SSH 隧道直连服务器内网 `127.0.0.1:18080`（绕开 Cloudflare）
+用 `scripts/loadtest.py` 采样（未改动线上限流配置）：
+
+| 场景 | 并发 | 尝试吞吐 | p50 | p95 | 说明 |
+|---|---|---|---|---|---|
+| 混合读（list+search+thumb） | 24 | 24.7 req/s | 31ms | 203ms | 5346 个 429：单 IP 超过 nginx `limit_req 30r/s` |
+| 公开列表（缓存） | 8 | 34.7 req/s | **11ms** | **39ms** | 仍未完全避开限流；200 响应 p50 11ms 即缓存命中耗时 |
+
+结论：
+
+- 线上匿名流量对**单个 IP** 被 `limit_req_zone api_general rate=30r/s` + `limit_conn 50` 保护，
+  真实用户不会互相挤占；单 IP 压测拿不到「总吞吐」上限，这是有意为之，不是性能缺陷。
+- 采样期间容器资源几乎空闲：nginx ≈4.5MiB / backend ≈157MiB / pg ≈74MiB，宿主 load 0.34——
+  **CPU 与内存都不是瓶颈**，上限在带宽与限流策略。
+- 缓存命中时公开列表 p50 11ms、p95 39ms；未缓存时（§14 cgroup 模拟）单机后端约 57 req/s、
+  开微缓存后混合读约 301 req/s。生产有 Cloudflare 在前，静态资源与限流部分由边缘承担。
+- 若要做「多 IP 总吞吐」压测，应在**预发布环境**临时移除 `limit_req`，或从多台机器打；不要在线上
+  为了压测放开限流。
