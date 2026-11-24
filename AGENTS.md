@@ -330,7 +330,11 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
   按 `collection_photos.position`），以及 `position/total`、前后邻居 id 与一个含当前作品的紧凑窗口
   （`items[]` 只带 id/标题/宽高/AIGC 角标/LQIP 色/thumbnail URL，避免胶片条传完整 EXIF）。候选只含已发布
   且非人像敏感作品；专题不存在或作品不在专题内时自动退回最新流；目标不可访问时 404。实现
-  `backend/app/services/photo_navigation.py`（latest 用 keyset 四条小 SQL，不把全站 id 拉进内存）
+  `backend/app/services/photo_navigation.py`（latest 用 keyset 四条小 SQL，不把全站 id 拉进内存）。
+  前端：`frontend/src/layouts/PublicLayout.vue` 对 `route.name === 'PhotoDetail'` 使用固定 `key`，
+  翻页时复用同一个组件实例（`PhotoDetailView.load(true)` 保留当前帧与邻居序列，等新详情到达后原地替换），
+  因此灯箱在 ←/→ 切换作品时不关闭、不重挂载；其它路由仍按 `route.path` 重挂载以保留页面转场。
+  频道页（collection）进入作品时补 `?from=collection:<slug>`，详情页翻页沿用同一序列。
 - **Milvus / pgvector 本轮不做**（2c4g 装不下 Milvus standalone ≥8GB）；规模上来后加 pgvector + `text-embedding-v4` 回填
 
 ## 8. 设计系统
