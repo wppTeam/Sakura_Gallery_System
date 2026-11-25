@@ -14,6 +14,7 @@
             <RouterLink class="profile-quick-link" to="/notifications">通知中心 →</RouterLink>
             <RouterLink class="profile-quick-link" to="/favorites">我的收藏 →</RouterLink>
             <RouterLink class="profile-quick-link" to="/my-collections">我的策展 →</RouterLink>
+            <a class="profile-quick-link" href="#account-security">账号与安全 →</a>
           </div>
           <ul class="profile-chips" aria-label="账户概览">
             <li>
@@ -158,11 +159,101 @@
             </n-form>
           </n-tab-pane>
         </n-tabs>
+
+        <!-- 账号与安全：注销不可恢复，单独做成危险区，不放进 tabs 里降低误触 -->
+        <section id="account-security" class="profile-security" aria-labelledby="account-security-title">
+          <header class="security-head">
+            <p class="profile-eyebrow">ACCOUNT &amp; SECURITY · 账号与安全</p>
+            <h2 id="account-security-title" class="security-title">账号与安全</h2>
+            <p class="security-lead">
+              管理登录密码与账号生命周期。注销是<strong>不可恢复</strong>的操作，请确认你已了解下方说明。
+            </p>
+          </header>
+
+          <div class="danger-zone">
+            <div class="danger-zone-head">
+              <span class="danger-zone-badge" aria-hidden="true">!</span>
+              <div class="danger-zone-intro">
+                <h3 class="danger-zone-title">注销账号</h3>
+                <p class="danger-zone-lead">
+                  注销后，你的账号与全部内容将从本站彻底删除，且<strong>无法恢复</strong>。
+                </p>
+              </div>
+            </div>
+
+            <ul class="danger-zone-list">
+              <li>账号下的全部作品会连同原图、缩略图、压缩图与响应式变体一并删除；</li>
+              <li>你创建的自建专辑、收藏、站内通知与邮箱验证码记录也会被删除；</li>
+              <li>审核记录与审计日志按后端实际删除范围处理，注销后当前登录立即失效、无法再登录。</li>
+            </ul>
+
+            <form class="danger-zone-form" @submit.prevent="openDeleteModal">
+              <label class="dz-field">
+                <span class="dz-label">当前密码</span>
+                <n-input
+                  v-model:value="deletePassword"
+                  type="password"
+                  show-password-on="click"
+                  placeholder="用于二次确认身份"
+                  autocomplete="current-password"
+                />
+              </label>
+              <label class="dz-field">
+                <span class="dz-label">确认词</span>
+                <n-input
+                  v-model:value="deleteConfirm"
+                  placeholder="请输入「注销」两个字"
+                  autocomplete="off"
+                />
+              </label>
+              <div class="dz-actions">
+                <button type="submit" class="dz-button" :disabled="!deleteReady">注销账号</button>
+                <p class="dz-hint">两个字段都填写且确认词精确为「注销」后才能继续。</p>
+              </div>
+            </form>
+          </div>
+        </section>
       </div>
     </main>
 
     <SiteFooter />
     <ChangePasswordDialog v-model:show="showChangePassword" />
+
+    <!-- 注销二次确认：确认按钮再点一次才真正提交 -->
+    <n-modal
+      v-model:show="showDeleteModal"
+      preset="card"
+      :bordered="false"
+      :mask-closable="!deleteSubmitting"
+      :closable="!deleteSubmitting"
+      class="delete-account-modal"
+      style="width: min(92vw, 540px)"
+    >
+      <template #header>
+        <div class="delete-modal-head">
+          <span class="delete-modal-seal" aria-hidden="true">!</span>
+          <span>确认注销账号？</span>
+        </div>
+      </template>
+
+      <div class="delete-modal-body">
+        <p class="delete-modal-warn">
+          此操作<strong>不可恢复</strong>。确认后，你的账号、作品、自建专辑、收藏与站内通知将被永久删除。
+        </p>
+        <p class="delete-modal-account">
+          当前账号：<strong>{{ authStore.user?.display_name || authStore.user?.username || '（未知）' }}</strong>
+        </p>
+        <div v-if="deleteError" class="delete-modal-error" role="alert">{{ deleteError }}</div>
+        <p class="delete-modal-note">如果只是想暂时离开，请点「取消」；站内创作与收藏会原样保留。</p>
+      </div>
+
+      <template #footer>
+        <div class="delete-modal-actions">
+          <n-button :disabled="deleteSubmitting" @click="showDeleteModal = false">取消</n-button>
+          <n-button type="error" :loading="deleteSubmitting" @click="submitDelete">确认注销</n-button>
+        </div>
+      </template>
+    </n-modal>
   </div>
 </template>
 
@@ -181,6 +272,7 @@ import type { PublicPhoto } from '../api/public'
 import { toPublicPhoto } from '../api/public'
 import * as photoApi from '../api/photo'
 import * as authApi from '../api/auth'
+import { deleteAccount } from '../api/user'
 import { formatDate, getPhotoUrl } from '../utils/format'
 import { displayPhotoTitle } from '../utils/photoDisplay'
 import type { Photo } from '../types/photo'
@@ -210,6 +302,56 @@ const formRules: FormRules = {
 }
 
 const stats = reactive({ total: 0, approved: 0, pending: 0, rejected: 0, favorites: 0 })
+
+/* ---------- 账号与安全：注销 ---------- */
+
+const deletePassword = ref('')
+const deleteConfirm = ref('')
+const showDeleteModal = ref(false)
+const deleteSubmitting = ref(false)
+const deleteError = ref('')
+
+const deleteReady = computed(
+  () => deletePassword.value.length > 0 && deleteConfirm.value === '注销',
+)
+
+function openDeleteModal() {
+  if (!deleteReady.value) return
+  deleteError.value = ''
+  showDeleteModal.value = true
+}
+
+/** 优先原样展示后端 detail（409 最后管理员文案需完整保留） */
+function describeDeleteError(error: unknown): string {
+  const err = error as { response?: { status?: number; data?: { detail?: unknown } } } | undefined
+  const status = err?.response?.status
+  const detail = err?.response?.data?.detail
+  if (typeof detail === 'string' && detail.trim()) return detail
+  if (status === 401) return '登录状态已过期，请重新登录后再试。'
+  if (status === 409) return '当前账号暂时无法注销，请稍后再试或联系管理员。'
+  if (status === 429) return '操作太频繁，请稍后再试。'
+  if (!status) return '网络连接失败，请检查网络后重试。'
+  return `注销失败，请稍后再试（HTTP ${status}）。`
+}
+
+async function submitDelete() {
+  if (!deleteReady.value || deleteSubmitting.value) return
+  deleteSubmitting.value = true
+  deleteError.value = ''
+  try {
+    await deleteAccount({ password: deletePassword.value, confirm: deleteConfirm.value })
+    showDeleteModal.value = false
+    deletePassword.value = ''
+    deleteConfirm.value = ''
+    authStore.logout()
+    await router.replace('/')
+    message.success('账号已注销')
+  } catch (error) {
+    deleteError.value = describeDeleteError(error)
+  } finally {
+    deleteSubmitting.value = false
+  }
+}
 
 /* ---------- 收藏 ---------- */
 
@@ -662,6 +804,270 @@ onMounted(() => {
 .profile-form {
   max-width: 520px;
   margin-top: 6px;
+}
+
+/* ---------- 账号与安全 ---------- */
+
+.profile-security {
+  margin-top: clamp(40px, 5vw, 64px);
+  padding-top: clamp(26px, 3.4vw, 36px);
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 88px;
+}
+
+.security-head {
+  max-width: 42em;
+}
+
+.security-title {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: clamp(26px, 2.8vw, 34px);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+.security-lead {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.security-lead strong,
+.danger-zone-lead strong,
+.delete-modal-warn strong {
+  color: var(--danger-ink);
+  font-weight: 600;
+}
+
+.danger-zone {
+  --danger-ink: #96324c;
+  --danger-line: rgba(201, 58, 99, 0.32);
+  margin-top: 18px;
+  padding: clamp(18px, 2.4vw, 26px);
+  border: 1px solid var(--danger-line);
+  border-radius: var(--r-card, 20px);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(232, 98, 140, 0.09) 0%, transparent 58%),
+    var(--surface, #fff);
+}
+
+.danger-zone-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.danger-zone-badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-top: 2px;
+  border: 1px solid var(--danger-line);
+  border-radius: 999px;
+  background: var(--sakura-pale);
+  color: var(--danger-ink);
+  font-family: var(--display);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.danger-zone-intro {
+  min-width: 0;
+}
+
+.danger-zone-title {
+  margin: 0;
+  color: var(--danger-ink);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.danger-zone-lead {
+  margin: 4px 0 0;
+  color: var(--ink-soft, #63474f);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.danger-zone-list {
+  margin: 14px 0 0;
+  padding: 0 0 0 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.danger-zone-form {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--danger-line);
+}
+
+.dz-field {
+  display: block;
+  max-width: 360px;
+  margin-bottom: 14px;
+}
+
+.dz-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink-soft, #63474f);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dz-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.dz-button {
+  min-width: 168px;
+  min-height: 46px;
+  padding: 0 22px;
+  border: 1px solid var(--danger-ink);
+  border-radius: 999px;
+  background: var(--danger-ink);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+
+.dz-button:hover:not(:disabled) {
+  background: #7f2940;
+}
+
+.dz-button:disabled {
+  border-color: var(--line-strong, #e7c4cf);
+  background: var(--surface-soft, #fff2f7);
+  color: var(--faint, #947881);
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.dz-button:focus-visible {
+  outline: 3px solid var(--sakura);
+  outline-offset: 3px;
+}
+
+.dz-hint {
+  margin: 0;
+  flex: 1 1 220px;
+  color: var(--faint, #947881);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.delete-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.delete-modal-seal {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(201, 58, 99, 0.36);
+  border-radius: 999px;
+  background: var(--sakura-pale);
+  color: #96324c;
+  font-family: var(--display);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.delete-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.delete-modal-warn {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(201, 58, 99, 0.24);
+  border-radius: var(--r-sm, 10px);
+  background: rgba(255, 233, 240, 0.55);
+  color: var(--ink);
+}
+
+.delete-modal-account {
+  margin: 0;
+}
+
+.delete-modal-account strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.delete-modal-error {
+  padding: 10px 14px;
+  border: 1px solid rgba(201, 58, 99, 0.4);
+  border-radius: var(--r-sm, 10px);
+  background: var(--sakura-pale);
+  color: #7f2940;
+  font-size: 13px;
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.delete-modal-note {
+  margin: 0;
+  color: var(--faint, #947881);
+  font-size: 12px;
+}
+
+.delete-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.delete-modal-actions :deep(.n-button) {
+  min-height: 44px;
+  padding: 0 20px;
+}
+
+@media (max-width: 560px) {
+  .dz-button {
+    width: 100%;
+  }
+
+  .dz-field {
+    max-width: none;
+  }
+
+  .danger-zone-form {
+    margin-top: 18px;
+  }
+}
+
+@media (pointer: coarse) {
+  .dz-button {
+    min-height: 48px;
+  }
 }
 
 @media (max-width: 820px) {
