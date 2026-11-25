@@ -159,3 +159,14 @@ class AdminPasswordReset(BaseModel):
     @classmethod
     def check_password(cls, v: str) -> str:
         return validate_password_strength(v)
+
+
+class AccountDeleteRequest(BaseModel):
+    """作者自助注销账号。
+
+    confirm 必须为「注销」两个字，password 用于二次确认身份；两者都不可省，
+    防止误触与令牌泄露后的恶意注销。
+    """
+
+    password: str = Field(..., min_length=1, max_length=128)
+    confirm: str = Field(..., min_length=1, max_length=16)

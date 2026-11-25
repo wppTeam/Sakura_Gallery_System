@@ -56,6 +56,7 @@ from app.services.ai_tasks import (
     get_latest_ai_task_for_photo,
 )
 from app.services.image_processing import VARIANT_LONG_EDGES, process_uploaded_image
+from app.services.photo_assets import delete_photo_assets, variant_meta
 from app.services.runtime_settings import get_runtime_settings
 from app.services.search_interpreter import get_search_interpreter
 from app.services.storage import cleanup_staged_files, get_storage, stage_photo_upload
@@ -266,9 +267,7 @@ _VARIANT_SIZES = (320, 640, 1080, 1600, 2400)
 
 def _variant_meta(photo: Photo) -> Dict[str, Any]:
     """读取入库时写入 exif_data["_variants"] 的档位元信息（内部键，不进公开 EXIF）。"""
-    exif = photo.exif_data if isinstance(photo.exif_data, dict) else None
-    meta = exif.get("_variants") if exif else None
-    return meta if isinstance(meta, dict) else {}
+    return variant_meta(photo)
 
 
 def _public_variants(photo: Photo) -> Optional[Dict[str, Dict[str, Any]]]:
@@ -1384,36 +1383,6 @@ async def update_photo(
     return await serialize_photo_admin(db, updated_photo)
 
 
-def _delete_photo_assets(storage, photo: Photo) -> int:
-    """删除作品关联的全部文件（原图 / 缩略图 / 压缩图 / 响应式变体 / 脱敏图）。
-
-    旧实现只删 original/thumb/processed，compressed、variants 与脱敏图会变成
-    孤儿文件占满磁盘（2c4g 机器上尤其要紧）。变体按约定命名
-    ``variants/{photo_id}_{size}.{webp|jpg}``，即使缺少 exif 档位元信息也按默认
-    档位尝试删除。返回成功删除的文件数（S3 删除不存在的 key 也返回 True）。
-    """
-    paths = [
-        photo.original_path,
-        photo.thumb_path,
-        photo.processed_path,
-        photo.compressed_path,
-        photo.redacted_path,
-        photo.redacted_thumb_path,
-    ]
-    sizes = sorted({int(key) for key in _variant_meta(photo) if str(key).isdigit()})
-    if not sizes:
-        sizes = list(VARIANT_LONG_EDGES)
-    for size in sizes:
-        paths.append(f"variants/{photo.id}_{size}.webp")
-        paths.append(f"variants/{photo.id}_{size}.jpg")
-
-    removed = 0
-    for path in paths:
-        if path and storage.delete_file(path):
-            removed += 1
-    return removed
-
-
 @router.delete("/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_photo(
     photo_id: str,
@@ -1427,7 +1396,7 @@ async def delete_photo(
     if photo.uploader_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized to delete this photo")
     storage = get_storage()
-    removed_files = _delete_photo_assets(storage, photo)
+    removed_files = delete_photo_assets(storage, photo)
     # Log BEFORE delete — photo_crud.delete_photo internally calls db.commit()
     # which also commits the flushed audit log
     await log_audit(db, user_id=current_user.id, action="photo.delete",
@@ -1543,7 +1512,7 @@ async def batch_delete_photos(
         photo = await photo_crud.get_photo(db, photo_id)
         if photo:
             # 与单张删除一致：原图/缩略图/压缩图/脱敏图/响应式变体全部清理
-            _delete_photo_assets(storage, photo)
+            delete_photo_assets(storage, photo)
             await photo_crud.delete_photo(db, photo)
             deleted_count += 1
     await log_audit(db, user_id=current_user.id, action="photo.batch_delete",

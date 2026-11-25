@@ -391,6 +391,12 @@ GET /api/v1/photos/{photo_id}/collections
 |------|------|------|
 | POST | `/api/v1/search/visual` | `multipart/form-data`：`file`（JPEG / PNG / WebP，≤8MB，≤4000 万像素）+ 可选 `limit`（1–30，默认 12）。返回 `{results[], total, query_time_ms, mode:"visual", query:{filename,width,height,aspect_ratio,palette,palette_name,palette_hex}}`；非图片/过小 → 400，超过 8MB 或像素上限 → 413；与上传图近重复（汉明 ≤3）的作品不返回；按 IP 限流 10 次/分钟 |
 
+## 🗑 账号（自助注销，需登录）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `DELETE` | `/api/v1/user/account` | 注销当前账号并删除全部内容；body `{ "password": "...", "confirm": "注销" }`，成功 `204`；确认词错误 / 密码错误 `400`；最后一位管理员 `409`；未登录 `401`；限流 `429`（3 次/小时/IP）。不可恢复。 |
+
 ## 🔔 站内通知（需登录）
 
 审核结果、复核进度、权限授予等消息通过站内通知推送给用户；公共端铃铛与 `/notifications` 页均走这些接口。

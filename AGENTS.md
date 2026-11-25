@@ -199,6 +199,22 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
   推荐开源免费商用字体：思源系列、霞鹜系列、站酷系列。
 - **肖像权**：涉可识别人物需被摄者同意，走 L2。
 
+### 账号与数据（自助注销，2026-11-25 落地）
+
+隐私政策承诺「账号可随时申请注销、注销后删除账号与内容」，此前只有管理员停用账号，
+现在补上作者自助注销：
+
+- `DELETE /api/v1/user/account`（需登录，`3/hour/IP`），body `{password, confirm}`，
+  `confirm` 必须为「注销」两个字，密码用于二次确认身份；
+- 单事务删除：名下全部作品 + 原图/缩略图/压缩图/响应式变体/脱敏图/AI 创作台草稿图、
+  自建专辑、收藏、通知、邮箱验证码；作品子表（标签/分类/收藏/审核记录/申诉/专辑成员）
+  由数据库 `ON DELETE CASCADE` 清理；
+- 审计日志 `user.self_delete` 保留（`user_id` 外键 `ON DELETE SET NULL`，内容脱敏），
+  举报记录同样保留以便追溯；
+- 站点最后一位管理员不能注销自己（409），避免站点失去管理入口；
+- 实现：`app/services/account_deletion.py`（事务与统计）、`app/services/photo_assets.py`
+  （统一的派生文件清理，作品删除端点与账号注销共用）；前端入口在「个人中心 → 账号与安全」。
+
 ### 站内通知中心（公共端，2026-11-25 落地）
 
 审核结果、复核进度、权限变更通过 `notifications` 表落库（`services/notification.py::notify_user`），
