@@ -14,7 +14,7 @@ from app.core.security import (
     get_password_hash,
 )
 from app.schemas.token import LoginRequest, LoginResponse, RefreshRequest, Token
-from app.schemas.user import User, UserCreate, PasswordChange
+from app.schemas.user import User, UserCreate, PasswordChange, RegistrationConfig
 from app.schemas.email import (
     EmailCodeLoginRequest,
     EmailCodePurpose,
@@ -27,6 +27,7 @@ from app.schemas.email import (
 )
 from app.services import email_codes
 from app.services.email_codes import EmailCodeError
+from app.services.notification import notify_user
 from app.crud import user as user_crud
 
 logger = logging.getLogger(__name__)
@@ -518,6 +519,20 @@ async def change_password(
     return {"detail": "密码修改成功"}
 
 
+@router.get("/registration-config", response_model=RegistrationConfig)
+async def get_registration_config():
+    """公开的注册配置：前端据此显示/隐藏邀请码、提示注册是否开放。"""
+    from app.core.config import get_settings as _get_settings
+
+    settings = _get_settings()
+    return RegistrationConfig(
+        enabled=bool(settings.REGISTRATION_ENABLED),
+        invite_required=bool(settings.REGISTRATION_INVITE_CODE),
+        email_verification_required=bool(settings.REQUIRE_EMAIL_VERIFICATION),
+        approval_required=bool(settings.REQUIRE_REGISTRATION_APPROVAL),
+    )
+
+
 @router.post("/register", response_model=User, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
 async def register(
@@ -534,6 +549,22 @@ async def register(
     """
     from app.core.config import get_settings
     settings = get_settings()
+
+    if not settings.REGISTRATION_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="本站暂未开放注册，欢迎先逛逛作品广场",
+        )
+
+    # 邀请码（可选）：配置了就必须匹配，用于校园内测/限量放号
+    required_invite = (settings.REGISTRATION_INVITE_CODE or "").strip()
+    if required_invite:
+        submitted = (user_data.invite_code or "").strip()
+        if submitted != required_invite:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="邀请码不正确，请向管理员获取",
+            )
 
     # 检查学号是否已存在
     existing_user = await user_crud.get_user_by_student_id(db, user_data.student_id)
@@ -594,5 +625,15 @@ async def register(
         await email_codes.invalidate_codes(db, str(user_data.email), EmailCodePurpose.REGISTER.value)
     await db.commit()
     await db.refresh(new_user)
+
+    # 欢迎通知：注册后立即出现在站内通知中心（pending 用户也能在放行后看到）
+    await notify_user(
+        db,
+        user_id=new_user.id,
+        type="system",
+        title="欢迎来到视觉百花 🌸",
+        content="你的账号已创建。先读一遍社区规范，再上传第一张作品吧；审核通过后作品会出现在探索页。",
+    )
+    await db.commit()
 
     return User.model_validate(new_user)

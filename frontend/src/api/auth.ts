@@ -103,6 +103,23 @@ export interface RegisterWithCodeRequest {
   display_name?: string
   full_name?: string
   password: string
+  /** 站点配置了邀请码时必填 */
+  invite_code?: string
+}
+
+export interface RegistrationConfig {
+  enabled: boolean
+  invite_required: boolean
+  email_verification_required: boolean
+  approval_required: boolean
+}
+
+/** 公开的注册配置：是否开放注册、是否需要邀请码/邮箱验证/审批。 */
+export function fetchRegistrationConfig(): Promise<RegistrationConfig> {
+  return request({
+    url: '/api/v1/auth/registration-config',
+    method: 'get',
+  })
 }
 
 /**

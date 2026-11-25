@@ -185,7 +185,9 @@ class Settings(BaseSettings):
     SSO_SCOPES: str = "openid profile email"
     SSO_AUTO_CREATE_USER: bool = True       # SSO 登录时自动创建本地用户
 
-    # 注册审批配置
+    # 注册配置
+    REGISTRATION_ENABLED: bool = True  # 是否开放注册（关闭后 /auth/register 返回 403）
+    REGISTRATION_INVITE_CODE: str = ""  # 非空时注册必须填写该邀请码（校园内测/限量放号用）
     REQUIRE_REGISTRATION_APPROVAL: bool = False  # 是否开启注册审批
 
     # ── 邮箱验证码 / 邮件发送 ──

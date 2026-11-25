@@ -13,6 +13,7 @@ from app.core.deps import get_db, get_current_admin_user
 from app.crud import user as user_crud
 from app.models.user import User
 from app.services.audit import log_audit
+from app.services.notification import notify_user
 from app.schemas.user import (
     User as UserSchema,
     UserList,
@@ -199,7 +200,20 @@ async def update_user(
                 detail="该邮箱已被其他用户使用"
             )
 
+    was_active = bool(target_user.is_active)
     updated_user = await user_crud.update_user_by_admin(db, user_id, user_data)
+
+    # 注册审批放行：从禁用变启用时给用户一条站内通知
+    if updated_user is not None and not was_active and bool(updated_user.is_active):
+        await notify_user(
+            db,
+            user_id=updated_user.id,
+            type="system",
+            title="账号已通过审批 🎉",
+            content="你现在可以登录并上传作品了。欢迎加入视觉百花，期待你的第一件创作。",
+        )
+        await db.commit()
+
     return UserSchema.model_validate(updated_user)
 
 

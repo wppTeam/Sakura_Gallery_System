@@ -391,6 +391,13 @@ GET /api/v1/photos/{photo_id}/collections
 |------|------|------|
 | POST | `/api/v1/search/visual` | `multipart/form-data`：`file`（JPEG / PNG / WebP，≤8MB，≤4000 万像素）+ 可选 `limit`（1–30，默认 12）。返回 `{results[], total, query_time_ms, mode:"visual", query:{filename,width,height,aspect_ratio,palette,palette_name,palette_hex}}`；非图片/过小 → 400，超过 8MB 或像素上限 → 413；与上传图近重复（汉明 ≤3）的作品不返回；按 IP 限流 10 次/分钟 |
 
+## 🚪 注册配置（公开）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/api/v1/auth/registration-config` | 返回 `{enabled, invite_required, email_verification_required, approval_required}`；前端据此显示/隐藏邀请码、提示注册是否开放 |
+| `POST` | `/api/v1/auth/register` | 注册；新增可选 `invite_code`。站点关闭注册 → 403「本站暂未开放注册」；配置了邀请码而缺失/错误 → 403「邀请码不正确，请向管理员获取」。成功后写一条站内欢迎通知 |
+
 ## 🗑 账号（自助注销，需登录）
 
 | 方法 | 路径 | 说明 |

@@ -199,6 +199,25 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
   推荐开源免费商用字体：思源系列、霞鹜系列、站酷系列。
 - **肖像权**：涉可识别人物需被摄者同意，走 L2。
 
+### 注册准入（开关 / 邀请码 / 欢迎与审批通知，2026-11-25 落地）
+
+注册不再只有「默认开放」一种形态，站点可以按阶段收放：
+
+- 开关：`REGISTRATION_ENABLED=false` 时 `POST /api/v1/auth/register` 返回 403
+  「本站暂未开放注册」，前端注册页显示关闭提示；
+- 邀请码：`REGISTRATION_INVITE_CODE` 非空时注册必须携带 `invite_code`，
+  缺失或不匹配返回 403「邀请码不正确，请向管理员获取」（校园内测 / 限量放号用）；
+- 注册审批：`REQUIRE_REGISTRATION_APPROVAL=true` 时新用户 `is_active=false`，
+  管理员在「用户管理」放行后收到站内通知「账号已通过审批」；
+- 注册成功写一条站内欢迎通知（`type="system"`），并在未开启审批时由前端直接登录，
+  少一次「刚设的密码再输一遍」；
+- 公开配置：`GET /api/v1/auth/registration-config` 返回
+  `{enabled, invite_required, email_verification_required, approval_required}`，
+  前端据此决定展示邀请码 / 关闭提示，避免把环境变量硬编码进前端；
+- 实现：`backend/app/api/v1/endpoints/auth.py`（register / registration-config）、
+  `backend/app/schemas/user.py::RegistrationConfig`、前端 `RegisterView.vue` 与
+  `api/auth.ts::fetchRegistrationConfig`。
+
 ### 账号与数据（自助注销，2026-11-25 落地）
 
 隐私政策承诺「账号可随时申请注销、注销后删除账号与内容」，此前只有管理员停用账号，

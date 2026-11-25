@@ -57,11 +57,21 @@ class UserCreate(UserBase):
     """
     password: str
     email_code: Optional[str] = Field(default=None, min_length=4, max_length=12)
+    invite_code: Optional[str] = Field(default=None, max_length=64)
 
     @field_validator("password")
     @classmethod
     def check_password(cls, v: str) -> str:
         return validate_password_strength(v)
+
+
+class RegistrationConfig(BaseModel):
+    """公开的注册配置，前端据此决定展示邀请码 / 关闭注册提示。"""
+
+    enabled: bool = True
+    invite_required: bool = False
+    email_verification_required: bool = False
+    approval_required: bool = False
 
 
 class UserCreateByAdmin(UserBase):

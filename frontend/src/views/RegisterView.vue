@@ -10,7 +10,11 @@
       </n-alert>
     </template>
 
-    <form class="auth-form" novalidate @submit.prevent="handleRegister">
+    <n-alert v-if="configLoaded && !config.enabled" type="info" :bordered="false" class="auth-alert">
+      本站暂未开放注册。欢迎先逛逛作品广场，或联系管理员获取邀请码。
+    </n-alert>
+
+    <form v-if="!configLoaded || config.enabled" class="auth-form" novalidate @submit.prevent="handleRegister">
       <div class="auth-grid">
         <div class="auth-field">
           <label class="auth-label" for="reg-student-id">学号 / 工号 <span class="auth-required">*</span></label>
@@ -49,6 +53,20 @@
           :disabled="submitting"
         />
         <p v-if="errors.email_code" class="auth-inline-error">{{ errors.email_code }}</p>
+      </div>
+
+      <div v-if="config.invite_required" class="auth-field">
+        <label class="auth-label" for="reg-invite">邀请码 <span class="auth-required">*</span></label>
+        <n-input
+          id="reg-invite"
+          v-model:value="form.invite_code"
+          size="large"
+          placeholder="向管理员或同学获取"
+          autocomplete="off"
+          :status="errors.invite_code ? 'error' : undefined"
+        />
+        <p class="auth-field-hint">目前为限量放号阶段，需要邀请码才能注册。</p>
+        <p v-if="errors.invite_code" class="auth-inline-error">{{ errors.invite_code }}</p>
       </div>
 
       <div class="auth-grid">
@@ -143,23 +161,34 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import AuthShell from '../components/auth/AuthShell.vue'
 import EmailCodeField from '../components/auth/EmailCodeField.vue'
 import PasswordField from '../components/auth/PasswordField.vue'
 import TermsDialog from '../components/auth/TermsDialog.vue'
-import { register } from '../api/auth'
+import { fetchRegistrationConfig, register, type RegistrationConfig } from '../api/auth'
+import { useAuthStore } from '../stores/auth'
 import '../styles/auth.css'
 
 const router = useRouter()
 const message = useMessage()
+const authStore = useAuthStore()
+
+const config = ref<RegistrationConfig>({
+  enabled: true,
+  invite_required: false,
+  email_verification_required: false,
+  approval_required: false,
+})
+const configLoaded = ref(false)
 
 const form = reactive({
   student_id: '',
   email: '',
   email_code: '',
+  invite_code: '',
   username: '',
   display_name: '',
   password: '',
@@ -174,6 +203,7 @@ const errors = reactive<Record<keyof typeof form, string>>({
   student_id: '',
   email: '',
   email_code: '',
+  invite_code: '',
   username: '',
   display_name: '',
   password: '',
@@ -184,6 +214,17 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const USERNAME_RE = /^[A-Za-z0-9_.-]{3,32}$/
 
 const loginQuery = computed(() => (form.email ? { email: form.email } : {}))
+
+onMounted(async () => {
+  try {
+    config.value = await fetchRegistrationConfig()
+  } catch {
+    // 配置接口失败时按「开放、无邀请码」降级，让用户至少能尝试提交
+    config.value = { enabled: true, invite_required: false, email_verification_required: false, approval_required: false }
+  } finally {
+    configLoaded.value = true
+  }
+})
 
 const passwordOk = computed(() =>
   form.password.length >= 8
@@ -212,6 +253,10 @@ function validate(): boolean {
   }
   if (form.email_code.trim().length !== 6) {
     errors.email_code = '请输入 6 位邮箱验证码'
+    ok = false
+  }
+  if (config.value.invite_required && !form.invite_code.trim()) {
+    errors.invite_code = '请输入邀请码'
     ok = false
   }
   if (form.username.trim() && !USERNAME_RE.test(form.username.trim())) {
@@ -259,12 +304,21 @@ async function handleRegister() {
       username: form.username.trim() || undefined,
       display_name: form.display_name.trim() || undefined,
       password: form.password,
+      invite_code: form.invite_code.trim() || undefined,
     })
     const email = form.email.trim()
     if (user.is_active === false) {
       message.info('注册已提交，等待管理员审批')
       await router.replace({ path: '/login', query: { email, pending: '1' } })
-    } else {
+      return
+    }
+
+    // 注册成功后直接登录，少一次「刚设的密码再输一遍」
+    try {
+      await authStore.login(email, form.password, true)
+      message.success('注册成功，欢迎加入视觉百花 🌸')
+      await router.replace('/')
+    } catch {
       message.success('注册成功，请登录')
       await router.replace({ path: '/login', query: { email, registered: '1' } })
     }
