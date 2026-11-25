@@ -391,6 +391,8 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
   （公开序列化新增 `uploader_username`，学号与真实姓名仍恒为 null）。计数只统计已通过且非人像敏感
   的作品；作品集只含作者本人 `kind=user`、已发布、公开且至少一张公开作品的专辑；未知或停用账号 404。
   匿名只读，nginx 30s 微缓存。实现 `backend/app/api/v1/endpoints/creators.py`。
+  名录 `GET /api/v1/creators?sort=works|views&limit&offset` 返回有公开作品的启用账号（聚合计数 +
+  每位 ≤3 张最新封面），`/creators` 页与首页「发现创作者」共用；sitemap 收录 `/u/{username}`。
 - **详情页导航（上一张 / 下一张）**：`GET /api/v1/photos/{id}/neighbors?context=latest|collection:<slug>`
   返回当前作品所处的序列（`latest` 按 `coalesce(published_at, created_at)` 倒序；`collection:<slug>`
   按 `collection_photos.position`），以及 `position/total`、前后邻居 id 与一个含当前作品的紧凑窗口

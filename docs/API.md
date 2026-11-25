@@ -435,6 +435,7 @@ GET /api/v1/photos/{photo_id}/collections
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
+| GET | `/api/v1/creators?sort=works\|views&limit=12&offset=0` | 创作者名录：只含有公开作品的启用账号，按作品数（默认）或累计浏览数排序；返回 `{items:[{username,display_name,joined_at,works_count,views_total,covers:[紧凑作品项 ≤3]}], total, limit, offset}` |
 | GET | `/api/v1/creators/{username}?works_limit=12&works_offset=0&collections_limit=6` | 返回 `{profile{username,display_name,joined_at,works_count,views_total,favorites_total,collections_count}, works{items,total,limit,offset}, collections:[{slug,title,subtitle,photo_count,cover}]}`；未知/停用 → 404 |
 | GET | `/api/v1/creators/{username}/works?limit=12&offset=0` | 作品分页（limit 1–50），供「加载更多」 |
 

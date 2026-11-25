@@ -18,7 +18,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import os
 from app.core.config import get_settings, DEFAULT_SECRET_KEY
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 
 from app.core.database import AsyncSessionLocal, init_db
 from app.api.v1.router import api_router
@@ -369,6 +369,27 @@ async def sitemap_xml():
                 .limit(5000)
             )
         ).all()
+
+        # 创作者主页（/u/{username}）：只收录有公开作品的启用账号
+        from app.models.user import User
+
+        creator_rows = (
+            await db.execute(
+                select(User.username)
+                .join(Photo, Photo.uploader_id == User.id)
+                .where(
+                    User.is_active.is_(True),
+                    Photo.status == "approved",
+                    or_(Photo.privacy_level.is_(None), Photo.privacy_level != "sensitive"),
+                )
+                .group_by(User.username)
+                .order_by(func.count(Photo.id).desc())
+                .limit(500)
+            )
+        ).all()
+        for (username,) in creator_rows:
+            if username:
+                entries.append((f"{base}/u/{username}", None))
 
     body = [
         '<?xml version="1.0" encoding="UTF-8"?>',

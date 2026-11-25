@@ -126,6 +126,8 @@ def test_sitemap_filters_private_and_pending(seo_env: TestClient):
     assert "33333333-3333-3333-3333-333333333333" not in body  # 待审不收录
     assert "seo-published" in body
     assert "seo-draft" not in body
+    # 创作者主页：有公开作品的账号被收录
+    assert "https://example.test/u/seo_owner" in body
 
 
 def test_sitemap_includes_image_entries(seo_env: TestClient):

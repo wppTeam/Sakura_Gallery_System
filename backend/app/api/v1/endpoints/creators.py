@@ -2,19 +2,21 @@
 
 浏览者从作品详情点作者名进来，能看到这个创作者的全部公开作品、作品总数、
 被浏览/被收藏的累计数，以及 ta 自己发布的作品集（作者手账）。
+`GET /api/v1/creators` 是公开创作者名录（按作品数/浏览数排序），首页与
+/creators 页用它做「发现创作者」入口。
 
 隐私约定：
 - 只按 username 查询，只暴露 username / display_name / 加入时间；
 - 计数只统计「已通过 + 非敏感」的作品，与公开列表口径一致；
 - 不返回学号、真实姓名、邮箱等身份字段。
 """
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Literal, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.endpoints.photos import serialize_photo
+from app.api.v1.endpoints.photos import _neighbor_item, serialize_photo
 from app.core.deps import get_db
 from app.crud import photo as photo_crud
 from app.crud.photo import _photo_with_relations
@@ -23,7 +25,9 @@ from app.models.favorite import Favorite
 from app.models.photo import Photo
 from app.models.user import User
 from app.schemas.creator import (
+    CreatorCard,
     CreatorCollectionCard,
+    CreatorListResponse,
     CreatorProfile,
     CreatorResponse,
     CreatorWorkList,
@@ -35,6 +39,9 @@ MAX_WORKS_LIMIT = 50
 DEFAULT_WORKS_LIMIT = 12
 MAX_COLLECTIONS_LIMIT = 12
 DEFAULT_COLLECTIONS_LIMIT = 6
+DIRECTORY_DEFAULT_LIMIT = 12
+DIRECTORY_MAX_LIMIT = 50
+DIRECTORY_MAX_COVERS = 3
 
 
 def _public_photo_filters(user_id: str):
@@ -201,6 +208,102 @@ async def _build_profile(
     )
 
 
+async def _load_directory(
+    db: AsyncSession,
+    *,
+    sort: str,
+    limit: int,
+    offset: int,
+) -> CreatorListResponse:
+    """公开创作者名录：只看「有公开作品」的启用账号。
+
+    计数口径与主页一致（approved + 非敏感）；封面取每位创作者最新的
+    ≤3 张公开作品，用紧凑的 PhotoNeighborItem（不带 EXIF / 变体）。
+    """
+    public_where = (
+        Photo.status == "approved",
+        or_(Photo.privacy_level.is_(None), Photo.privacy_level != "sensitive"),
+    )
+    stats = (
+        select(
+            Photo.uploader_id.label("uploader_id"),
+            func.count(Photo.id).label("works_count"),
+            func.coalesce(func.sum(Photo.views), 0).label("views_total"),
+        )
+        .where(*public_where)
+        .group_by(Photo.uploader_id)
+        .subquery()
+    )
+    base = (
+        select(
+            User.id,
+            User.username,
+            User.display_name,
+            User.created_at,
+            stats.c.works_count,
+            stats.c.views_total,
+        )
+        .join(stats, stats.c.uploader_id == User.id)
+        .where(User.is_active.is_(True))
+    )
+    if sort == "views":
+        order_by = (
+            stats.c.views_total.desc(),
+            stats.c.works_count.desc(),
+            User.created_at.asc(),
+        )
+    else:
+        order_by = (
+            stats.c.works_count.desc(),
+            stats.c.views_total.desc(),
+            User.created_at.asc(),
+        )
+    rows = (
+        await db.execute(base.order_by(*order_by).limit(limit).offset(offset))
+    ).all()
+    total = (
+        await db.execute(select(func.count()).select_from(base.subquery()))
+    ).scalar() or 0
+
+    covers: Dict[str, List] = {}
+    if rows:
+        user_ids = [row.id for row in rows]
+        photo_rows = (
+            (
+                await db.execute(
+                    select(Photo)
+                    .where(Photo.uploader_id.in_(user_ids), *public_where)
+                    .order_by(
+                        Photo.uploader_id,
+                        func.coalesce(Photo.published_at, Photo.created_at).desc(),
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for photo in photo_rows:
+            bucket = covers.setdefault(photo.uploader_id, [])
+            if len(bucket) < DIRECTORY_MAX_COVERS:
+                bucket.append(_neighbor_item(photo))
+
+    items = [
+        CreatorCard(
+            username=row.username or "",
+            display_name=row.display_name or row.username,
+            joined_at=row.created_at,
+            works_count=int(row.works_count or 0),
+            views_total=int(row.views_total or 0),
+            covers=covers.get(row.id, []),
+        )
+        for row in rows
+        if row.username
+    ]
+    return CreatorListResponse(
+        items=items, total=int(total), limit=limit, offset=offset
+    )
+
+
 async def _load_creator(
     db: AsyncSession,
     username: str,
@@ -222,6 +325,19 @@ async def _load_creator(
         ),
         collections=collections,
     )
+
+
+@router.get("", response_model=CreatorListResponse)
+async def list_creators(
+    sort: Literal["works", "views"] = Query(
+        "works", description="works=按公开作品数，views=按累计浏览数"
+    ),
+    limit: int = Query(DIRECTORY_DEFAULT_LIMIT, ge=1, le=DIRECTORY_MAX_LIMIT),
+    offset: int = Query(0, ge=0, le=5000),
+    db: AsyncSession = Depends(get_db),
+) -> CreatorListResponse:
+    """公开创作者名录（发现页 / 首页创作者 rail 共用）。"""
+    return await _load_directory(db, sort=sort, limit=limit, offset=offset)
 
 
 @router.get("/{username}", response_model=CreatorResponse)

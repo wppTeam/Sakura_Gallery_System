@@ -8,7 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from app.schemas.photo import PhotoResponse
+from app.schemas.photo import PhotoNeighborItem, PhotoResponse
 
 
 class CreatorProfile(BaseModel):
@@ -40,3 +40,21 @@ class CreatorResponse(BaseModel):
     profile: CreatorProfile
     works: CreatorWorkList
     collections: list[CreatorCollectionCard] = Field(default_factory=list)
+
+
+class CreatorCard(BaseModel):
+    """创作者名录卡片：资料 + 聚合计数 + 最多 3 张作品封面。"""
+
+    username: str
+    display_name: Optional[str] = None
+    joined_at: Optional[datetime] = None
+    works_count: int = 0
+    views_total: int = 0
+    covers: list[PhotoNeighborItem] = Field(default_factory=list)
+
+
+class CreatorListResponse(BaseModel):
+    items: list[CreatorCard] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 12
+    offset: int = 0
