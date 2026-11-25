@@ -151,6 +151,8 @@ class SearchHit:
     category: Optional[str] = None
     campus: Optional[str] = None
     description: Optional[str] = None
+    # 补充检索语料（AI 画面描述等），用于解释「画面描述匹配」
+    search_document: Optional[str] = None
     created_at: Optional[datetime] = None
     published_at: Optional[datetime] = None
     is_aigc: bool = False
@@ -574,6 +576,11 @@ def _pg_term_score(term_index: int) -> str:
         f"COALESCE(CASE WHEN p.description ILIKE {like} THEN 0.80 "
         f"ELSE 0.80 * COALESCE(similarity(p.description, {q}), 0) END, 0)"
     )
+    # 补充检索语料：AI 画面描述/标签等，命中说明「画面内容」吻合
+    document = (
+        f"COALESCE(CASE WHEN p.search_document ILIKE {like} THEN 0.85 "
+        f"ELSE 0.85 * COALESCE(similarity(p.search_document, {q}), 0) END, 0)"
+    )
     tag = (
         "COALESCE(("
         "SELECT MAX(CASE WHEN t.name ILIKE " + like + " THEN 0.95 "
@@ -591,7 +598,7 @@ def _pg_term_score(term_index: int) -> str:
         "WHERE pc.photo_id = p.id AND tf.is_active = TRUE "
         "AND tn.is_active = TRUE AND tn.is_selectable = TRUE), 0)"
     )
-    return f"COALESCE(GREATEST({title}, {description}, {tag}, {taxonomy}), 0)"
+    return f"COALESCE(GREATEST({title}, {description}, {document}, {tag}, {taxonomy}), 0)"
 
 
 def _pg_term_condition(term_index: int, caps: _DialectCaps, weights: LexicalWeights) -> str:
@@ -600,6 +607,7 @@ def _pg_term_condition(term_index: int, caps: _DialectCaps, weights: LexicalWeig
     parts = [
         f"p.title ILIKE {like}",
         f"p.description ILIKE {like}",
+        f"COALESCE(p.search_document, '') ILIKE {like}",
         f"EXISTS (SELECT 1 FROM photo_tags pt2 JOIN tags t2 ON t2.id = pt2.tag_id "
         f"WHERE pt2.photo_id = p.id AND t2.name ILIKE {like})",
         "EXISTS (SELECT 1 FROM photo_classifications pc2 "
@@ -617,6 +625,7 @@ def _pg_term_condition(term_index: int, caps: _DialectCaps, weights: LexicalWeig
             [
                 f"COALESCE(similarity(p.title, {q}), 0) >= {weights.similarity_threshold}",
                 f"COALESCE(similarity(p.description, {q}), 0) >= {weights.similarity_threshold}",
+                f"COALESCE(similarity(p.search_document, {q}), 0) >= {weights.similarity_threshold}",
                 f"EXISTS (SELECT 1 FROM photo_tags pt3 JOIN tags t3 ON t3.id = pt3.tag_id "
                 f"WHERE pt3.photo_id = p.id AND COALESCE(similarity(t3.name, {q}), 0) >= "
                 f"{weights.taxonomy_similarity_threshold})",
@@ -645,11 +654,14 @@ def _pg_score_sql(
 
     full_title = "COALESCE(similarity(p.title, :qfull), 0)"
     full_desc = "0.80 * COALESCE(similarity(p.description, :qfull), 0)"
+    full_document = "0.75 * COALESCE(similarity(p.search_document, :qfull), 0)"
     full_substr = (
         "CASE WHEN p.title ILIKE :likefull THEN 1.0 "
-        "WHEN p.description ILIKE :likefull THEN 0.80 ELSE 0 END"
+        "WHEN p.description ILIKE :likefull THEN 0.80 "
+        "WHEN COALESCE(p.search_document, '') ILIKE :likefull THEN 0.75 "
+        "ELSE 0 END"
     )
-    full_best = f"COALESCE(GREATEST({full_title}, {full_desc}, {full_substr}), 0)"
+    full_best = f"COALESCE(GREATEST({full_title}, {full_desc}, {full_document}, {full_substr}), 0)"
 
     if caps.search_vector and has_tsquery:
         # 中文 tsvector 依赖 DB trigger 写入 search_tokens（二元组）；缺失时 rank 为 0，无副作用
@@ -670,6 +682,9 @@ def _sqlite_term_score(term_index: int) -> str:
     description = (
         f"CASE WHEN lower(COALESCE(p.description, '')) LIKE {like} THEN 0.80 ELSE 0.0 END"
     )
+    document = (
+        f"CASE WHEN lower(COALESCE(p.search_document, '')) LIKE {like} THEN 0.85 ELSE 0.0 END"
+    )
     tag = (
         "COALESCE(("
         "SELECT MAX(CASE WHEN lower(t.name) LIKE " + like + " THEN 0.95 ELSE 0.0 END) "
@@ -685,7 +700,7 @@ def _sqlite_term_score(term_index: int) -> str:
         "WHERE pc.photo_id = p.id AND tf.is_active = 1 "
         "AND tn.is_active = 1 AND tn.is_selectable = 1), 0)"
     )
-    return f"MAX({title}, {description}, {tag}, {taxonomy})"
+    return f"MAX({title}, {description}, {document}, {tag}, {taxonomy})"
 
 
 def _sqlite_term_condition(term_index: int) -> str:
@@ -693,6 +708,7 @@ def _sqlite_term_condition(term_index: int) -> str:
     return (
         "(lower(COALESCE(p.title, '')) LIKE " + like +
         " OR lower(COALESCE(p.description, '')) LIKE " + like +
+        " OR lower(COALESCE(p.search_document, '')) LIKE " + like +
         " OR EXISTS (SELECT 1 FROM photo_tags pt2 JOIN tags t2 ON t2.id = pt2.tag_id "
         "WHERE pt2.photo_id = p.id AND lower(t2.name) LIKE " + like + ")"
         " OR EXISTS (SELECT 1 FROM photo_classifications pc2 "
@@ -714,7 +730,9 @@ def _sqlite_score_sql(terms: Sequence[str], weights: LexicalWeights) -> str:
     avg = f"(({term_scores}) / {len(terms)}.0)"
     full = (
         "CASE WHEN lower(COALESCE(p.title, '')) LIKE :likefull THEN 1.0 "
-        "WHEN lower(COALESCE(p.description, '')) LIKE :likefull THEN 0.80 ELSE 0.0 END"
+        "WHEN lower(COALESCE(p.description, '')) LIKE :likefull THEN 0.80 "
+        "WHEN lower(COALESCE(p.search_document, '')) LIKE :likefull THEN 0.75 "
+        "ELSE 0.0 END"
     )
     return f"({weights.term_best} * {avg} + {weights.full_match} * {full})"
 
@@ -849,6 +867,7 @@ async def search_photos(
             category=row.get("category"),
             campus=row.get("campus"),
             description=description,
+            search_document=row.get("search_document"),
             created_at=row.get("created_at"),
             published_at=row.get("published_at"),
             is_aigc=bool(row.get("is_aigc")),
@@ -858,7 +877,12 @@ async def search_photos(
         )
         if query_parts.terms:
             hit.matched_fields = _matched_fields(
-                query_parts.terms, hit.title, description or "", tags, classifications
+                query_parts.terms,
+                hit.title,
+                description or "",
+                tags,
+                classifications,
+                hit.search_document or "",
             )
             hit.match_reason = build_match_reason(hit, query_parts.terms)
         hits.append(hit)
@@ -899,6 +923,8 @@ async def get_hits_by_ids(
     if caps.is_postgres:
         detail_columns = (
             ", LEFT(COALESCE(p.description, ''), 500) AS description"
+            ", COALESCE(p.search_document, '') AS search_document"
+            ", COALESCE(p.search_document, '') AS search_document"
             ", COALESCE(("
             "  SELECT json_agg(x.name) FROM ("
             "    SELECT t.name FROM photo_tags pt JOIN tags t ON t.id = pt.tag_id"
@@ -917,6 +943,8 @@ async def get_hits_by_ids(
     else:
         detail_columns = (
             ", substr(COALESCE(p.description, ''), 1, 500) AS description"
+            ", COALESCE(p.search_document, '') AS search_document"
+            ", COALESCE(p.search_document, '') AS search_document"
             ", COALESCE(("
             "  SELECT group_concat(t.name, char(31)) FROM photo_tags pt"
             "  JOIN tags t ON t.id = pt.tag_id WHERE pt.photo_id = p.id"
@@ -945,6 +973,7 @@ async def get_hits_by_ids(
             category=row.get("category"),
             campus=row.get("campus"),
             description=row.get("description"),
+            search_document=row.get("search_document"),
             created_at=row.get("created_at"),
             published_at=row.get("published_at"),
             is_aigc=bool(row.get("is_aigc")),
@@ -961,6 +990,7 @@ def _build_pg_search_sql(query_parts: _QueryParts, weights: LexicalWeights) -> s
     )
     detail_columns = (
         ", LEFT(COALESCE(p.description, ''), 500) AS description"
+        ", COALESCE(p.search_document, '') AS search_document"
         ", COALESCE(("
         "  SELECT json_agg(x.name) FROM ("
         "    SELECT t.name FROM photo_tags pt JOIN tags t ON t.id = pt.tag_id"
@@ -1004,6 +1034,7 @@ def _build_sqlite_search_sql(query_parts: _QueryParts, weights: LexicalWeights) 
     score_sql = _sqlite_score_sql(query_parts.terms, weights)
     detail_columns = (
         ", substr(COALESCE(p.description, ''), 1, 500) AS description"
+        ", COALESCE(p.search_document, '') AS search_document"
         ", COALESCE(("
         "  SELECT group_concat(t.name, char(31)) FROM photo_tags pt"
         "  JOIN tags t ON t.id = pt.tag_id WHERE pt.photo_id = p.id"
@@ -1224,11 +1255,13 @@ def _matched_fields(
     description: str,
     tags: Sequence[str],
     classifications: Mapping[str, str],
+    search_document: str = "",
 ) -> list[str]:
     """解释「为什么命中」：标题 / 描述 / 标签 / 分类 中命中的词。"""
     haystacks: list[tuple[str, str]] = [
         ("title", title or ""),
         ("description", description or ""),
+        ("caption", search_document or ""),
     ]
     for tag in tags:
         haystacks.append((f"tag:{tag}", tag))
@@ -1261,6 +1294,8 @@ def build_match_reason(hit: SearchHit, terms: Optional[Sequence[str]] = None) ->
         parts.append("标题匹配")
     if "description" in fields:
         parts.append("描述匹配")
+    if "caption" in fields:
+        parts.append("画面描述匹配")
     if tag_fields:
         parts.append("标签：" + "、".join(tag_fields[:3]))
     if taxonomy_fields:

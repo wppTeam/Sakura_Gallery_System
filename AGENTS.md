@@ -366,6 +366,16 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
   `PERIOD_HOUR_RANGES`（夜跨零点按 `>=19 或 <5`），SQL 用 PG `EXTRACT(HOUR …)`、
   SQLite `strftime('%H')`；planner 的 filters 白名单含 `period`，用户说「黄昏的校园」
   会自动落成 `period=dusk`，无需前端额外传参
+- **画面笔记与检索语料（`search_document`）**：审核快筛写入
+  `photos.exif_data["_ai_caption"]`；公开详情 `PhotoResponse.ai_caption` 返回（≤300 字），
+  人像脱敏视角不返回。`photos.search_document` = AI 画面描述 + 自由标签，由
+  `app/services/search_index.py` 维护、DB trigger 并入 `search_tokens`；词法检索
+  PG（ILIKE/trgm/tsvector）与 SQLite 降级路径都会匹配它。打标后 / `POST/DELETE
+  /photos/{id}/tags` 后自动刷新；存量回填 `scripts/backfill_search_documents.py`
+  （幂等，`--dry-run/--limit`）。命中时 `matched_fields` 含 `caption`、
+  `match_reason` 含「画面描述匹配」。公开热门关键词
+  `GET /api/v1/tags/public/popular?limit=12` 只统计 approved 且非 sensitive 作品，
+  不复用 `Tag.usage_count`。迁移 `c9d0e1f2a3b4`。
 - **视觉相似**（`backend/app/services/visual_similarity.py`）：上传时对缩略图算 16×16 dhash
   写入 `exif_data["_dhash"]`，与光谱色卡 / 构图比例 / 标签 / 季节 / 校区加权（缺 dhash 的老图按可用
   信号归一化权重）；候选集只含已发布且非敏感作品，Python 内打分（`MAX_CANDIDATES=800`），

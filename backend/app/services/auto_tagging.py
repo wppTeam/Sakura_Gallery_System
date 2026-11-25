@@ -299,6 +299,15 @@ async def apply_prefilter_tags(
         }
     )
     await db.flush()
+
+    # AI 画面描述要能被搜到：刷新补充检索语料（search_document → trigger 重算分词）
+    try:
+        from app.services.search_index import refresh_search_document
+
+        await refresh_search_document(db, photo)
+    except Exception as exc:  # noqa: BLE001 - 检索语料失败不应阻断审核/打标
+        logger.warning("search document refresh failed photo=%s: %s", photo.id, exc)
+
     return summary
 
 

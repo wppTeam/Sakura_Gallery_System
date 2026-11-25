@@ -340,6 +340,14 @@ Content-Type: application/json
 （multipart，`aigc_declared=true`、`aigc_model=aigc/model`、`aigc_provider=dashscope`、
 `aigc_prompt=<提示词>`），照片进入 `pending`，由审核链路决定是否公开。
 
+### 画面笔记与公开关键词（公开）
+
+| 能力 | 说明 |
+|------|------|
+| `PhotoResponse.ai_caption` | AI 生成的画面描述（≤300 字，公开详情返回；人像脱敏视角不返回） |
+| `GET /api/v1/tags/public/popular?limit=12` | 公开热门关键词，仅统计 approved 且非 sensitive 作品的标签，按作品数降序 |
+| 检索命中解释 | 命中补充语料时 `match_reason` 含「画面描述匹配」，`matched_fields` 含 `caption` |
+
 ### 专题列表（公开）
 
 ```http

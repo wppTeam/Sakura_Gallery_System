@@ -8,8 +8,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db, get_current_user, get_current_auditor_user
 from app.models.user import User
-from app.schemas.tag import TagCreate, TagUpdate, TagResponse, TagListResponse, TagSuggestion
+from app.schemas.tag import (
+    PublicTagCount,
+    PublicTagCountsResponse,
+    TagCreate,
+    TagListResponse,
+    TagResponse,
+    TagSuggestion,
+    TagUpdate,
+)
 from app.crud import tag as tag_crud
+from app.models.photo import Photo
+from app.models.tag import PhotoTag, Tag
+from sqlalchemy import func, or_, select
 
 
 router = APIRouter()
@@ -78,6 +89,35 @@ async def list_tags(
         total=total,
         items=tag_responses
     )
+
+
+@router.get("/public/popular", response_model=PublicTagCountsResponse)
+async def list_public_popular_tags(
+    limit: int = 12,
+    db: AsyncSession = Depends(get_db),
+):
+    """公开热门关键词（首页/探索页「画面关键词」用）。
+
+    只统计 ``status='approved'`` 且非 sensitive 的作品上的标签，避免把待审、
+    被驳回或人像隐蔽作品的标签泄漏到公开页；按作品数降序、同数按名称排序。
+    """
+    limit = max(1, min(limit, 30))
+    count_expr = func.count(func.distinct(PhotoTag.photo_id))
+    stmt = (
+        select(Tag.name, count_expr.label("count"))
+        .join(PhotoTag, PhotoTag.tag_id == Tag.id)
+        .join(Photo, Photo.id == PhotoTag.photo_id)
+        .where(
+            Photo.status == "approved",
+            or_(Photo.privacy_level.is_(None), Photo.privacy_level != "sensitive"),
+        )
+        .group_by(Tag.name)
+        .order_by(count_expr.desc(), Tag.name.asc())
+        .limit(limit)
+    )
+    rows = (await db.execute(stmt)).all()
+    items = [PublicTagCount(name=row[0], count=int(row[1])) for row in rows]
+    return PublicTagCountsResponse(items=items, total=len(items))
 
 
 @router.get("/popular", response_model=list[TagResponse])

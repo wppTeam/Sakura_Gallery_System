@@ -79,6 +79,12 @@ class PhotoResponse(PhotoInDB):
     # 人像隐私分级：normal | sensitive；sensitive 对外只给脱敏图（is_redacted=True）
     privacy_level: Optional[str] = None
     is_redacted: Optional[bool] = None
+    # AI 画面描述（快筛生成，用于详情页「画面笔记」与检索；人像脱敏视角不返回）
+    ai_caption: Optional[str] = Field(
+        None,
+        max_length=300,
+        description="AI 生成的画面描述（公开文案，供检索/无障碍参考）",
+    )
     tags: List[str] = Field(default_factory=list, description="Associated tags")
     free_tags: List[str] = Field(default_factory=list, description="User-visible free tags")
     classifications: Dict[str, TaxonomyValueResponse] | Dict[str, Dict[str, Any] | list[Dict[str, Any]]] = Field(

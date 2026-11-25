@@ -54,3 +54,15 @@ class TagListResponse(BaseModel):
     """Tag list response"""
     total: int
     items: list[TagResponse]
+
+
+class PublicTagCount(BaseModel):
+    """公开热门关键词：只统计公开（approved 且非 sensitive）作品上的标签。"""
+
+    name: str
+    count: int
+
+
+class PublicTagCountsResponse(BaseModel):
+    items: list[PublicTagCount]
+    total: int

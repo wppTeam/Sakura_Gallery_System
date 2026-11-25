@@ -358,6 +358,9 @@ async def serialize_photo(
     photo_dict["label_written"] = None
     photo_dict["uploader_name"] = None
     photo_dict["uploader_student_id"] = None
+    # AI 画面描述：脱敏视角（匿名看 sensitive 作品）不返回，避免描述泄漏人物特征
+    caption = None if redact else _internal_exif(photo, "_ai_caption")
+    photo_dict["ai_caption"] = caption[:300] if isinstance(caption, str) else None
     return PhotoResponse(**photo_dict)
 
 
@@ -1504,9 +1507,8 @@ async def batch_delete_photos(
     for photo_id in photo_ids:
         photo = await photo_crud.get_photo(db, photo_id)
         if photo:
-            storage.delete_file(photo.original_path)
-            storage.delete_file(photo.thumb_path)
-            storage.delete_file(photo.processed_path)
+            # 与单张删除一致：原图/缩略图/压缩图/脱敏图/响应式变体全部清理
+            _delete_photo_assets(storage, photo)
             await photo_crud.delete_photo(db, photo)
             deleted_count += 1
     await log_audit(db, user_id=current_user.id, action="photo.batch_delete",
@@ -1534,6 +1536,10 @@ async def add_photo_tags(
         tag = await tag_crud.get_or_create_tag(db, tag_name)
         tag_ids.append(tag.id)
     await photo_crud.add_tags_to_photo(db, photo_id, tag_ids)
+    from app.services.search_index import refresh_search_document
+
+    await refresh_search_document(db, photo)
+    await db.commit()
     return await serialize_photo_admin(db, await photo_crud.get_photo_with_tags(db, photo_id))
 
 
@@ -1563,6 +1569,10 @@ async def remove_photo_tag(
     if tag and tag.usage_count > 0:
         tag.usage_count -= 1
         await db.commit()
+    from app.services.search_index import refresh_search_document
+
+    await refresh_search_document(db, photo)
+    await db.commit()
     return await serialize_photo_admin(db, await photo_crud.get_photo_with_tags(db, photo_id))
 
 

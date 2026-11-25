@@ -260,6 +260,7 @@ cd backend && pytest
 | 审核即打标 | ✅ 复用快筛同一次 VLM 输出落 `tags`/`photo_tags` 与 `photo_classifications`（分类目录约束 + 幂等 + 失败不影响审核）；存量回填脚本 `scripts/backfill_auto_tags.py` |
 | AIGC 法定标识 | ✅ 上传强制声明 + 显式角标/详情 + 下载 XMP 隐式标识 + 图生图/换脸限制（M2 四件套） |
 | 视觉相似 / 以图搜图 | ✅ 2026-11-25 dhash + 光谱色卡 + 构图/标签/季节/校区加权，详情页「视觉相似」带中文理由；`POST /api/v1/search/visual` 上传图内存算签名直接搜（不落盘/不花 AI 钱） |
+| 画面笔记 / 检索语料 | ✅ 2026-11-25 详情页 AI 画面描述 + 标签检索语料（`search_document` + trigger），公开热门关键词接口；旧图跑 `scripts/backfill_search_documents.py` |
 | 按光找图 | ✅ 2026-11-25 `/search` 与 `/photos/public` 接受 `period=dawn|noon|dusk|night`，探索页「光」筛选条与 URL 同步，agent 能识别「黄昏/清晨」等口语 |
 | 多轮追问 | ✅ 2026-11-25 `/search` 接受重复参数 `history`（最近 3 轮），planner 在省略式追问（「那黄昏呢」「还有春天的吗」）时承接上文条件，规则兜底不依赖模型 |
 | 观展模式 | ✅ 2026-11-25 详情页跨作品上一张/下一张 + 灯箱胶片条（`GET /photos/{id}/neighbors?context=latest|collection:<slug>`）；PublicLayout 对详情页用固定 key，翻页原地替换、灯箱不重挂载；专题进入带 `?from=collection:<slug>` 保持序列 |

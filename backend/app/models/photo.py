@@ -47,6 +47,10 @@ class Photo(Base):
     redacted_path = Column(Text)  # 脱敏图（长边 1600，强模糊）
     redacted_thumb_path = Column(Text)  # 脱敏缩略图（长边 640）
 
+    # 补充检索文本：AI 画面描述（_ai_caption）等「可见文案之外」的检索语料，
+    # 由 app/services/search_index.py 维护；DB trigger 会把它并入 search_tokens。
+    search_document = Column(Text, nullable=True)
+
     # AIGC 法定标识（《人工智能生成合成内容标识办法》2025-09-01 施行）
     # is_aigc: 是否 AI 生成合成内容（用户声明或审核确认）
     # aigc_label: 显式标识文案（详情页/角标展示），如「AI 生成」
