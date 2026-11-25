@@ -428,6 +428,18 @@ GET /api/v1/photos/{photo_id}/collections
 |------|------|------|
 | GET | `/api/v1/photos/{photo_id}/similar?limit=8` | 返回 `{items:[PhotoResponse & {similarity,reasons}], total}`；候选只含已发布且非敏感作品；目标不存在/未公开 → 404 |
 
+## 🪪 创作者主页（公开）
+
+浏览者从作品详情的作者名进入 `/u/{username}`。数据口径：作品只算已通过且非人像敏感；
+计数与作品集均按同一口径聚合；学号、真实姓名、邮箱永不返回。匿名只读，nginx 30s 微缓存。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/creators/{username}?works_limit=12&works_offset=0&collections_limit=6` | 返回 `{profile{username,display_name,joined_at,works_count,views_total,favorites_total,collections_count}, works{items,total,limit,offset}, collections:[{slug,title,subtitle,photo_count,cover}]}`；未知/停用 → 404 |
+| GET | `/api/v1/creators/{username}/works?limit=12&offset=0` | 作品分页（limit 1–50），供「加载更多」 |
+
+作品详情公开响应新增 `uploader_username`（用于跳转 `/u/{username}`）。
+
 ## 🧭 作品导航（公开）
 
 详情页「上一张 / 下一张」与灯箱胶片条的数据来源；匿名可读，数据只含已发布、非人像敏感作品。

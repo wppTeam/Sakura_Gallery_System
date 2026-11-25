@@ -64,6 +64,8 @@ class PhotoResponse(PhotoInDB):
     """Photo response schema"""
     uploader_name: Optional[str] = None
     uploader_student_id: Optional[str] = None
+    # 公开用户名（创作者主页 /u/{username} 的跳转目标；学号与真实姓名永不公开）
+    uploader_username: Optional[str] = None
     # AIGC 法定标识（显式角标 + 详情说明；下载副本另写隐式 XMP）
     is_aigc: bool = False
     kind: Optional[str] = Field(None, description="photo | aigc（由 is_aigc 派生，前端角标用）")

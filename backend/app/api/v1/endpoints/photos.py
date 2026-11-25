@@ -7,7 +7,7 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import Response
@@ -343,8 +343,27 @@ def _photo_common_dict(photo: Photo, *, redact: bool = False) -> dict:
     }
 
 
+async def _uploader_usernames(
+    db: AsyncSession, uploader_ids: Iterable[str | None]
+) -> dict[str, str]:
+    """批量取公开用户名：列表/相似接口一次查询，避免每张图一次 lookups。"""
+    ids = {uid for uid in uploader_ids if uid}
+    if not ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(User.id, User.username).where(User.id.in_(ids), User.is_active.is_(True))
+        )
+    ).all()
+    return {user_id: username for user_id, username in rows if username}
+
+
 async def serialize_photo(
-    db: AsyncSession, photo: Photo, *, redact: bool = False
+    db: AsyncSession,
+    photo: Photo,
+    *,
+    redact: bool = False,
+    uploader_username: str | None = None,
 ) -> PhotoResponse:
     """公开安全序列化：白名单字段 + EXIF 子集；不返回学号/真实姓名/GPS。"""
     tags = await photo_crud.get_photo_tags(db, photo.id)
@@ -358,6 +377,7 @@ async def serialize_photo(
     photo_dict["label_written"] = None
     photo_dict["uploader_name"] = None
     photo_dict["uploader_student_id"] = None
+    photo_dict["uploader_username"] = uploader_username
     # AI 画面描述：脱敏视角（匿名看 sensitive 作品）不返回，避免描述泄漏人物特征
     caption = None if redact else _internal_exif(photo, "_ai_caption")
     photo_dict["ai_caption"] = caption[:300] if isinstance(caption, str) else None
@@ -371,10 +391,18 @@ async def serialize_photos(
     current_user: Optional[User] = None,
 ) -> List[PhotoResponse]:
     """公开列表序列化：sensitive 作品对非作者/非审核员自动脱敏。"""
+    username_map = await _uploader_usernames(db, (photo.uploader_id for photo in photos))
     out: List[PhotoResponse] = []
     for photo in photos:
         redact = privacy.should_redact_for_viewer(photo, current_user)
-        out.append(await serialize_photo(db, photo, redact=redact))
+        out.append(
+            await serialize_photo(
+                db,
+                photo,
+                redact=redact,
+                uploader_username=username_map.get(photo.uploader_id),
+            )
+        )
     return out
 
 
@@ -565,12 +593,16 @@ async def get_public_photo(
     if not photo or not await can_access_photo_publicly(db, photo, current_user, portrait_visibility):
         raise HTTPException(status_code=404, detail="Photo not found")
     # 人像隐私：匿名不展示 sensitive 作品；登录用户看脱敏图；作者/审核员看原图。
+    username_map = await _uploader_usernames(db, [photo.uploader_id])
+    uploader_username = username_map.get(photo.uploader_id)
     if privacy.is_sensitive(photo):
         if current_user is None:
             raise HTTPException(status_code=404, detail="Photo not found")
         redact = privacy.should_redact_for_viewer(photo, current_user)
-        return await serialize_photo(db, photo, redact=redact)
-    return await serialize_photo(db, photo)
+        return await serialize_photo(
+            db, photo, redact=redact, uploader_username=uploader_username
+        )
+    return await serialize_photo(db, photo, uploader_username=uploader_username)
 
 
 @router.get("/{photo_id}/image/original")
@@ -1290,9 +1322,12 @@ async def get_similar_photos(
         raise HTTPException(status_code=404, detail="Photo not found")
 
     hits = await find_similar_photos(db, photo, limit=limit)
+    username_map = await _uploader_usernames(db, (hit.photo.uploader_id for hit in hits))
     items: List[SimilarPhotoItem] = []
     for hit in hits:
-        base = await serialize_photo(db, hit.photo)
+        base = await serialize_photo(
+            db, hit.photo, uploader_username=username_map.get(hit.photo.uploader_id)
+        )
         items.append(
             SimilarPhotoItem.model_validate(
                 {

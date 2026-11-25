@@ -386,6 +386,11 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
   复用视觉相似打分对公开作品排序，返回与文本检索同构的 `results[]`（score / match_reason /
   thumb_url / author…），前端直接复用结果卡片；与上传图近重复（汉明 ≤3）的作品不返回；
   限 8MB / 4000 万像素 / JPEG·PNG·WebP，公开端点按 IP 10 次/分钟限流（slowapi）
+- **创作者主页（公开）**：`GET /api/v1/creators/{username}` 一次返回「资料 + 第一页作品 + 作者作品集」，
+  `GET /api/v1/creators/{username}/works?limit&offset` 供「加载更多」；触点是作品详情页作者名
+  （公开序列化新增 `uploader_username`，学号与真实姓名仍恒为 null）。计数只统计已通过且非人像敏感
+  的作品；作品集只含作者本人 `kind=user`、已发布、公开且至少一张公开作品的专辑；未知或停用账号 404。
+  匿名只读，nginx 30s 微缓存。实现 `backend/app/api/v1/endpoints/creators.py`。
 - **详情页导航（上一张 / 下一张）**：`GET /api/v1/photos/{id}/neighbors?context=latest|collection:<slug>`
   返回当前作品所处的序列（`latest` 按 `coalesce(published_at, created_at)` 倒序；`collection:<slug>`
   按 `collection_photos.position`），以及 `position/total`、前后邻居 id 与一个含当前作品的紧凑窗口

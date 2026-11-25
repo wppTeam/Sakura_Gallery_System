@@ -263,6 +263,7 @@ cd backend && pytest
 | 画面笔记 / 检索语料 | ✅ 2026-11-25 详情页 AI 画面描述 + 标签检索语料（`search_document` + trigger），公开热门关键词接口；旧图跑 `scripts/backfill_search_documents.py` |
 | 按光找图 | ✅ 2026-11-25 `/search` 与 `/photos/public` 接受 `period=dawn|noon|dusk|night`，探索页「光」筛选条与 URL 同步，agent 能识别「黄昏/清晨」等口语 |
 | 多轮追问 | ✅ 2026-11-25 `/search` 接受重复参数 `history`（最近 3 轮），planner 在省略式追问（「那黄昏呢」「还有春天的吗」）时承接上文条件，规则兜底不依赖模型 |
+| 创作者主页 | ✅ 2026-11-25 `/u/{username}` 公开创作者主页：资料 + 作品统计（浏览/收藏）+ 作品瀑布流 + 作者作品集 rail；详情页作者名可点；`GET /api/v1/creators/{username}`（30s 微缓存） |
 | 观展模式 | ✅ 2026-11-25 详情页跨作品上一张/下一张 + 灯箱胶片条（`GET /photos/{id}/neighbors?context=latest|collection:<slug>`）；PublicLayout 对详情页用固定 key，翻页原地替换、灯箱不重挂载；专题进入带 `?from=collection:<slug>` 保持序列 |
 | 作者工作台 | ✅ 2026-11-25 `/my-submissions` 重做为作者工作台（概览计数 `GET /photos/my-submissions/stats`：总/待审/已通过/未通过/复核中；删除作品时清理原图/缩略图/压缩图/响应式变体/脱敏图，修掉孤儿文件泄漏） |
 | 站内通知 | ✅ 2026-11-25 公共端铃铛 + `/notifications` 通知中心：全部/未读、全部已读、作品深链、60s 未读数轮询；类型标签覆盖过审/驳回/复核/权限/系统 |
