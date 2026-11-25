@@ -230,6 +230,9 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
 - 实现：`backend/app/models/appeal.py`、`backend/app/api/v1/endpoints/appeals.py`（管理端）、
   `backend/app/api/v1/endpoints/photos.py`（作者端点）、迁移 `b8c9d0e1f2a3`；
   前端：详情页作者视角的驳回横幅 + 申诉弹窗，后台 `/admin/appeals` 复核处理页。
+- **缩略图鉴权**：被驳回作品的 `/image/thumbnail` 对匿名 404（只有作者/admin 可看），
+  `<img>` 无法带 `Authorization`，后台列表必须用 `fetch` + token 拉 blob 直出
+  （`frontend/src/api/admin_appeals.ts::fetchAdminThumbUrl`），不要直接把 `thumb_url` 塞进 `<img>`。
 
 ### 人像隐私分级（2026-11-24 落地）
 
