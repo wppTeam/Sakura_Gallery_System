@@ -94,6 +94,10 @@ onMounted(async () => {
     box-shadow var(--dur-fast) var(--ease-out);
 }
 
+.cdr-cell:only-child .cdr-card {
+  max-width: 460px;
+}
+
 .cdr-card:hover {
   border-color: var(--sakura-pale);
   box-shadow: var(--shadow-lift);
