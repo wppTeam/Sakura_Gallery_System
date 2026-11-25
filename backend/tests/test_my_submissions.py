@@ -25,6 +25,12 @@ from app.core.config import get_settings
 from app.core.database import Base
 from app.main import app
 from app.models import Photo, PhotoAppeal, User
+from app.models.ai_analysis import AIAnalysisTask
+from app.models.tag import PhotoTag, Tag
+from app.models.tagging_task import TaggingTask, TaggingTaskItem
+from app.models.task import Task, TaskPhoto
+from app.models.taxonomy import PhotoClassification
+from app.services import taxonomy
 
 PASSWORD = "Submissions#2026"
 
@@ -209,6 +215,46 @@ def test_delete_photo_removes_all_assets(
             photo.exif_data = {"_variants": {"640": {"width": 640, "height": 480}}}
             photo.redacted_path = f"redacted/{photo_id}_redacted.jpg"
             photo.redacted_thumb_path = f"redacted/{photo_id}_redacted_thumb.jpg"
+
+            # 旧表建表时这些外键是 NO ACTION：删除作品前必须能把这些关联一起清掉。
+            await taxonomy.ensure_default_taxonomy(session)
+            node = await taxonomy.resolve_taxonomy_node(session, "season", "春季")
+            assert node is not None
+            tag = Tag(name="测试标签", category="auto")
+            session.add(tag)
+            await session.flush()
+            session.add_all(
+                [
+                    PhotoTag(photo_id=photo_id, tag_id=tag.id),
+                    PhotoClassification(
+                        photo_id=photo_id, facet_id=node.facet_id, node_id=node.id
+                    ),
+                    AIAnalysisTask(
+                        photo_id=photo_id,
+                        requested_by_id=owner_id,
+                        provider="test",
+                        model_id="test-model",
+                    ),
+                    TaggingTask(
+                        title="测试打标任务",
+                        creator_id=owner_id,
+                        assignee_id=owner_id,
+                    ),
+                    Task(creator_id=owner_id, name="测试任务"),
+                ]
+            )
+            await session.flush()
+            tagging_task = (
+                await session.execute(select(TaggingTask))
+            ).scalars().first()
+            task = (await session.execute(select(Task))).scalars().first()
+            assert tagging_task is not None and task is not None
+            session.add_all(
+                [
+                    TaggingTaskItem(task_id=tagging_task.id, photo_id=photo_id),
+                    TaskPhoto(task_id=task.id, photo_id=photo_id),
+                ]
+            )
             await session.commit()
 
     asyncio.run(_mark_redacted())
@@ -225,6 +271,19 @@ def test_delete_photo_removes_all_assets(
                 select(Photo).where(Photo.uploader_id == owner_id)
             )
             assert len(remaining.scalars().all()) == 3
+
+            # NO ACTION 关联也必须随作品删除，否则生产 PostgreSQL 会外键报错
+            for model, column in (
+                (PhotoTag, PhotoTag.photo_id),
+                (PhotoClassification, PhotoClassification.photo_id),
+                (AIAnalysisTask, AIAnalysisTask.photo_id),
+                (TaggingTaskItem, TaggingTaskItem.photo_id),
+                (TaskPhoto, TaskPhoto.photo_id),
+            ):
+                leftovers = await session.execute(
+                    select(model).where(column == photo_id)
+                )
+                assert leftovers.scalars().all() == []
 
     asyncio.run(_assert_gone())
 

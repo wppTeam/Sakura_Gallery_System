@@ -28,7 +28,10 @@ from app.models.favorite import Favorite
 from app.models.notification import Notification
 from app.models.permission import PermissionType, ResourcePermission, ResourceType
 from app.models.photo import Photo
+from app.models.tag import PhotoTag, Tag
 from app.models.tagging_task import TaggingTask, TaggingTaskItem
+from app.models.taxonomy import PhotoClassification
+from app.services.taxonomy import ensure_default_taxonomy, resolve_taxonomy_node
 from app.models.task import Task, TaskPhoto
 from app.models.user import User
 
@@ -97,6 +100,16 @@ def account_env(tmp_path: Path, monkeypatch):
             )
             db.add(photo)
             await db.flush()
+
+            # 标签 / 分类关联：生产上是 NO ACTION 外键，注销时必须显式清理
+            tag = Tag(name="注销测试标签", category="auto")
+            db.add(tag)
+            await db.flush()
+            db.add(PhotoTag(photo_id=photo.id, tag_id=tag.id))
+            await ensure_default_taxonomy(db)
+            node = await resolve_taxonomy_node(db, "season", "春季")
+            assert node is not None
+            db.add(PhotoClassification(photo_id=photo.id, facet_id=node.facet_id, node_id=node.id))
 
             collection = Collection(
                 id="collection-leave-1",
@@ -282,6 +295,8 @@ def test_delete_account_removes_content_and_files(account_env):
             "generations": (await db.execute(select(AIGCGeneration))).scalars().all(),
             "codes": (await db.execute(select(EmailVerificationCode))).scalars().all(),
             "audits": (await db.execute(select(AuditLog).where(AuditLog.action == "user.self_delete"))).scalars().all(),
+            "photo_tags": (await db.execute(select(PhotoTag))).scalars().all(),
+            "photo_classifications": (await db.execute(select(PhotoClassification))).scalars().all(),
             "ai_tasks": (await db.execute(select(AIAnalysisTask))).scalars().all(),
             "tagging_tasks": (await db.execute(select(TaggingTask))).scalars().all(),
             "tagging_items": (await db.execute(select(TaggingTaskItem))).scalars().all(),

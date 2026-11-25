@@ -27,7 +27,9 @@ from app.models.favorite import Favorite
 from app.models.notification import Notification
 from app.models.permission import ResourcePermission
 from app.models.photo import Photo
+from app.models.tag import PhotoTag
 from app.models.tagging_task import TaggingTask, TaggingTaskItem
+from app.models.taxonomy import PhotoClassification
 from app.models.task import Task, TaskPhoto
 from app.models.user import User
 from app.services.aigc_generation import generated_dir
@@ -76,11 +78,19 @@ async def _detach_legacy_references(
 
     这些表的外键是 ``NO ACTION``（老代码遗留），不先处理会让注销在最后一步
     触发外键约束失败。策略：
+    - 作品的标签 / 分类关联直接删除（``photo_tags`` / ``photo_classifications`` 也是 NO ACTION）；
     - 指向用户作品的 AI 分析任务直接删除（作品都没了，建议任务没有意义）；
     - 由用户发起/复核、但属于别人作品的任务保留，仅解除关联；
     - 打标任务：用户创建的连同条目删除；用户只作为执行人的，改派给其他管理/审核账号；
     - 旧任务清单：用户创建的连同照片关联删除；其他任务里指向用户作品的关联删除。
     """
+    # 作品的标签 / 分类关联也是 NO ACTION 外键，必须显式删除（ORM 关系不带级联）
+    if photo_ids:
+        await db.execute(delete(PhotoTag).where(PhotoTag.photo_id.in_(photo_ids)))
+        await db.execute(
+            delete(PhotoClassification).where(PhotoClassification.photo_id.in_(photo_ids))
+        )
+
     # AI 分析任务
     if photo_ids:
         await db.execute(delete(AIAnalysisTask).where(AIAnalysisTask.photo_id.in_(photo_ids)))
@@ -207,7 +217,7 @@ async def delete_account(
         )
         stats["email_codes"] = int(code_count.rowcount or 0)
 
-    # 5) 作品行（子表 photo_tags / classifications / favorites / moderation_reviews /
+    # 5) 作品行（标签/分类关联已在第 1 步显式删除；favorites / moderation_reviews /
     #    appeals / collection_photos 由数据库 ON DELETE CASCADE 清理）
     if photo_rows:
         await db.execute(delete(Photo).where(Photo.uploader_id == user.id))

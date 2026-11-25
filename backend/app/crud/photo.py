@@ -5,12 +5,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.ai_analysis import AIAnalysisTask
 from app.models.photo import Photo
 from app.models.tag import PhotoTag, Tag
+from app.models.tagging_task import TaggingTaskItem
+from app.models.task import TaskPhoto
 from app.models.taxonomy import PhotoClassification, TaxonomyAlias, TaxonomyFacet, TaxonomyNode
 from app.schemas.photo import PhotoUpdate
 from app.services.light_of_day import PERIOD_HOUR_RANGES, normalize_period
@@ -326,6 +329,20 @@ async def update_photo_processing_status(
 
 
 async def delete_photo(db: AsyncSession, photo: Photo) -> None:
+    """删除作品行。
+
+    旧表建表时这些外键是 `NO ACTION`（不是 CASCADE），必须先显式解耦，
+    否则生产上给带标签 / 分类 / AI 分析任务 / 打标任务的作品调删除会 500。
+    派生文件由调用方通过 `app.services.photo_assets.delete_photo_assets` 清理。
+    """
+    photo_id = photo.id
+    await db.execute(delete(PhotoTag).where(PhotoTag.photo_id == photo_id))
+    await db.execute(
+        delete(PhotoClassification).where(PhotoClassification.photo_id == photo_id)
+    )
+    await db.execute(delete(AIAnalysisTask).where(AIAnalysisTask.photo_id == photo_id))
+    await db.execute(delete(TaggingTaskItem).where(TaggingTaskItem.photo_id == photo_id))
+    await db.execute(delete(TaskPhoto).where(TaskPhoto.photo_id == photo_id))
     await db.delete(photo)
     await db.commit()
 

@@ -209,9 +209,11 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
 - 单事务删除：名下全部作品 + 原图/缩略图/压缩图/响应式变体/脱敏图/AI 创作台草稿图、
   自建专辑、收藏、通知、邮箱验证码；作品子表（标签/分类/收藏/审核记录/申诉/专辑成员）
   由数据库 `ON DELETE CASCADE` 清理；
-- 旧版工作流引用先解耦再删（生产实测踩到外键）：`ai_analysis_tasks` 指向作品的直接删、
-  指向本人的解除关联；打标任务创作者为本人时连条目删除、仅执行人时改派给其他管理/审核账号；
-  旧任务清单（`tasks` + `task_photos`）与授权记录 `created_by` 同步处理；
+- 建表时留下的 `NO ACTION` 外键必须先显式解耦再删（生产实测踩到）：
+  `photo_tags` / `photo_classifications` / `ai_analysis_tasks` / `tagging_task_items` /
+  `task_photos` 指向作品的关联直接删除；指向本人的引用解除关联；打标任务创作者为本人时
+  连条目删除、仅执行人时改派给其他管理/审核账号；旧任务清单（`tasks`）与授权记录
+  `created_by` 同步处理；
 - 派生文件走 `storage.delete_many()`：S3/COS 模式用 `DeleteObjects` 每批 1000 个 key，
   避免一次注销产生数百次对象存储往返（大号注销仍可能耗时数十秒，前端给了 60s 超时）；
 - 审计日志 `user.self_delete` 保留（`user_id` 外键 `ON DELETE SET NULL`，内容脱敏），
