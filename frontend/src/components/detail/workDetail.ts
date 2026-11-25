@@ -102,6 +102,8 @@ export interface WorkDetail {
   isRedacted: boolean
   /** 上传者 id：用于前端判断「这是你的作品」，不展示 */
   uploaderId: string | null
+  /** 上传者公开用户名：作者名可点进创作者主页 /u/:username；旧数据可能为 null */
+  uploaderUsername: string | null
   /** 是否可查看/下载原图：脱敏版本一律不可（服务端同样 403） */
   canViewOriginal: boolean
 
@@ -440,6 +442,7 @@ export function normalizeWorkDetail(raw: RawPhoto): WorkDetail {
     privacyLevel,
     isRedacted,
     uploaderId: textOf(raw.uploader_id) || null,
+    uploaderUsername: textOf(raw.uploader_username) || null,
     canViewOriginal,
 
     views: firstNumber(raw.views, raw.view_count),

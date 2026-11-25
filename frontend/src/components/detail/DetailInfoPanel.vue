@@ -111,7 +111,15 @@
       <h1 class="info-title">{{ detail.title }}</h1>
 
       <div class="info-byline">
-        <span class="author">{{ detail.author }}</span>
+        <router-link
+          v-if="detail.uploaderUsername"
+          class="author author--link"
+          :to="`/u/${detail.uploaderUsername}`"
+          :aria-label="`查看 ${detail.author} 的创作者主页`"
+        >
+          {{ detail.author }}
+        </router-link>
+        <span v-else class="author">{{ detail.author }}</span>
         <span v-if="publishedText" class="dot">·</span>
         <span v-if="publishedText" :title="formatDate(detail.publishedAt, 'YYYY-MM-DD HH:mm')">
           {{ publishedText }}
@@ -642,6 +650,18 @@ onBeforeUnmount(() => {
 .author {
   font-weight: 600;
   color: var(--sakura-deep, #c93a63);
+}
+
+.author--link {
+  border-radius: var(--r-sm, 10px);
+  text-decoration: none;
+  transition: color var(--dur-fast, 160ms) var(--ease-out, ease);
+}
+
+.author--link:hover {
+  color: var(--sakura-deep-hover, #b32c53);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .dot {

@@ -41,7 +41,15 @@
           </div>
           <p v-if="detail.subtitle" class="cl-sub">{{ detail.subtitle }}</p>
           <p v-if="isUserCollection" class="cl-author">
-            <span class="cl-author-chip">
+            <router-link
+              v-if="ownerLinkUsername"
+              class="cl-author-chip cl-author-chip--link"
+              :to="`/u/${ownerLinkUsername}`"
+              :aria-label="`查看 @${ownerLinkUsername} 的创作者主页`"
+            >
+              作者专辑<template v-if="authorHandle"> · @{{ authorHandle }}</template>
+            </router-link>
+            <span v-else class="cl-author-chip">
               作者专辑<template v-if="authorHandle"> · @{{ authorHandle }}</template>
             </span>
             <span v-if="detail.owner?.displayName && detail.owner.displayName !== authorHandle" class="cl-author-name">
@@ -164,6 +172,12 @@ const authorHandle = computed(() => {
   const owner = detail.value?.owner
   if (!owner) return ''
   return owner.username || owner.displayName || ''
+})
+
+/** 用户手账且有公开 username 时，作者 chip 可点进创作者主页 */
+const ownerLinkUsername = computed(() => {
+  if (!isUserCollection.value) return ''
+  return detail.value?.owner?.username || ''
 })
 
 const cover = computed<PublicPhoto | null>(() => detail.value?.cover ?? null)
@@ -319,6 +333,18 @@ watch(
   font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.01em;
+}
+
+.cl-author-chip--link {
+  text-decoration: none;
+  transition: background var(--dur-fast, 160ms) var(--ease-out, ease), color var(--dur-fast, 160ms) var(--ease-out, ease);
+}
+
+.cl-author-chip--link:hover {
+  background: var(--sakura-pale);
+  color: var(--sakura-deep-hover);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .cl-author-name {

@@ -61,6 +61,8 @@ export interface PublicPhoto {
   canViewOriginal: boolean
   /** 上传者 id：用于判断「这是你的作品」，不对外展示 */
   uploaderId: string | null
+  /** 上传者公开用户名：详情页作者可点进创作者主页；为空时不渲染链接 */
+  uploaderUsername: string | null
   license: string | null
   tags: string[]
   blurhash: string | null
@@ -176,6 +178,8 @@ interface RawPhotoExtra {
   privacy_level?: string | null
   is_redacted?: boolean | null
   uploader_id?: string | null
+  /** 公开作者用户名（学号与真实姓名恒为 null） */
+  uploader_username?: string | null
   license?: string
   blurhash?: string | null
   lqip?: string | null
@@ -265,6 +269,10 @@ export function toPublicPhoto(photo: Photo): PublicPhoto {
     aiCaption: typeof extra.ai_caption === 'string' && extra.ai_caption.trim() ? extra.ai_caption.trim() : null,
     canViewOriginal: !isRedacted,
     uploaderId: extra.uploader_id ?? photo.uploader_id ?? null,
+    uploaderUsername:
+      typeof extra.uploader_username === 'string' && extra.uploader_username.trim()
+        ? extra.uploader_username.trim()
+        : null,
     license: extra.license ?? null,
     tags: Array.from(new Set([...(photo.tags || []), ...(photo.free_tags || [])])),
     blurhash: extra.blurhash ?? null,
@@ -506,4 +514,188 @@ export async function fetchPublicPopularTags(limit = 12): Promise<PublicTagCount
   } catch {
     return []
   }
+}
+
+/* ============================================================
+   创作者主页（公开）
+   ------------------------------------------------------------
+   直接用 fetch 而不是共享 axios 实例：404 是「创作者不存在」这种正常
+   业务分支，走全局拦截器会弹全局 toast 并 console.error，把页面自己的
+   空态抢掉、也污染控制台。
+   ============================================================ */
+
+/** 创作者请求失败：保留 HTTP 状态，供页面区分 404 与网络错误 */
+export class CreatorRequestError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'CreatorRequestError'
+    this.status = status
+  }
+}
+
+const CREATOR_API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+
+async function fetchCreatorJson<T>(path: string): Promise<T> {
+  let response: Response
+  try {
+    response = await fetch(`${CREATOR_API_BASE}${path}`, {
+      headers: { Accept: 'application/json' },
+    })
+  } catch {
+    throw new CreatorRequestError('网络请求失败，请检查网络后重试', 0)
+  }
+  if (!response.ok) {
+    throw new CreatorRequestError(`创作者接口返回 ${response.status}`, response.status)
+  }
+  return (await response.json()) as T
+}
+
+function countOf(value: unknown): number {
+  const numeric = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(numeric) || numeric < 0) return 0
+  return Math.trunc(numeric)
+}
+
+function textOrNull(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+/** 公开创作者资料（GET /api/v1/creators/{username} 的 profile） */
+export interface CreatorProfile {
+  username: string
+  displayName: string
+  joinedAt: string | null
+  worksCount: number
+  viewsTotal: number
+  favoritesTotal: number
+  collectionsCount: number
+}
+
+/** 作者作品集（公开卡片：封面 + 标题 + 作品数） */
+export interface CreatorCollection {
+  slug: string
+  title: string
+  subtitle: string
+  photoCount: number
+  cover: PublicPhoto | null
+}
+
+/** 创作者作品分页 */
+export interface CreatorWorksPage {
+  items: PublicPhoto[]
+  total: number
+  limit: number
+  offset: number
+}
+
+/** 创作者主页首屏数据：资料 + 第一页作品 + 作品集 */
+export interface CreatorDetail {
+  profile: CreatorProfile
+  works: CreatorWorksPage
+  collections: CreatorCollection[]
+}
+
+export interface CreatorFetchOptions {
+  worksLimit?: number
+  worksOffset?: number
+  collectionsLimit?: number
+}
+
+function normalizeCreatorProfile(raw: Record<string, unknown>): CreatorProfile | null {
+  const username = textOrNull(raw.username)
+  if (!username) return null
+  return {
+    username,
+    displayName: textOrNull(raw.display_name) ?? username,
+    joinedAt: textOrNull(raw.joined_at),
+    worksCount: countOf(raw.works_count),
+    viewsTotal: countOf(raw.views_total),
+    favoritesTotal: countOf(raw.favorites_total),
+    collectionsCount: countOf(raw.collections_count),
+  }
+}
+
+function normalizeCreatorCollection(raw: unknown): CreatorCollection | null {
+  if (!raw || typeof raw !== 'object') return null
+  const entry = raw as Record<string, unknown>
+  const slug = textOrNull(entry.slug)
+  if (!slug) return null
+  const coverRaw = entry.cover
+  return {
+    slug,
+    title: textOrNull(entry.title) ?? '未命名作品集',
+    subtitle: textOrNull(entry.subtitle) ?? '',
+    photoCount: countOf(entry.photo_count),
+    cover: coverRaw && typeof coverRaw === 'object' ? toPublicPhoto(coverRaw as Photo) : null,
+  }
+}
+
+function normalizeCreatorWorks(raw: unknown): CreatorWorksPage {
+  if (!raw || typeof raw !== 'object') return { items: [], total: 0, limit: 0, offset: 0 }
+  const entry = raw as Record<string, unknown>
+  const items = Array.isArray(entry.items)
+    ? entry.items
+        .filter((item): item is Photo => !!item && typeof item === 'object')
+        .map(toPublicPhoto)
+        .filter((photo) => !!photo.id)
+    : []
+  return {
+    items,
+    total: countOf(entry.total),
+    limit: countOf(entry.limit),
+    offset: countOf(entry.offset),
+  }
+}
+
+/** 创作者主页首屏（资料 + 作品 + 作品集一次取回，减少瀑布流前空白） */
+export async function fetchCreator(
+  username: string,
+  options: CreatorFetchOptions = {},
+): Promise<CreatorDetail> {
+  const handle = (username || '').trim()
+  if (!handle) throw new CreatorRequestError('缺少创作者用户名', 0)
+  const query = new URLSearchParams()
+  if (typeof options.worksLimit === 'number') query.set('works_limit', String(options.worksLimit))
+  if (typeof options.worksOffset === 'number') query.set('works_offset', String(options.worksOffset))
+  if (typeof options.collectionsLimit === 'number') {
+    query.set('collections_limit', String(options.collectionsLimit))
+  }
+  const suffix = query.toString() ? `?${query.toString()}` : ''
+  const data = await fetchCreatorJson<Record<string, unknown>>(
+    `/api/v1/creators/${encodeURIComponent(handle)}${suffix}`,
+  )
+  const profile = normalizeCreatorProfile(
+    data && typeof data.profile === 'object' && data.profile
+      ? (data.profile as Record<string, unknown>)
+      : {},
+  )
+  if (!profile) throw new CreatorRequestError('创作者资料解析失败', 0)
+  const collections = Array.isArray(data.collections)
+    ? data.collections
+        .map(normalizeCreatorCollection)
+        .filter((item): item is CreatorCollection => item !== null)
+    : []
+  return {
+    profile,
+    works: normalizeCreatorWorks(data.works),
+    collections,
+  }
+}
+
+/** 创作者作品「加载更多」（GET /api/v1/creators/{username}/works） */
+export async function fetchCreatorWorks(
+  username: string,
+  options: { limit?: number; offset?: number } = {},
+): Promise<CreatorWorksPage> {
+  const handle = (username || '').trim()
+  if (!handle) throw new CreatorRequestError('缺少创作者用户名', 0)
+  const query = new URLSearchParams()
+  query.set('limit', String(options.limit ?? 12))
+  query.set('offset', String(options.offset ?? 0))
+  const data = await fetchCreatorJson<unknown>(
+    `/api/v1/creators/${encodeURIComponent(handle)}/works?${query.toString()}`,
+  )
+  return normalizeCreatorWorks(data)
 }
