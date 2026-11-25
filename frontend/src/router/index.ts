@@ -76,6 +76,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: false },
       },
       {
+        path: 'creators',
+        name: 'Creators',
+        component: () => import('../views/CreatorsView.vue'),
+        meta: { requiresAuth: false },
+      },
+      {
         path: 'spectrum',
         name: 'Spectrum',
         component: () => import('../views/SpectrumView.vue'),
@@ -258,6 +264,7 @@ const ROUTE_TITLES: Record<string, string> = {
   Collections: '策展专题 · 视觉百花',
   CollectionDetail: '策展专题 · 视觉百花',
   Search: '检索 · 视觉百花',
+  Creators: '发现创作者 · 视觉百花',
   Spectrum: '樱色光谱 · 视觉百花',
   Terms: '服务条款 · 视觉百花',
   Privacy: '隐私政策 · 视觉百花',

@@ -263,6 +263,9 @@
       </div>
     </section>
 
+    <!-- ============ 发现创作者 ============ -->
+    <CreatorDiscoverRail />
+
     <!-- ============ 投稿 CTA ============ -->
     <section id="join" class="section join-section" aria-labelledby="join-title">
       <div class="wrap">
@@ -323,6 +326,7 @@ import SearchBar from '../components/public/SearchBar.vue'
 import SeasonBand from '../components/public/SeasonBand.vue'
 import SectionHeader from '../components/public/SectionHeader.vue'
 import TopicChip from '../components/public/TopicChip.vue'
+import CreatorDiscoverRail from '../components/creator/CreatorDiscoverRail.vue'
 import {
   fetchCollections,
   fetchLightPeriods,

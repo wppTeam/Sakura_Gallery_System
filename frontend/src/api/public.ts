@@ -699,3 +699,129 @@ export async function fetchCreatorWorks(
   )
   return normalizeCreatorWorks(data)
 }
+
+/* ============================================================
+   创作者名录（公开发现页 + 首页发现创作者 rail）
+   ------------------------------------------------------------
+   与创作者主页共用 CreatorRequestError / fetchCreatorJson；名录是「发现」
+   场景，失败时返回空页由页面静默隐藏，不打扰首屏。
+   ============================================================ */
+
+/** 创作者名片上的一张作品封面（仅目录展示所需字段，不构造完整 PublicPhoto） */
+export interface CreatorCover {
+  id: string
+  title: string
+  width: number
+  height: number
+  aspectRatio: number
+  isAigc: boolean
+  aigcLabel: string | null
+  lqipColor: string | null
+  thumbUrl: string
+}
+
+/** 创作者名录里的一张卡（GET /api/v1/creators 的 items[]） */
+export interface CreatorCard {
+  username: string
+  displayName: string
+  joinedAt: string | null
+  worksCount: number
+  viewsTotal: number
+  covers: CreatorCover[]
+}
+
+/** 创作者名录分页 */
+export interface CreatorDirectoryPage {
+  items: CreatorCard[]
+  total: number
+  limit: number
+  offset: number
+  /** 请求是否失败（失败时 items 为空、页面可据此显示错误态；列表接口本身静默不抛） */
+  error: boolean
+}
+
+export type CreatorSort = 'works' | 'views'
+
+export interface CreatorDirectoryQuery {
+  sort?: CreatorSort
+  limit?: number
+  offset?: number
+}
+
+function normalizeCreatorCover(raw: unknown): CreatorCover | null {
+  if (!raw || typeof raw !== 'object') return null
+  const entry = raw as Record<string, unknown>
+  const id = textOrNull(entry.id)
+  if (!id) return null
+  const width = countOf(entry.width)
+  const height = countOf(entry.height)
+  const ratioRaw = typeof entry.aspect_ratio === 'number' ? entry.aspect_ratio : Number(entry.aspect_ratio)
+  const aspectRatio =
+    Number.isFinite(ratioRaw) && ratioRaw > 0.4 && ratioRaw < 3
+      ? ratioRaw
+      : width > 0 && height > 0
+        ? width / height
+        : 4 / 3
+  const thumb = textOrNull(entry.thumb_url)
+  return {
+    id,
+    title: textOrNull(entry.title) ?? '',
+    width,
+    height,
+    aspectRatio,
+    isAigc: entry.is_aigc === true,
+    aigcLabel: textOrNull(entry.aigc_label),
+    lqipColor: textOrNull(entry.lqip_color),
+    thumbUrl: thumb ? getImageUrl(thumb) : getPhotoUrl(id, 'thumbnail'),
+  }
+}
+
+function normalizeCreatorCard(raw: unknown): CreatorCard | null {
+  if (!raw || typeof raw !== 'object') return null
+  const entry = raw as Record<string, unknown>
+  const username = textOrNull(entry.username)
+  if (!username) return null
+  const covers = Array.isArray(entry.covers)
+    ? entry.covers
+        .map(normalizeCreatorCover)
+        .filter((cover): cover is CreatorCover => cover !== null)
+        .slice(0, 3)
+    : []
+  return {
+    username,
+    displayName: textOrNull(entry.display_name) ?? username,
+    joinedAt: textOrNull(entry.joined_at),
+    worksCount: countOf(entry.works_count),
+    viewsTotal: countOf(entry.views_total),
+    covers,
+  }
+}
+
+/**
+ * 创作者名录（匿名可读，nginx 30s 微缓存）。
+ * 失败时返回空页（items: []），页面据此隐藏整块，不弹全局错误。
+ */
+export async function fetchCreators(
+  options: CreatorDirectoryQuery = {},
+): Promise<CreatorDirectoryPage> {
+  const sort: CreatorSort = options.sort === 'views' ? 'views' : 'works'
+  const limit = Math.min(Math.max(Math.trunc(options.limit ?? 12) || 12, 1), 100)
+  const offset = Math.max(Math.trunc(options.offset ?? 0) || 0, 0)
+  const query = new URLSearchParams({
+    sort,
+    limit: String(limit),
+    offset: String(offset),
+  })
+  try {
+    const data = await fetchCreatorJson<unknown>(`/api/v1/creators?${query.toString()}`)
+    const entry = data && typeof data === 'object' ? (data as Record<string, unknown>) : {}
+    const items = Array.isArray(entry.items)
+      ? entry.items
+          .map(normalizeCreatorCard)
+          .filter((item): item is CreatorCard => item !== null)
+      : []
+    return { items, total: countOf(entry.total), limit, offset, error: false }
+  } catch {
+    return { items: [], total: 0, limit, offset, error: true }
+  }
+}

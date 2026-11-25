@@ -24,6 +24,7 @@
           <RouterLink class="foot-link" :to="{ path: '/', hash: '#seasons' }">四季</RouterLink>
           <RouterLink class="foot-link" :to="{ path: '/', hash: '#feed' }">最新作品</RouterLink>
           <RouterLink class="foot-link" :to="{ path: '/', hash: '#light' }">光的一日</RouterLink>
+          <RouterLink class="foot-link" to="/creators">创作者</RouterLink>
         </div>
 
         <div class="foot-col">
