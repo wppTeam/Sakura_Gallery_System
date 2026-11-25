@@ -15,20 +15,24 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.ai_analysis import AIAnalysisTask
 from app.models.aigc_generation import AIGCGeneration
 from app.models.appeal import PhotoAppeal
 from app.models.collection import Collection, CollectionPhoto
 from app.models.email_code import EmailVerificationCode
 from app.models.favorite import Favorite
 from app.models.notification import Notification
+from app.models.permission import ResourcePermission
 from app.models.photo import Photo
+from app.models.tagging_task import TaggingTask, TaggingTaskItem
+from app.models.task import Task, TaskPhoto
 from app.models.user import User
 from app.services.aigc_generation import generated_dir
 from app.services.audit import log_audit
-from app.services.photo_assets import delete_photo_assets
+from app.services.photo_assets import photo_asset_paths
 
 
 class LastAdminError(RuntimeError):
@@ -62,6 +66,81 @@ def _remove_generation_files(generation: AIGCGeneration) -> int:
     return removed
 
 
+
+async def _detach_legacy_references(
+    db: AsyncSession,
+    user: User,
+    photo_ids: list[str],
+) -> None:
+    """清理旧版工作流（AI 分析 / 打标任务 / 任务清单）里指向该账号或作品的引用。
+
+    这些表的外键是 ``NO ACTION``（老代码遗留），不先处理会让注销在最后一步
+    触发外键约束失败。策略：
+    - 指向用户作品的 AI 分析任务直接删除（作品都没了，建议任务没有意义）；
+    - 由用户发起/复核、但属于别人作品的任务保留，仅解除关联；
+    - 打标任务：用户创建的连同条目删除；用户只作为执行人的，改派给其他管理/审核账号；
+    - 旧任务清单：用户创建的连同照片关联删除；其他任务里指向用户作品的关联删除。
+    """
+    # AI 分析任务
+    if photo_ids:
+        await db.execute(delete(AIAnalysisTask).where(AIAnalysisTask.photo_id.in_(photo_ids)))
+    await db.execute(
+        update(AIAnalysisTask).where(AIAnalysisTask.requested_by_id == user.id).values(requested_by_id=None)
+    )
+    await db.execute(
+        update(AIAnalysisTask).where(AIAnalysisTask.reviewed_by_id == user.id).values(reviewed_by_id=None)
+    )
+
+    # 打标任务条目
+    if photo_ids:
+        await db.execute(delete(TaggingTaskItem).where(TaggingTaskItem.photo_id.in_(photo_ids)))
+    await db.execute(
+        update(TaggingTaskItem).where(TaggingTaskItem.reviewer_id == user.id).values(reviewer_id=None)
+    )
+
+    # 打标任务：创作者是该用户的，连条目一起删；仅执行人的，改派
+    created_tasks = (
+        await db.execute(select(TaggingTask.id).where(TaggingTask.creator_id == user.id))
+    ).scalars().all()
+    if created_tasks:
+        await db.execute(delete(TaggingTaskItem).where(TaggingTaskItem.task_id.in_(created_tasks)))
+        await db.execute(delete(TaggingTask).where(TaggingTask.id.in_(created_tasks)))
+    assigned = (
+        await db.execute(select(TaggingTask.id).where(TaggingTask.assignee_id == user.id))
+    ).scalars().all()
+    if assigned:
+        replacement = (
+            await db.execute(
+                select(User.id)
+                .where(User.is_active.is_(True), User.id != user.id, User.role.in_(("admin", "auditor")))
+                .order_by(User.created_at.asc())
+                .limit(1)
+            )
+        ).scalar()
+        if replacement is None:
+            raise LastAdminError("no_reassignee")
+        await db.execute(
+            update(TaggingTask).where(TaggingTask.id.in_(assigned)).values(assignee_id=replacement)
+        )
+
+    # 旧任务清单
+    if photo_ids:
+        await db.execute(delete(TaskPhoto).where(TaskPhoto.photo_id.in_(photo_ids)))
+    own_task_ids = (
+        await db.execute(select(Task.id).where(Task.creator_id == user.id))
+    ).scalars().all()
+    if own_task_ids:
+        await db.execute(delete(TaskPhoto).where(TaskPhoto.task_id.in_(own_task_ids)))
+        await db.execute(delete(Task).where(Task.id.in_(own_task_ids)))
+
+    # 授权记录的授权人（被授权人 user_id 是 CASCADE，不需要处理）
+    await db.execute(
+        update(ResourcePermission)
+        .where(ResourcePermission.created_by == user.id)
+        .values(created_by=None)
+    )
+
+
 async def delete_account(
     db: AsyncSession,
     user: User,
@@ -87,11 +166,18 @@ async def delete_account(
         "email_codes": 0,
     }
 
-    # 1) 作品与全部派生文件
+    # 1) 旧版工作流引用（AI 分析 / 打标 / 任务清单）先解耦，否则外键会卡住删除
     photo_rows = (await db.execute(select(Photo).where(Photo.uploader_id == user.id))).scalars().all()
+    photo_ids = [photo.id for photo in photo_rows]
+    await _detach_legacy_references(db, user, photo_ids)
+
+    # 2) 作品与全部派生文件：先汇总路径，S3 后端一次 DeleteObjects 批量删除
     stats["photos"] = len(photo_rows)
+    asset_paths: list[str] = []
     for photo in photo_rows:
-        stats["photo_files"] += delete_photo_assets(storage, photo)
+        asset_paths.extend(photo_asset_paths(photo))
+    if asset_paths:
+        stats["photo_files"] = storage.delete_many(asset_paths)
 
     # 2) AI 创作台草稿（先删文件，再删行）
     generations = (

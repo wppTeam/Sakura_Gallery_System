@@ -4,12 +4,13 @@
 删除作品（作者主动删除、后台批量清理、账号注销）时必须把它们全部清掉，否则在
 2c4g 机器上会迅速堆成孤儿文件。
 
-存储后端通过 ``storage.delete_file()`` 抽象（本地文件 / S3 对象），删除不存在的
-路径返回 False，不抛错。
+存储后端通过 ``storage.delete_file()`` / ``storage.delete_many()`` 抽象
+（本地文件 / S3 对象），删除不存在的路径返回 False，不抛错。S3 模式下批量删除
+走 ``DeleteObjects``，避免一次账号注销产生成百上千次网络往返。
 """
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from app.services.image_processing import VARIANT_LONG_EDGES
 
@@ -21,12 +22,8 @@ def variant_meta(photo: Any) -> Dict[str, Any]:
     return meta if isinstance(meta, dict) else {}
 
 
-def delete_photo_assets(storage: Any, photo: Any) -> int:
-    """删除作品关联的全部文件，返回成功删除的文件数。
-
-    变体按约定命名 ``variants/{photo_id}_{size}.{webp|jpg}``；即使缺少
-    ``exif_data["_variants"]`` 元信息，也按默认档位尝试删除（老作品兼容）。
-    """
+def photo_asset_paths(photo: Any) -> List[str]:
+    """列出作品关联的全部存储路径（可能包含尚不存在的档位，删除时忽略）。"""
     paths = [
         photo.original_path,
         photo.thumb_path,
@@ -41,9 +38,14 @@ def delete_photo_assets(storage: Any, photo: Any) -> int:
     for size in sizes:
         paths.append(f"variants/{photo.id}_{size}.webp")
         paths.append(f"variants/{photo.id}_{size}.jpg")
+    return [path for path in paths if path]
 
-    removed = 0
-    for path in paths:
-        if path and storage.delete_file(path):
-            removed += 1
-    return removed
+
+def delete_photo_assets(storage: Any, photo: Any) -> int:
+    """删除作品关联的全部文件，返回成功删除的文件数。
+
+    变体按约定命名 ``variants/{photo_id}_{size}.{webp|jpg}``；即使缺少
+    ``exif_data["_variants"]`` 元信息，也按默认档位尝试删除（老作品兼容）。
+    ``storage.delete_many`` 在 S3 后端会合并为批量删除请求。
+    """
+    return storage.delete_many(photo_asset_paths(photo))

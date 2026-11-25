@@ -19,13 +19,17 @@ from app.core import deps
 from app.core.database import Base
 from app.core.security import create_access_token, get_password_hash
 from app.main import app
+from app.models.ai_analysis import AIAnalysisTask
 from app.models.aigc_generation import AIGCGeneration
 from app.models.audit_log import AuditLog
 from app.models.collection import Collection, CollectionPhoto
 from app.models.email_code import EmailVerificationCode
 from app.models.favorite import Favorite
 from app.models.notification import Notification
+from app.models.permission import PermissionType, ResourcePermission, ResourceType
 from app.models.photo import Photo
+from app.models.tagging_task import TaggingTask, TaggingTaskItem
+from app.models.task import Task, TaskPhoto
 from app.models.user import User
 
 PASSWORD = "Sakura2026"
@@ -116,6 +120,61 @@ def account_env(tmp_path: Path, monkeypatch):
                     expires_at=datetime.utcnow() + timedelta(minutes=10),
                 )
             )
+            # 旧版工作流引用：不处理会让注销在最后一步撞外键（生产实测踩到）
+            db.add(
+                AIAnalysisTask(
+                    id="ai-leave-1",
+                    photo_id=photo.id,
+                    requested_by_id=author.id,
+                    provider="test",
+                    model_id="test-model",
+                    status="failed",
+                )
+            )
+            db.add(
+                TaggingTask(
+                    id="tt-leave-1",
+                    title="作者创建的打标任务",
+                    creator_id=author.id,
+                    assignee_id=admin.id,
+                )
+            )
+            db.add(
+                TaggingTask(
+                    id="tt-assign-1",
+                    title="作者作为执行人的打标任务",
+                    creator_id=admin.id,
+                    assignee_id=author.id,
+                )
+            )
+            await db.flush()
+            db.add(
+                TaggingTaskItem(
+                    id="tti-leave-1",
+                    task_id="tt-leave-1",
+                    photo_id=photo.id,
+                    status="pending",
+                    reviewer_id=author.id,
+                )
+            )
+            db.add(
+                Task(id="task-leave-1", creator_id=author.id, name="作者的旧任务", status="pending")
+            )
+            await db.flush()
+            db.add(
+                TaskPhoto(task_id="task-leave-1", photo_id=photo.id, verification_status="unverified")
+            )
+            db.add(
+                ResourcePermission(
+                    id="perm-leave-1",
+                    user_id=admin.id,
+                    resource_type=ResourceType.PHOTO,
+                    resource_key=photo.id,
+                    permission_type=PermissionType.VIEW,
+                    created_by=author.id,
+                )
+            )
+
             generation = AIGCGeneration(
                 id="gen-leave-1",
                 user_id=author.id,
@@ -223,6 +282,12 @@ def test_delete_account_removes_content_and_files(account_env):
             "generations": (await db.execute(select(AIGCGeneration))).scalars().all(),
             "codes": (await db.execute(select(EmailVerificationCode))).scalars().all(),
             "audits": (await db.execute(select(AuditLog).where(AuditLog.action == "user.self_delete"))).scalars().all(),
+            "ai_tasks": (await db.execute(select(AIAnalysisTask))).scalars().all(),
+            "tagging_tasks": (await db.execute(select(TaggingTask))).scalars().all(),
+            "tagging_items": (await db.execute(select(TaggingTaskItem))).scalars().all(),
+            "tasks": (await db.execute(select(Task))).scalars().all(),
+            "task_photos": (await db.execute(select(TaskPhoto))).scalars().all(),
+            "permissions": (await db.execute(select(ResourcePermission))).scalars().all(),
         }
 
     snap = _run(snapshot, account_env["session_factory"])
@@ -234,6 +299,15 @@ def test_delete_account_removes_content_and_files(account_env):
     assert snap["generations"] == []
     assert snap["codes"] == []
     assert len(snap["audits"]) == 1
+
+    # 旧版工作流引用被正确处理，注销不再撞外键
+    assert snap["ai_tasks"] == []
+    assert [t.id for t in snap["tagging_tasks"]] == ["tt-assign-1"], "作者创建的应删除，仅执行人的应保留"
+    assert snap["tagging_tasks"][0].assignee_id == snap["users"][0].id, "执行人应改派给其他管理/审核账号"
+    assert snap["tagging_items"] == []
+    assert snap["tasks"] == []
+    assert snap["task_photos"] == []
+    assert [p.created_by for p in snap["permissions"]] == [None], "授权记录的授权人解除关联"
 
     # 原图 / 缩略图 / 压缩图 / 变体 / 脱敏图 / AI 草稿全部清理
     for rel in [

@@ -9,7 +9,7 @@ import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterator, Optional
+from typing import Any, Dict, Iterator, Optional, Iterable
 
 from fastapi import UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, Response
@@ -139,6 +139,14 @@ class StorageBackend:
 
     def delete_file(self, file_path: Optional[str]) -> bool:
         raise NotImplementedError
+
+    def delete_many(self, file_paths: Iterable[Optional[str]]) -> int:
+        """批量删除文件，默认逐个调用 :meth:`delete_file`。
+
+        S3 兼容后端覆盖为 ``DeleteObjects``（单次最多 1000 个 key），
+        避免账号注销 / 批量清理时产生成百上千次网络往返。
+        """
+        return sum(1 for path in file_paths if path and self.delete_file(path))
 
     def build_media_response(
         self,
@@ -468,6 +476,24 @@ class S3StorageBackend(StorageBackend):
             return True
         except Exception:
             return self._mc_rm(file_path)
+
+    def delete_many(self, file_paths: Iterable[Optional[str]]) -> int:
+        """用 ``DeleteObjects`` 批量删除（COS / R2 均支持，单批最多 1000）。"""
+        paths = [path for path in file_paths if path]
+        if not paths:
+            return 0
+        removed = 0
+        for start in range(0, len(paths), 1000):
+            batch = paths[start : start + 1000]
+            try:
+                self.client.delete_objects(
+                    Bucket=self.bucket,
+                    Delete={"Objects": [{"Key": path} for path in batch], "Quiet": True},
+                )
+                removed += len(batch)
+            except Exception:  # noqa: BLE001 - 批量失败时逐个兜底
+                removed += sum(1 for path in batch if self.delete_file(path))
+        return removed
 
     def build_media_response(
         self,
