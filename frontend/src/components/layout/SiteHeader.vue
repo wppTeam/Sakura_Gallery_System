@@ -73,7 +73,10 @@
           </div>
         </div>
 
-        <RouterLink v-else class="login-link" to="/login">登录</RouterLink>
+        <div v-else class="guest-actions">
+          <RouterLink class="register-cta" to="/register">免费注册</RouterLink>
+          <RouterLink class="login-link" to="/login">登录</RouterLink>
+        </div>
 
         <button
           ref="menuTriggerRef"
@@ -447,6 +450,40 @@ onBeforeUnmount(() => {
   color: var(--sakura-deep);
 }
 
+/* 开放注册后，游客在顶栏直接看到注册入口（移动端收进抽屉） */
+.guest-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.register-cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: var(--r-pill);
+  background: var(--sakura);
+  color: #fff;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.register-cta:hover {
+  background: var(--sakura-deep);
+  transform: translateY(-1px);
+}
+
+@media (pointer: coarse) {
+  .register-cta {
+    min-height: 44px;
+  }
+}
+
 .user-menu {
   position: relative;
 }
@@ -710,6 +747,7 @@ onBeforeUnmount(() => {
 
   .header-search,
   .login-link,
+  .guest-actions,
   .header-submit {
     display: none;
   }

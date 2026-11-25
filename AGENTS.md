@@ -201,6 +201,11 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
 
 ### 注册准入（开关 / 邀请码 / 欢迎与审批通知，2026-11-25 落地）
 
+> **当前线上口径（2026-11-25 起）**：生产 `.env.prod` 已显式设置
+> `REGISTRATION_ENABLED=true`、`REGISTRATION_INVITE_CODE=`（空）、
+> `REQUIRE_REGISTRATION_APPROVAL=false`，即**完全开放注册 + 邮箱验证**；
+> 邀请码 / 审批开关保留，作为后续控流手段。
+
 注册不再只有「默认开放」一种形态，站点可以按阶段收放：
 
 - 开关：`REGISTRATION_ENABLED=false` 时 `POST /api/v1/auth/register` 返回 403
