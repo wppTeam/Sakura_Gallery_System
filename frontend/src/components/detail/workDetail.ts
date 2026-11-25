@@ -63,7 +63,12 @@ export interface WorkDetail {
   title: string
   author: string
   description: string
+  /** 作者/编辑标签（photo.tags） */
   tags: string[]
+  /** 自由标签（photo.free_tags）；与 tags 合并去重后用于画面笔记 chips */
+  freeTags: string[]
+  /** AI 画面描述（≤300 字；人像脱敏视角、旧作品为 null） */
+  aiCaption: string | null
   width: number
   height: number
   aspectRatio: string
@@ -403,6 +408,8 @@ export function normalizeWorkDetail(raw: RawPhoto): WorkDetail {
     author,
     description: textOf(raw.description),
     tags: Array.isArray(raw.tags) ? raw.tags.filter((tag): tag is string => typeof tag === 'string') : [],
+    freeTags: Array.isArray(raw.free_tags) ? raw.free_tags.filter((tag): tag is string => typeof tag === 'string') : [],
+    aiCaption: firstString(raw.ai_caption) || null,
     width,
     height,
     aspectRatio,

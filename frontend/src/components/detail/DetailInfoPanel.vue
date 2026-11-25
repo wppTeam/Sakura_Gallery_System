@@ -197,6 +197,12 @@
       </dl>
     </section>
 
+    <PictureNotes
+      v-if="detail.aiCaption"
+      :caption="detail.aiCaption"
+      :tags="pictureNoteTags"
+    />
+
     <section class="block">
       <div class="block-head">
         <h2 class="block-title">拍摄参数</h2>
@@ -214,14 +220,14 @@
       </button>
     </section>
 
-    <section v-if="detail.tags.length" class="block">
+    <section v-if="allTags.length" class="block">
       <h2 class="block-title">标签</h2>
       <div class="tag-links">
         <router-link
-          v-for="tag in detail.tags"
+          v-for="tag in allTags"
           :key="tag"
           class="tag-link"
-          :to="{ path: '/search', query: { q: tag } }"
+          :to="{ path: '/search', query: { q: tag, mode: 'fast' } }"
         >
           # {{ tag }}
         </router-link>
@@ -314,6 +320,7 @@ import {
 } from '@vicons/ionicons5'
 import { formatDate, formatFileSize, getPhotoUrl } from '../../utils/format'
 import ReportDialog from './ReportDialog.vue'
+import PictureNotes from './PictureNotes.vue'
 import type { WorkDetail } from './workDetail'
 import { fetchPhotoCollections, type PhotoCollectionRef } from '../../api/collections'
 
@@ -351,6 +358,22 @@ watch(
 
 // ── 举报 / 侵权投诉 ─────────────────────────────────────
 const reportOpen = ref(false)
+
+// ── 标签（作者/编辑标签 + 自由标签，去重保序） ─────────
+const allTags = computed(() => {
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const raw of [...props.detail.tags, ...props.detail.freeTags]) {
+    const tag = raw.trim()
+    if (!tag || seen.has(tag)) continue
+    seen.add(tag)
+    result.push(tag)
+  }
+  return result
+})
+
+/** 画面笔记底部 chips：与标签区同一套合并结果 */
+const pictureNoteTags = allTags
 
 // ── 顶部标签 ────────────────────────────────────────────
 const kindLabel = computed(() => {

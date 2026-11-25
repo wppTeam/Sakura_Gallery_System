@@ -139,6 +139,11 @@
       </div>
     </div>
 
+    <!-- 画面关键词：来自公开热门标签，点击跳到检索页（失败/为空时静默隐藏） -->
+    <div class="wrap keywords-wrap">
+      <PictureKeywordsRail />
+    </div>
+
     <!-- 结果 -->
     <section class="wrap results" aria-label="作品列表">
       <div v-if="error && items.length === 0" class="results-state">
@@ -201,6 +206,7 @@ import {
   nextBloom,
 } from '../constants/public'
 import EmptyState from '../components/public/EmptyState.vue'
+import PictureKeywordsRail from '../components/explore/PictureKeywordsRail.vue'
 import MasonryGrid from '../components/public/MasonryGrid.vue'
 import SkeletonCard from '../components/public/SkeletonCard.vue'
 import TopicChip from '../components/public/TopicChip.vue'

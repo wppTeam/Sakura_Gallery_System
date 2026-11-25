@@ -55,6 +55,8 @@ export interface PublicPhoto {
   privacyLevel: 'normal' | 'sensitive'
   /** 当前图片是否为脱敏版本（非作者查看 sensitive 作品时 true） */
   isRedacted: boolean
+  /** AI 画面描述（≤300 字，仅审核快筛打标后的作品；人像脱敏视角/旧作品为 null） */
+  aiCaption: string | null
   /** 是否可查看/下载原图：脱敏版本一律不可（服务端同样会 403） */
   canViewOriginal: boolean
   /** 上传者 id：用于判断「这是你的作品」，不对外展示 */
@@ -178,6 +180,8 @@ interface RawPhotoExtra {
   blurhash?: string | null
   lqip?: string | null
   lqip_color?: string | null
+  /** AI 画面描述（审核快筛打标写入，公开详情返回；人像脱敏视角为 null） */
+  ai_caption?: string | null
 }
 
 function toPublicVariants(raw: Photo['variants'] | null | undefined): PublicVariant[] {
@@ -258,10 +262,11 @@ export function toPublicPhoto(photo: Photo): PublicPhoto {
     aigc: aigcDeclared,
     privacyLevel,
     isRedacted,
+    aiCaption: typeof extra.ai_caption === 'string' && extra.ai_caption.trim() ? extra.ai_caption.trim() : null,
     canViewOriginal: !isRedacted,
     uploaderId: extra.uploader_id ?? photo.uploader_id ?? null,
     license: extra.license ?? null,
-    tags: [...(photo.tags || []), ...(photo.free_tags || [])],
+    tags: Array.from(new Set([...(photo.tags || []), ...(photo.free_tags || [])])),
     blurhash: extra.blurhash ?? null,
     lqip: extra.lqip ?? null,
     lqipColor: extra.lqip_color ?? null,
@@ -464,5 +469,41 @@ export async function fetchPhotoNeighbors(
     }
   } catch {
     return null
+  }
+}
+
+/* ---------------- 公开热门关键词（画面关键词） ---------------- */
+
+/** 热门关键词：name 为标签名，count 为包含该标签的已发布作品数 */
+export interface PublicTagCount {
+  name: string
+  count: number
+}
+
+/**
+ * 公开热门关键词（只统计 approved 且非 sensitive 作品，按作品数降序）。
+ * 失败时返回空数组，调用方静默隐藏整块，不打扰首屏。
+ */
+export async function fetchPublicPopularTags(limit = 12): Promise<PublicTagCount[]> {
+  const safeLimit = Math.min(Math.max(Math.trunc(limit) || 12, 1), 50)
+  try {
+    const data = await request.get<{ items?: unknown[] }>('/api/v1/tags/public/popular', {
+      params: { limit: safeLimit },
+    })
+    const rawItems = Array.isArray(data?.items) ? data.items : []
+    const items: PublicTagCount[] = []
+    const seen = new Set<string>()
+    for (const raw of rawItems) {
+      if (!raw || typeof raw !== 'object') continue
+      const entry = raw as { name?: unknown; count?: unknown }
+      const name = typeof entry.name === 'string' ? entry.name.trim() : ''
+      if (!name || seen.has(name)) continue
+      seen.add(name)
+      const count = typeof entry.count === 'number' && entry.count > 0 ? Math.trunc(entry.count) : 0
+      items.push({ name, count })
+    }
+    return items.slice(0, safeLimit)
+  } catch {
+    return []
   }
 }
