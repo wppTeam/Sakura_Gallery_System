@@ -204,7 +204,7 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
 隐私政策承诺「账号可随时申请注销、注销后删除账号与内容」，此前只有管理员停用账号，
 现在补上作者自助注销：
 
-- `DELETE /api/v1/user/account`（需登录，`3/hour/IP`），body `{password, confirm}`，
+- `DELETE /api/v1/user/account`（需登录，`10/hour/IP`），body `{password, confirm}`，
   `confirm` 必须为「注销」两个字，密码用于二次确认身份；
 - 单事务删除：名下全部作品 + 原图/缩略图/压缩图/响应式变体/脱敏图/AI 创作台草稿图、
   自建专辑、收藏、通知、邮箱验证码；作品子表（标签/分类/收藏/审核记录/申诉/专辑成员）

@@ -61,7 +61,7 @@ async def update_my_profile(
 
 
 @router.delete("/account", status_code=status.HTTP_204_NO_CONTENT)
-@_account_limiter.limit("3/hour")
+@_account_limiter.limit("10/hour")
 async def delete_my_account(
     payload: AccountDeleteRequest,
     request: Request,
