@@ -11,6 +11,7 @@
             管理你的收藏与投稿，维护公开资料。所有作品展示尊重原始构图，不裁切。
           </p>
           <div class="profile-quick-links">
+            <RouterLink class="profile-quick-link" to="/notifications">通知中心 →</RouterLink>
             <RouterLink class="profile-quick-link" to="/favorites">我的收藏 →</RouterLink>
             <RouterLink class="profile-quick-link" to="/my-collections">我的策展 →</RouterLink>
           </div>

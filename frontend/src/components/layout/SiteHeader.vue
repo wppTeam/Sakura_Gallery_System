@@ -38,6 +38,8 @@
 
         <RouterLink class="btn btn--primary header-submit" to="/upload">投稿</RouterLink>
 
+        <NotificationBell />
+
         <div v-if="auth.isAuthenticated" ref="userMenuRef" class="user-menu">
           <button
             class="user-trigger"
@@ -146,6 +148,7 @@
           <div class="drawer-auth">
             <template v-if="auth.isAuthenticated">
               <span class="drawer-user">{{ userName }}</span>
+              <RouterLink class="drawer-auth-link" to="/notifications" @click="closeDrawer">通知中心</RouterLink>
               <RouterLink class="drawer-auth-link" to="/my-submissions" @click="closeDrawer">我的投稿</RouterLink>
               <RouterLink class="drawer-auth-link" to="/profile" @click="closeDrawer">个人中心</RouterLink>
               <button class="drawer-auth-link" type="button" @click="handleLogout">退出登录</button>
@@ -164,6 +167,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import NotificationBell from '../common/NotificationBell.vue'
 
 const auth = useAuthStore()
 const route = useRoute()

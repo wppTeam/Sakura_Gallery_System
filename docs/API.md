@@ -383,6 +383,21 @@ GET /api/v1/photos/{photo_id}/collections
 |------|------|------|
 | POST | `/api/v1/search/visual` | `multipart/form-data`：`file`（JPEG / PNG / WebP，≤8MB，≤4000 万像素）+ 可选 `limit`（1–30，默认 12）。返回 `{results[], total, query_time_ms, mode:"visual", query:{filename,width,height,aspect_ratio,palette,palette_name,palette_hex}}`；非图片/过小 → 400，超过 8MB 或像素上限 → 413；与上传图近重复（汉明 ≤3）的作品不返回；按 IP 限流 10 次/分钟 |
 
+## 🔔 站内通知（需登录）
+
+审核结果、复核进度、权限授予等消息通过站内通知推送给用户；公共端铃铛与 `/notifications` 页均走这些接口。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/user/notifications?skip=0&limit=20&unread_only=false` | 我的通知，按时间倒序；响应 `{notifications:[{id,type,title,content,is_read,related_id,created_at}], total, unread_count}` |
+| GET | `/api/v1/user/notifications/unread-count` | 未读数 `{unread_count}` |
+| PUT | `/api/v1/user/notifications/{id}/read` | 单条已读（不存在 → 404） |
+| PUT | `/api/v1/user/notifications/read-all` | 全部已读，返回 `{detail:"已标记 N 条通知为已读"}` |
+
+`type` 取值：`photo_approved` / `photo_rejected` / `photo_appeal_accepted` / `photo_appeal_rejected` /
+`permission_granted` / `system`。`related_id` 目前统一为作品 id，可直接深链 `/photo/{related_id}`。
+`unread_only=true` 时 `total` 是过滤后的数量（前端「全部」计数需单独用不带过滤的请求或首次全量响应）。
+
 ## 📝 审核复核（申诉，需登录）
 
 被驳回作品的作者可提交一次复核申请；管理员受理后接受则作品回到 pending 重新审核。

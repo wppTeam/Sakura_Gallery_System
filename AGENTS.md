@@ -199,6 +199,22 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
   推荐开源免费商用字体：思源系列、霞鹜系列、站酷系列。
 - **肖像权**：涉可识别人物需被摄者同意，走 L2。
 
+### 站内通知中心（公共端，2026-11-25 落地）
+
+审核结果、复核进度、权限变更通过 `notifications` 表落库（`services/notification.py::notify_user`），
+公共端现在有完整入口，不再只有 admin 布局里的旧铃铛：
+
+- 铃铛：`components/common/NotificationBell.vue`（公共端 header 与 admin 布局共用）——未读数 badge、
+  popover 最近 6 条、类型标签（作品过审/驳回、复核通过/未通过、权限、系统）、点击先 `PUT read`
+  再按 `related_id` 深链到 `/photo/{id}`、「全部已读」、60s 轮询未读数，未登录静默。
+- 通知中心页：`/notifications`（需登录，PublicLayout 子路由），全部/未读 tab、全部标为已读、
+  分页加载更多、空态/骨架/错误重试、绝对+相对时间；390 单列。
+- 类型映射与时间格式化单源在 `utils/notification.ts`（`notificationMeta` / `notificationPath` /
+  `relativeTime`），`related_id` 目前均为作品 id。
+- 后端接口：`GET /api/v1/user/notifications`（`skip/limit/unread_only`，响应含 `total` 与
+  `unread_count`）、`GET /unread-count`、`PUT /{id}/read`、`PUT /read-all`；`unread_only=true` 时
+  `total` 是过滤后的数量，前端需另记全量总数（已处理）。
+
 ### 内容举报与「通知—删除」（2026-11-25 落地）
 
 公开站点必须有侵权投诉渠道（《信息网络传播权保护条例》/《民法典》第 1195 条），实现：

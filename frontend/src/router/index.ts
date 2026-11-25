@@ -100,6 +100,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
       },
       {
+        path: 'notifications',
+        name: 'Notifications',
+        component: () => import('../views/NotificationsView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'my-collections',
         name: 'MyCollections',
         component: () => import('../views/MyCollectionsView.vue'),
@@ -249,6 +255,7 @@ const ROUTE_TITLES: Record<string, string> = {
   Terms: '服务条款 · 视觉百花',
   Privacy: '隐私政策 · 视觉百花',
   Favorites: '我的收藏 · 视觉百花',
+  Notifications: '通知中心 · 视觉百花',
   MyCollections: '我的策展 · 视觉百花',
   CollectionEdit: '编辑策展 · 视觉百花',
   Create: 'AI 创作 · 视觉百花',
