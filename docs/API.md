@@ -581,6 +581,17 @@ GET /api/v1/search/traces/{trace_id}       # 仅 admin：单次 Agent 检索的�
 
 批量终判：`POST /api/v1/admin/moderation/batch-decision`，body `{"photo_ids": [..≤50], "decision": "approve|reject|hold", "reason?": "...", "final_tier?": "L0|L1|L2"}`，返回 `{ok, processed, succeeded, failed, items:[{photo_id, ok, decision, error}]}`；逐条独立提交，单张失败（不存在 / 已有终判 / 异常）不影响其它照片。
 
+## 📝 作者工作台（我的投稿，需登录）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/photos/my-submissions` | 我的投稿列表（`skip/limit/status/season/category/campus/search`，`limit ≤ 100`），admin 序列化含审核状态 |
+| GET | `/api/v1/photos/my-submissions/stats` | 概览计数：`total / pending / approved / rejected / pending_appeal`（待受理复核数） |
+| DELETE | `/api/v1/photos/{photo_id}` | 作者删除自己的作品（或 admin）：同时清理原图/缩略图/压缩图/响应式变体/脱敏图文件；非作者 403 |
+
+作者被驳回的作品可走申诉通道（`POST /photos/{id}/appeal`，见上文「审核复核」）；申诉进行中
+`stats.pending_appeal` 会 +1，前端在列表里展示「复核中」。
+
 ## 🏷️ 标签管理
 
 ### 获取所有标签

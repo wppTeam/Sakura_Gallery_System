@@ -156,6 +156,16 @@ class PhotoNeighborItem(BaseModel):
     thumb_url: str
 
 
+class MySubmissionStats(BaseModel):
+    """「我的投稿」概览计数（作者工作台用，不含已删除作品）。"""
+
+    total: int = Field(0, ge=0)
+    pending: int = Field(0, ge=0)
+    approved: int = Field(0, ge=0)
+    rejected: int = Field(0, ge=0)
+    pending_appeal: int = Field(0, ge=0, description="被驳回且已提交复核、正在等待受理的数量")
+
+
 class PhotoNavContext(BaseModel):
     """当前作品所处的浏览上下文。"""
 

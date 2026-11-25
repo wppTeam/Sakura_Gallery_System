@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -36,6 +36,7 @@ from app.models.user import User
 from app.schemas.ai_analysis import AIAnalysisTaskCreate, AIAnalysisTaskResponse, AIApplyResponse
 from app.schemas.appeal import AppealCreate, AppealReceipt, AppealResponse
 from app.schemas.photo import (
+    MySubmissionStats,
     PhotoListResponse,
     PhotoNeighborItem,
     PhotoNeighborsResponse,
@@ -54,7 +55,7 @@ from app.services.ai_tasks import (
     get_ai_task,
     get_latest_ai_task_for_photo,
 )
-from app.services.image_processing import process_uploaded_image
+from app.services.image_processing import VARIANT_LONG_EDGES, process_uploaded_image
 from app.services.runtime_settings import get_runtime_settings
 from app.services.search_interpreter import get_search_interpreter
 from app.services.storage import cleanup_staged_files, get_storage, stage_photo_upload
@@ -1036,6 +1037,38 @@ async def list_photos(
     )
 
 
+@router.get("/my-submissions/stats", response_model=MySubmissionStats)
+async def my_submissions_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """作者工作台概览：按状态统计自己的投稿数，以及待受理的复核申请数。
+
+    一次 GROUP BY + 一次 COUNT，避免前端为了统计卡再拉 4 次列表。
+    """
+    rows = await db.execute(
+        select(Photo.status, func.count(Photo.id))
+        .where(Photo.uploader_id == current_user.id)
+        .group_by(Photo.status)
+    )
+    counts = {str(status or "unknown"): int(total) for status, total in rows.all()}
+    pending_appeals = await db.scalar(
+        select(func.count(PhotoAppeal.id))
+        .join(Photo, Photo.id == PhotoAppeal.photo_id)
+        .where(
+            Photo.uploader_id == current_user.id,
+            PhotoAppeal.status == "pending",
+        )
+    )
+    return MySubmissionStats(
+        total=sum(counts.values()),
+        pending=counts.get("pending", 0),
+        approved=counts.get("approved", 0),
+        rejected=counts.get("rejected", 0),
+        pending_appeal=int(pending_appeals or 0),
+    )
+
+
 @router.get("/my-submissions", response_model=PhotoListResponse)
 async def list_my_submissions(
     skip: int = 0,
@@ -1313,6 +1346,36 @@ async def update_photo(
     return await serialize_photo_admin(db, updated_photo)
 
 
+def _delete_photo_assets(storage, photo: Photo) -> int:
+    """删除作品关联的全部文件（原图 / 缩略图 / 压缩图 / 响应式变体 / 脱敏图）。
+
+    旧实现只删 original/thumb/processed，compressed、variants 与脱敏图会变成
+    孤儿文件占满磁盘（2c4g 机器上尤其要紧）。变体按约定命名
+    ``variants/{photo_id}_{size}.{webp|jpg}``，即使缺少 exif 档位元信息也按默认
+    档位尝试删除。返回成功删除的文件数（S3 删除不存在的 key 也返回 True）。
+    """
+    paths = [
+        photo.original_path,
+        photo.thumb_path,
+        photo.processed_path,
+        photo.compressed_path,
+        photo.redacted_path,
+        photo.redacted_thumb_path,
+    ]
+    sizes = sorted({int(key) for key in _variant_meta(photo) if str(key).isdigit()})
+    if not sizes:
+        sizes = list(VARIANT_LONG_EDGES)
+    for size in sizes:
+        paths.append(f"variants/{photo.id}_{size}.webp")
+        paths.append(f"variants/{photo.id}_{size}.jpg")
+
+    removed = 0
+    for path in paths:
+        if path and storage.delete_file(path):
+            removed += 1
+    return removed
+
+
 @router.delete("/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_photo(
     photo_id: str,
@@ -1326,14 +1389,13 @@ async def delete_photo(
     if photo.uploader_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized to delete this photo")
     storage = get_storage()
-    storage.delete_file(photo.original_path)
-    storage.delete_file(photo.thumb_path)
-    storage.delete_file(photo.processed_path)
+    removed_files = _delete_photo_assets(storage, photo)
     # Log BEFORE delete — photo_crud.delete_photo internally calls db.commit()
     # which also commits the flushed audit log
     await log_audit(db, user_id=current_user.id, action="photo.delete",
                     resource_type="photo", resource_id=photo_id,
-                    detail=f"删除照片: {photo.filename}", request=request)
+                    detail=f"删除照片: {photo.filename}（清理文件 {removed_files} 个）",
+                    request=request)
     await photo_crud.delete_photo(db, photo)
     return None
 

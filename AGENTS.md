@@ -250,6 +250,21 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
   `<img>` 无法带 `Authorization`，后台列表必须用 `fetch` + token 拉 blob 直出
   （`frontend/src/api/admin_appeals.ts::fetchAdminThumbUrl`），不要直接把 `thumb_url` 塞进 `<img>`。
 
+### 作者工作台「我的投稿」（2026-11-25 落地）
+
+公共端 `/my-submissions` 从旧 Naive UI 表格重做为作者工作台，配套两个后端改动：
+
+- **概览计数**：`GET /api/v1/photos/my-submissions/stats`（需登录）一次返回
+  `{total, pending, approved, rejected, pending_appeal}`。实现是一次 `GROUP BY status` +
+  一次待受理申诉 `COUNT`（`endpoints/photos.py::my_submissions_stats`），避免前端为 4 张统计卡拉 4 次列表。
+- **删除清理**：`DELETE /api/v1/photos/{photo_id}` 现在调用 `_delete_photo_assets()`，清理
+  `original_path / thumb_path / processed_path / compressed_path / redacted_path / redacted_thumb_path`
+  以及 `variants/{photo_id}_{size}.{webp,jpg}`（按 `exif_data["_variants"]` 档位，缺元信息时按
+  `VARIANT_LONG_EDGES` 320/640/1080/1600/2400 兜底）。旧实现只删前三项，压缩图、响应式变体和脱敏图
+  会变成孤儿文件——2c4g 机器上必须避免。审计日志记录清理文件数。
+- 列表仍复用 `GET /my-submissions`（skip/limit/status/season/category/campus/search），
+  作品详情、编辑、申诉、通知等入口在页面内跳转。
+
 ### 人像隐私分级（2026-11-24 落地）
 
 - `photos.privacy_level`：`normal` | `sensitive`。审核快筛/复核命中
