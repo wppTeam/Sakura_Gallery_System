@@ -150,6 +150,31 @@ _axiosInstance.interceptors.response.use(
       }
     }
 
+    // 网络抖动自愈：只对幂等 GET 且「没有拿到任何响应」的情况静默重试一次。
+    // 生产偶发（边缘节点抖动、刷新瞬间连接被取消）时，避免首页同时弹 5 条「网络错误」。
+    const cfg = (error && (error as AxiosError).config) || {}
+    const method = String((cfg as any).method || 'get').toLowerCase()
+    const isCanceled = !!(error && ((error as any).code === 'ERR_CANCELED' || (error as any).__CANCEL__))
+    if (
+      error &&
+      (method === 'get' || method === 'head' || method === 'options') &&
+      !isCanceled &&
+      !(cfg as any)._networkRetried &&
+      !response
+    ) {
+      ;(cfg as any)._networkRetried = true
+      const delay = 500 + Math.round(Math.random() * 500)
+      const originalData = (cfg as any).data
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          _axiosInstance
+            .request({ ...(cfg as any), data: originalData })
+            .then(resolve)
+            .catch(reject)
+        }, delay)
+      })
+    }
+
     let errorMessage = '请求失败'
 
     if (response) {

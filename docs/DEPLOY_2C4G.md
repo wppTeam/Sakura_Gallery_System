@@ -1127,6 +1127,22 @@ curl -s -o /dev/null -w '%{http_code}\n' -X DELETE \
 
 ### 15.9 Cloudflare 边缘缓存（2026-11-26 落地）
 
+#### 发版自检（必跑）
+
+```bash
+# 用服务器 .env.prod 同一份凭据；本地 .tmp/deploy/cf.env 里放 CF_API_TOKEN / CF_ZONE_ID
+python3 scripts/post_deploy_check.py --purge
+```
+
+它会先清 CF 上 4 个 HTML 壳 URL，再校验：`/` `/index.html` `/explore` `/login` 200、
+线上 shell 引用的 `/assets/*` 全部 200 且与本地 `frontend/dist` 的 hashed 文件名一致
+（不一致 = 边缘仍是旧壳，白屏根因）、5 个公开 API 200。任何失败退出码 1。
+
+发版顺序固定为：构建镜像 → `docker save`/`scp` → 服务器 `docker load` →
+`up -d --force-recreate` → `post_deploy_check.py --purge` → 通过后才算发版完成。
+`browser_cache_ttl` 必须保持 `0`（Respect Existing Headers），否则用户浏览器会缓存旧 HTML。
+
+
 目标：让 HTML 壳与匿名公开 API 也吃上 Cloudflare 边缘缓存，减少「边缘 → Tunnel → 源站」往返。
 前置：源站 nginx 已把 `/index.html` 改为可被共享缓存复用：
 `Cache-Control: public, max-age=0, s-maxage=20, stale-while-revalidate=10`

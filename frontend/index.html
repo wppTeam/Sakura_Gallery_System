@@ -76,6 +76,44 @@
       crossorigin
     />
 
+    <script>
+      /* 发版安全网：资源失配（旧 HTML 引用已下线的 hashed asset）时自动绕过缓存刷新一次。
+         背景：2026-11-26 生产出现「标题出来但整页白屏」，根因是浏览器缓存了旧 shell，
+         引用的 JS 已被新版本替换成 404。这里用 sessionStorage 限流，避免刷新循环。 */
+      (function () {
+        var KEY = 'sakura:stale-shell-reloaded-at'
+        var CHUNK_FAIL = /Loading chunk \d+ failed|Loading CSS chunk|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|MIME type .* not supported/i
+        function reloadOnce() {
+          try {
+            var last = Number(sessionStorage.getItem(KEY) || 0)
+            if (last && Date.now() - last < 60000) return
+            sessionStorage.setItem(KEY, String(Date.now()))
+          } catch (e) {
+            /* 隐私模式下 sessionStorage 可能不可用，仍允许刷新一次 */
+          }
+          var url = new URL(window.location.href)
+          url.searchParams.set('_r', String(Date.now()))
+          window.location.replace(url.toString())
+        }
+        window.addEventListener('error', function (event) {
+          var target = event && event.target
+          if (target && target.tagName === 'SCRIPT') { reloadOnce(); return }
+          var message = String((event && (event.message || (event.error && event.error.message))) || '')
+          if (CHUNK_FAIL.test(message)) reloadOnce()
+        }, true)
+        window.addEventListener('unhandledrejection', function (event) {
+          var reason = event && event.reason
+          var message = String((reason && (reason.message || reason)) || '')
+          if (CHUNK_FAIL.test(message)) reloadOnce()
+        })
+        window.addEventListener('load', function () {
+          window.setTimeout(function () {
+            var app = document.getElementById('app')
+            if (app && app.childElementCount === 0) reloadOnce()
+          }, 8000)
+        })
+      })()
+    </script>
     <style>
       /* 应用样式就绪前的底色，避免白闪 */
       html {

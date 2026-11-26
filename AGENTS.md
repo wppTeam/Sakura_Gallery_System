@@ -425,6 +425,15 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
 - 在线预览响应头 `Cache-Control: public, max-age=31536000, immutable` + ETag/Last-Modified
   （`LocalStorageBackend.build_media_response`）；下载语义改 `private, must-revalidate`
 - 上传时的 Pillow 变体生成与 S3 写入都在 `run_in_threadpool` 里执行，不占事件循环
+- **发版缓存安全（2026-11-26 坍塌复盘）**：Cloudflare zone 的 `browser_cache_ttl` 必须保持
+  **`0`（Respect Existing Headers）**，否则浏览器会把 HTML 缓存 4 小时；SPA 壳（`/index.html`）
+  的边缘 TTL 300s 必须在每次发版后 purge。两者任一漏掉，旧 shell 会引用新构建里已下线的
+  hashed JS，表现为「标题出来、整页白屏」（2026-11-26 生产实际发生，旧 `index-DRXIJOD2.js` 等已 404）。
+  兜底：`frontend/index.html` 内置不依赖构建工具的自愈脚本——脚本 404 / 动态 import 失败 /
+  8 秒后 `#app` 仍为空时，带随机 `_r` 参数强刷一次（sessionStorage 60s 限流防循环）；
+  `frontend/src/api/index.ts` 对幂等 GET 的网络层失败（无 response）静默重试一次。
+  发版后必须跑 `python3 scripts/post_deploy_check.py --purge`（清 CDN 壳 + 校验线上 shell 引用的
+  静态资源与本地 `frontend/dist` 一致 + 公开 API 200），任何失败退出码非 0。
 - 模板走 S3 直传 + 预签名下载；预览由 LibreOffice headless 异步渲染
 
 ## 7. 检索
