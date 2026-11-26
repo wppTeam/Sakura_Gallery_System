@@ -238,15 +238,15 @@ def test_propose_collection_excludes_pending_others_and_sensitive(assistant_env)
     assert "P01 | 黄昏的操场" in prompt
 
 
-def test_propose_collection_without_photos_returns_empty() -> None:
+def test_propose_collection_without_photos_returns_empty(tmp_path: Path) -> None:
     async def _noop():
         raise AssertionError("不应调用模型")
 
     # 直接构造空用户：SQLite 引擎里没有作品时返回空提案
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-    async def _run_case(tmp_path: Path = Path("/tmp") / "curation-empty.db"):
-        engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path}", future=True)
+    async def _run_case(db_path: Path):
+        engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}", future=True)
         try:
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
@@ -267,7 +267,7 @@ def test_propose_collection_without_photos_returns_empty() -> None:
         finally:
             await engine.dispose()
 
-    proposal = asyncio.run(_run_case())
+    proposal = asyncio.run(_run_case(tmp_path / "curation-empty.db"))
     assert proposal.candidates == 0
     assert proposal.picks == []
 

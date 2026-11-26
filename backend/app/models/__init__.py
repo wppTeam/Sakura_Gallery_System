@@ -22,6 +22,7 @@ from app.models.email_code import EmailVerificationCode
 from app.models.report import Report
 from app.models.appeal import PhotoAppeal
 from app.models.aigc_generation import AIGCGeneration
+from app.models.aigc_quota import AigcQuotaGrant
 
 __all__ = [
     "User",
@@ -55,6 +56,7 @@ __all__ = [
     "EmailVerificationCode",
     "Report",
     "AIGCGeneration",
+    "AigcQuotaGrant",
     "PhotoAppeal",
 ]
 

@@ -50,7 +50,13 @@ export function changePassword(old_password: string, new_password: string): Prom
 /**
  * 更新当前用户个人资料
  */
-export function updateProfile(data: { email?: string; full_name?: string }): Promise<User> {
+export function updateProfile(data: {
+  email?: string
+  full_name?: string
+  username?: string
+  display_name?: string
+  bio?: string
+}): Promise<User> {
   return request({
     url: '/api/v1/user/profile',
     method: 'put',

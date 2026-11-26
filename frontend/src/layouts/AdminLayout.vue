@@ -51,19 +51,50 @@
         </div>
 
         <div class="topbar-right">
-          <n-input
-            v-if="!isNarrow"
-            class="topbar-search"
-            round
-            size="small"
-            readonly
-            placeholder="全局搜索用户 / 作品（即将上线）"
-            title="全局搜索即将上线"
-          >
-            <template #prefix>
-              <n-icon :component="SearchOutline" />
-            </template>
-          </n-input>
+          <div v-if="!isNarrow" class="topbar-search-wrap">
+            <n-input
+              v-model:value="searchQuery"
+              class="topbar-search"
+              round
+              size="small"
+              clearable
+              placeholder="全局搜索用户 / 作品 / 专题"
+              aria-label="全局搜索"
+              :loading="searchLoading"
+              @keydown="onSearchKeydown"
+              @focus="searchOpen = !!searchQuery.trim()"
+              @blur="onSearchBlur"
+              @clear="closeSearch"
+            >
+              <template #prefix>
+                <n-icon :component="SearchOutline" />
+              </template>
+            </n-input>
+            <div v-if="searchOpen" class="search-panel" role="listbox" aria-label="全局搜索结果">
+              <p v-if="searchLoading" class="search-status">搜索中…</p>
+              <p v-else-if="!searchHits.length" class="search-status">没有匹配的用户 / 作品 / 专题</p>
+              <template v-else>
+                <div v-for="section in searchSections" :key="section.label" class="search-group">
+                  <p class="search-group-title">{{ section.label }}</p>
+                  <button
+                    v-for="hit in section.items"
+                    :key="hit.key"
+                    type="button"
+                    class="search-hit"
+                    :class="{ 'is-active': hit.index === searchCursor }"
+                    role="option"
+                    :aria-selected="hit.index === searchCursor"
+                    @mousedown.prevent="goSearchHit(hit)"
+                    @mouseenter="searchCursor = hit.index"
+                  >
+                    <span class="search-hit-label">{{ hit.label }}</span>
+                    <span class="search-hit-sub">{{ hit.sub }}</span>
+                  </button>
+                </div>
+                <p class="search-tip">↑↓ 选择 · Enter 直达 · Esc 关闭</p>
+              </template>
+            </div>
+          </div>
 
           <NotificationBell />
 
@@ -132,11 +163,13 @@ import {
   PricetagsOutline,
   SearchOutline,
   ServerOutline,
+  SparklesOutline,
   WalletOutline,
   SettingsOutline,
 } from '@vicons/ionicons5'
 import type { MenuOption } from 'naive-ui'
 import { useAuthStore } from '../stores/auth'
+import { adminSearch, type AdminSearchResult } from '../api/admin_search'
 import ChangePasswordDialog from '../components/common/ChangePasswordDialog.vue'
 import NotificationBell from '../components/common/NotificationBell.vue'
 import { fetchReportStats } from '../api/admin_reports'
@@ -179,12 +212,131 @@ const roleTagType = computed(() => {
 const displayName = computed(() => user.value?.display_name || user.value?.full_name || user.value?.username || user.value?.email || '未登录')
 const avatarText = computed(() => (displayName.value || '?').trim().slice(0, 1).toUpperCase())
 
+/* --------------------------- 全局搜索 --------------------------- */
+interface SearchHit {
+  key: string
+  label: string
+  sub: string
+  to: string
+  index: number
+}
+
+const searchQuery = ref('')
+const searchLoading = ref(false)
+const searchOpen = ref(false)
+const searchCursor = ref(0)
+const searchResult = ref<AdminSearchResult | null>(null)
+let searchTimer: number | undefined
+
+const searchSections = computed(() => {
+  const result = searchResult.value
+  if (!result) return [] as { label: string; items: SearchHit[] }[]
+  const sections: { label: string; items: SearchHit[] }[] = []
+  let index = 0
+  const push = (label: string, items: Omit<SearchHit, 'index'>[]) => {
+    if (!items.length) return
+    sections.push({ label, items: items.map((item) => ({ ...item, index: index++ })) })
+  }
+  push(
+    '用户',
+    result.users.map((u) => ({
+      key: `user-${u.id}`,
+      label: u.displayName || u.username || u.studentId || '未命名用户',
+      sub: [u.username ? `@${u.username}` : null, u.email, ROLE_LABELS[u.role] || u.role, u.isActive ? null : '已停用']
+        .filter(Boolean)
+        .join(' · '),
+      to: `/admin/users?focus=${u.id}`,
+    })),
+  )
+  push(
+    '作品',
+    result.photos.map((p) => ({
+      key: `photo-${p.id}`,
+      label: p.title || '未命名作品',
+      sub: [p.uploaderUsername ? `@${p.uploaderUsername}` : null, p.status].filter(Boolean).join(' · '),
+      to: `/photo/${p.id}`,
+    })),
+  )
+  push(
+    '专题',
+    result.collections.map((c) => ({
+      key: `collection-${c.slug}`,
+      label: c.title,
+      sub: `${c.kind === 'user' ? '作者手账' : '策展'} · ${c.photoCount} 件`,
+      to: `/collections/${c.slug}`,
+    })),
+  )
+  return sections
+})
+
+const searchHits = computed(() => searchSections.value.flatMap((section) => section.items))
+
+watch(searchQuery, (query) => {
+  if (searchTimer) window.clearTimeout(searchTimer)
+  const term = query.trim()
+  if (!term) {
+    searchResult.value = null
+    searchOpen.value = false
+    searchLoading.value = false
+    return
+  }
+  searchOpen.value = true
+  searchLoading.value = true
+  searchTimer = window.setTimeout(async () => {
+    try {
+      searchResult.value = await adminSearch(term)
+      searchCursor.value = 0
+    } catch {
+      searchResult.value = null
+    } finally {
+      searchLoading.value = false
+    }
+  }, 250)
+})
+
+function closeSearch() {
+  searchOpen.value = false
+  searchCursor.value = 0
+}
+
+function onSearchBlur() {
+  window.setTimeout(() => {
+    searchOpen.value = false
+  }, 120)
+}
+
+function goSearchHit(hit: SearchHit) {
+  closeSearch()
+  searchQuery.value = ''
+  searchResult.value = null
+  router.push(hit.to)
+}
+
+function onSearchKeydown(event: KeyboardEvent) {
+  if (!searchOpen.value) return
+  const hits = searchHits.value
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    searchCursor.value = hits.length ? (searchCursor.value + 1) % hits.length : 0
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    searchCursor.value = hits.length ? (searchCursor.value - 1 + hits.length) % hits.length : 0
+  } else if (event.key === 'Enter') {
+    event.preventDefault()
+    const hit = hits[searchCursor.value]
+    if (hit) goSearchHit(hit)
+  } else if (event.key === 'Escape') {
+    closeSearch()
+  }
+}
+
 const PAGE_TITLES: Record<string, string> = {
   Dashboard: '仪表盘',
   PhotoReview: '照片审核',
   Reports: '举报处理',
   Appeals: '复核申诉',
   AiUsage: 'AI 成本',
+  AigcManagement: 'AI 生图管理',
   TagManagement: '自由标签',
   TaxonomyManagement: '分类治理',
   TaggingTaskManagement: '标注任务',
@@ -294,6 +446,7 @@ const adminMenuOptions: MenuOption[] = [
   { label: '批量导入', key: 'PhotoImport', icon: renderMenuIcon(CloudUploadOutline) },
   { label: '用户管理', key: 'UserManagement', icon: renderMenuIcon(PeopleOutline) },
   { label: 'AI 成本', key: 'AiUsage', icon: renderMenuIcon(WalletOutline) },
+  { label: 'AI 生图管理', key: 'AigcManagement', icon: renderMenuIcon(SparklesOutline) },
   { label: '审计日志', key: 'AuditLog', icon: renderMenuIcon(DocumentTextOutline) },
   { label: '数据库管理', key: 'DatabaseManagement', icon: renderMenuIcon(ServerOutline) },
   { label: '系统设置', key: 'SystemSettings', icon: renderMenuIcon(SettingsOutline) },
@@ -548,6 +701,91 @@ function onUserMenuSelect(key: string) {
 
 .topbar-search {
   width: 280px;
+}
+
+.topbar-search-wrap {
+  position: relative;
+}
+
+.search-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  width: 360px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid var(--line, #f3dde5);
+  background: var(--surface, #fff);
+  box-shadow: 0 12px 32px rgba(74, 43, 53, 0.16);
+}
+
+.search-status {
+  margin: 0;
+  padding: 14px 10px;
+  font-size: 13px;
+  color: var(--faint, #ad8e97);
+  text-align: center;
+}
+
+.search-group + .search-group {
+  margin-top: 6px;
+  border-top: 1px dashed var(--line, #f3dde5);
+  padding-top: 6px;
+}
+
+.search-group-title {
+  margin: 0 0 4px;
+  padding: 0 10px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--faint, #ad8e97);
+  font-weight: 600;
+}
+
+.search-hit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.search-hit.is-active {
+  background: var(--sakura-wash, #ffe9f0);
+}
+
+.search-hit-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #4a2b35);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-hit-sub {
+  font-size: 11px;
+  color: var(--muted, #63474f);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-tip {
+  margin: 6px 0 0;
+  padding: 6px 10px 2px;
+  border-top: 1px dashed var(--line, #f3dde5);
+  font-size: 11px;
+  color: var(--faint, #ad8e97);
 }
 
 .user-chip {

@@ -7,11 +7,14 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     admin_ai,
+    admin_aigc,
     appeals,
     aigc,
     admin_audit,
     admin_config,
+    admin_overview,
     admin_permissions,
+    admin_search,
     admin_users,
     auth,
     collections,
@@ -46,11 +49,14 @@ api_router.include_router(profile.router, prefix="/user", tags=["Profile"])
 api_router.include_router(favorites.router, prefix="/photos", tags=["Favorites"])
 
 # Admin endpoint routers (权限管理接口)
+api_router.include_router(admin_overview.router, prefix="/admin", tags=["后台概览"])
+api_router.include_router(admin_search.router, prefix="/admin", tags=["后台搜索"])
 api_router.include_router(admin_users.router, prefix="/admin", tags=["用户管理"])
 api_router.include_router(admin_config.router, prefix="/admin", tags=["系统设置"])
 api_router.include_router(admin_permissions.router, prefix="/admin", tags=["授权管理"])
 api_router.include_router(admin_audit.router, prefix="/admin", tags=["审计日志"])
 api_router.include_router(admin_ai.router, prefix="/admin", tags=["AI 成本"])
+api_router.include_router(admin_aigc.router, prefix="/admin", tags=["AI 生图管理"])
 api_router.include_router(moderation_api.router, prefix="/admin", tags=["AI 审核"])
 api_router.include_router(reports.router, prefix="", tags=["举报"])
 api_router.include_router(reports.admin_router, prefix="/admin", tags=["举报"])

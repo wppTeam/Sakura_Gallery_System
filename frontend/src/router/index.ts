@@ -198,6 +198,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, requiresAdmin: true },
       },
       {
+        path: 'aigc',
+        name: 'AigcManagement',
+        component: () => import('../views/admin/AigcManagement.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true },
+      },
+      {
         path: 'tags',
         name: 'TagManagement',
         component: () => import('../views/admin/TagManagement.vue'),

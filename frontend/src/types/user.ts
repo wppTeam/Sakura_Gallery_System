@@ -22,6 +22,8 @@ export interface User {
   created_at: string
   username?: string | null
   display_name?: string | null
+  bio?: string | null
+  avatar_path?: string | null
   email_verified?: boolean
   last_login_at?: string | null
   login_count?: number

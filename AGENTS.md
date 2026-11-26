@@ -144,19 +144,27 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
 创作台本身**不直接创建作品**。
 
 - 接口（前缀 `/api/v1`，均需登录）：
-  `GET /aigc/config`（开关、尺寸档位、每日额度）、`POST /aigc/generations`
-  （202 + 后台任务，3 次/分钟）、`GET /aigc/generations`（我的记录）、
+  `GET /aigc/config`（开关、尺寸档位、基础每日额度）、`GET /aigc/quota`（我的额度余量）、
+  `POST /aigc/generations`（202 + 后台任务，3 次/分钟）、`GET /aigc/generations`（我的记录 + 额度）、
   `GET /aigc/generations/{id}`（前端轮询状态）、`GET /aigc/generations/{id}/image`
   （草稿图，仅本人/管理员）、`DELETE /aigc/generations/{id}`。
 - 草稿图只落本地 `uploads/generated/`，不进作品表、不对外公开；
-- 每日额度 `AIGC_IMAGE_DAILY_LIMIT`（默认 5，失败不计），开关
-  `AIGC_GENERATION_ENABLED`，未配 `DASHSCOPE_API_KEY` 时接口返回 503；
+- **额度模型（2026-11-26）**：每日基础 `AIGC_IMAGE_DAILY_LIMIT`（默认 **3**，东八区日切，
+  失败不计）+ **管理员赠送池**（`aigc_quota_grants` 台账，终身有效不随日重置）。
+  管理员不限额度。扣减顺序 daily → bonus；`aigc_generations.quota_source`
+  （daily/bonus/unlimited）记录来源。**赠送剩余 = 赠送总量 − 非 failed 的 bonus 生成数**，
+  不存可变余额列，因此失败无需退款、撤销赠送只减总量。实现 `app/services/aigc_quota.py`。
+- **后台生图管理**（admin，`/api/v1/admin/aigc/*`，前端 `/admin/aigc`）：
+  `overview`（量/成功率/成本/按日/活跃作者/赠送汇总）、`generations`（状态/来源/作者/关键词筛选 + 分页）、
+  `grants` 台账、`GET users/{id}/quota`、`POST users/{id}/grants`（赠送，写审计 + 站内通知）、
+  `DELETE grants/{id}`（撤销）。
+- 开关 `AIGC_GENERATION_ENABLED`，未配 `DASHSCOPE_API_KEY` 时接口返回 503；
 - 用量记 `ai_usage_events(operation="aigc.generate")`，按张成本用
   `AIGC_IMAGE_PRICE_USD` 估算（默认 0，按实际渠道价填写）；
 - 生成图大小上限 `AIGC_IMAGE_MAX_BYTES`（默认 20MB），尺寸档位
   `AIGC_IMAGE_SIZES`（方图 1328*1328 / 横图 1664*928 / 竖图 928*1664，百炼用 `*` 分隔）；
 - 服务重启导致卡在 queued/running 的任务，由状态接口按超时自动标 failed；
-- 迁移 `a7b8c9d0e1f2`（表 `aigc_generations`）。
+- 迁移 `a7b8c9d0e1f2`（表 `aigc_generations`）、`d5e6f7a8b9c0`（赠送台账 + quota_source）。
 
 公开接口：`GET /api/v1/collections/public`（只返回至少 1 张公开作品的专题）、
 `GET /api/v1/collections/{slug}`（含 `owner{username,display_name}`）、
@@ -312,6 +320,33 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
 - 列表仍复用 `GET /my-submissions`（skip/limit/status/season/category/campus/search），
   作品详情、编辑、申诉、通知等入口在页面内跳转。
 
+### 后台管理一屏与全局搜索（2026-11-26 落地）
+
+- **仪表盘重做**：`GET /api/v1/admin/overview`（admin+auditor）一次返回待办
+  （待审作品 / 待人工复核 / 待处理举报 / 待处理申诉）+ 作品 / 用户 / 生图 / AI 成本概览 +
+  热门作品 Top10。`recent_logins` 仅 admin 可见；auditor 不再看到「—」。
+  图表仍走 `GET /stats/dashboard`。前端待办卡可点击直达对应处理页。
+- **真实全局搜索**：`GET /api/v1/admin/search?q=`（admin+auditor）分组返回用户 / 作品 / 专题；
+  auditor 的用户结果不含学号与邮箱。顶栏搜索框支持 ↑↓ / Enter / Esc，用户命中直达
+  `/admin/users?focus={id}` 打开详情抽屉。
+- **用户详情抽屉**：`GET /api/v1/admin/users/{id}/detail` 聚合资料 + 作品分布 + 最近作品 +
+  生图额度 + 申诉/举报 + 最近审计；用户管理行头像/名字可点开，`?focus=` 深链同样打开。
+- **AI 生图管理页** `/admin/aigc`：见 §4「后台生图管理」。
+
+### 个人主页装修（2026-11-26 落地）
+
+- **自助公开身份**：`PUT /api/v1/user/profile` 扩展 `username / display_name / bio`
+  （username 唯一校验 + 字符白名单 `[A-Za-z0-9_-]{3,32}`）；头像 `POST /user/avatar`
+  （multipart，≤5MB，居中裁方缩 512 WebP，落本地 `uploads/avatars/`，与 AI 草稿同口径）、
+  `DELETE /user/avatar`、公开读取 `GET /user/avatar/{user_id}`（长缓存 1h）。
+  迁移 `e6f7a8b9c0d1`（users.bio / avatar_path）。
+- **公开创作者页** `/u/{username}`：hero 展示头像与简介；作品支持季节 / 光线 / 排序筛选
+  （`GET /creators/{username}` 与 `/works` 接受 `season / period / sort=newest|oldest|popular`，
+  季节走 taxonomy 分类，与探索页同口径）；「分享主页」复制链接；加载时写 OG meta。
+- **个人中心** `/profile` 工作台化：概览 chips 增加待审与「今日可生图」；新增「公开主页」卡
+  （换头像 / 移除 / 编辑资料 / 查看公开主页），编辑弹窗改 username / 昵称 / 简介。
+  公开页仍只暴露 username / display_name / bio / 头像，绝不带学号与真实姓名。
+
 ### 人像隐私分级（2026-11-24 落地）
 
 - `photos.privacy_level`：`normal` | `sensitive`。审核快筛/复核命中
@@ -377,6 +412,15 @@ AI 成本观测（admin）：`GET /api/v1/admin/ai/usage?days=7` 聚合 `ai_usag
   改存储相关代码后用 `scripts/verify_s3.py` 对着 MinIO 复跑（见 docs/DEPLOY_2C4G.md §6.5）
 - 云端对象存储（腾讯 COS / 阿里 OSS）必须设 `S3_ADDRESSING_STYLE=virtual`：默认 `auto`
   走 path-style，COS 会 `PathStyleDomainForbidden`、预签名 URL 403；本机 MinIO 保持 `auto`。
+- **公开响应内联对象存储直链（2026-11-26）**：列表/详情/检索/导航等公开 JSON 里的
+  `variants.*.webp|jpeg`、`thumb_url`、`compressed_url` 在 S3 模式（COS/R2/OSS）下直接给
+  **预签名绝对 URL**（`storage.direct_media_url()`，TTL `S3_PRESIGN_EXPIRE_SECONDS`，默认 600s；
+  `@lru_cache` 复用 boto3 client），浏览器因此直连对象存储，省掉「同源 API → 307 → 对象存储」
+  的一次隧道往返（公网单张图 1–3 秒的主要来源）。本地模式自动回退同源相对路径，测试与本地开发
+  行为不变。**刻意不内联 `original_url`**：原图只保留在鉴权媒体端点（下载端点还要写 AIGC 隐式
+  标识），公开 JSON 不提供可直存的高清原图直链。前端 `getImageUrl()` 对绝对/`data:`/`blob:`
+  URL 原样放行，不能二次拼接 API base。预签名 URL 写进了 nginx 30s 微缓存，因此 TTL 必须远
+  大于缓存时长（600s ≫ 30s）。
   线上实测（COS）：媒体端点 307 预签名 → 虚拟主机域 → 200；AIGC 下载仍写 XMP。
 - 在线预览响应头 `Cache-Control: public, max-age=31536000, immutable` + ETag/Last-Modified
   （`LocalStorageBackend.build_media_response`）；下载语义改 `private, must-revalidate`
@@ -529,6 +573,14 @@ backend/.venv/bin/python scripts/shot.py <url> <out.png> --width 1440 --full --w
   新增缓存点必须用 `^~` 前缀（`^~ /api/` 会跳过正则 location）。
 - 容量基线（cgroup 2 vCPU 模拟，见 `docs/DEPLOY_2C4G.md` §14）：
   混合读 49 req/s（无缓存）→ 301 req/s（开微缓存）；3 张 24MP 并发上传峰值 472MB。
+- 插画/装饰大图用响应式小图：`frontend/public/art/*-sm.webp`（900–960px 长边、quality 78，
+  体积约为原图 35–45%），模板里 `src` 用 `-sm`、`srcset` 保留原图供大屏 2x 场景。
+- 匿名只读接口默认加 nginx 30s 微缓存（`/api/v1/photos/public`、`/photos/public/{id}`、
+  `/search`、`/collections`、`/creators`、`/tags/public/popular`、`/photos/{id}/neighbors|similar`），
+  响应带 `X-Cache-Status`；带 `Authorization` 一律 BYPASS。
+- 性能实测（2026-11-26，公网经 Cloudflare Tunnel）：图片请求从「API 307 往返 2–3s/张」变为
+  「COS 预签名直连 ≈0.3s/张」，首页 `apiRedirectImg` 归零；列表 JSON 因签名 URL 每 24 张多约
+  17KB gzip，属可接受交换。下一步可做首页聚合接口与 Cloudflare HTML Cache Rule（需 CF token）。
 
 ## 10. AI 渠道（实测结论，不含 key）
 

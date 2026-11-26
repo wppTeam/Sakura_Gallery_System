@@ -33,6 +33,7 @@ from app.services.agent_search import run_agent_search
 from app.services.agent_search.types import AgentSearchResult
 from app.services.lexical_search import FacetResult, SearchHit
 from app.services.spectrum import PALETTE_BY_KEY
+from app.services.storage import direct_media_url
 from app.services.visual_probe import (
     MAX_PROBE_BYTES,
     ProbeError,
@@ -222,7 +223,14 @@ def _collect_filters(
 
 
 def _to_result_item(hit: SearchHit) -> SearchPhotoResult:
-    thumb_url = f"/api/v1/photos/{hit.photo_id}/image/thumbnail"
+    # 对象存储模式下内联预签名直链：结果卡片的缩略图不再为每张图多走一次
+    # 「API 307 → 对象存储」的隧道往返。
+    thumb_url = (
+        direct_media_url(
+            f"thumbnails/{hit.photo_id}_thumb.jpg", content_type="image/jpeg"
+        )
+        or f"/api/v1/photos/{hit.photo_id}/image/thumbnail"
+    )
     aspect_ratio: Optional[float] = None
     if hit.width and hit.height:
         try:
@@ -312,7 +320,8 @@ def _visual_result_item(
         title=photo.title,
         filename=photo.filename,
         author=photo.author,
-        thumb_url=f"/api/v1/photos/{photo.id}/image/thumbnail",
+        thumb_url=direct_media_url(photo.thumb_path, content_type="image/jpeg")
+        or f"/api/v1/photos/{photo.id}/image/thumbnail",
         width=photo.width,
         height=photo.height,
         aspect_ratio=aspect_ratio,

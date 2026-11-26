@@ -20,8 +20,9 @@ from app.core.config import get_settings
 from app.core.database import Base
 from app.core.security import create_access_token
 from app.main import app
-from app.models.aigc_generation import AIGCGeneration
 from app.models.ai_usage import AIUsageEvent
+from app.models.aigc_generation import AIGCGeneration
+from app.models.aigc_quota import AigcQuotaGrant
 from app.models.user import User
 from app.services import aigc_generation as aigc_service
 from app.services.aigc_generation import GenerationError
@@ -41,7 +42,7 @@ def aigc_env(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(settings, "MODERATION_ENABLED", False)
     monkeypatch.setattr(settings, "DASHSCOPE_API_KEY", "test-key")
     monkeypatch.setattr(settings, "AIGC_GENERATION_ENABLED", True)
-    monkeypatch.setattr(settings, "AIGC_IMAGE_DAILY_LIMIT", 5)
+    monkeypatch.setattr(settings, "AIGC_IMAGE_DAILY_LIMIT", 3)
     aigc_api.limiter.reset()
 
     db_path = tmp_path / "aigc.db"
@@ -119,6 +120,12 @@ def _headers(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _post(client, headers: dict, prompt: str):
+    """绕开 3 次/分钟的 IP 限流，专测额度逻辑。"""
+    aigc_api.limiter.reset()
+    return client.post("/api/v1/aigc/generations", json={"prompt": prompt}, headers=headers)
+
+
 def _add_generation(session_factory, user_id: str, **overrides) -> AIGCGeneration:
     async def _run() -> AIGCGeneration:
         async with session_factory() as db:
@@ -132,6 +139,7 @@ def _add_generation(session_factory, user_id: str, **overrides) -> AIGCGeneratio
                 height=1328,
                 image_path=overrides.get("image_path"),
                 image_format=overrides.get("image_format"),
+                quota_source=overrides.get("quota_source", "daily"),
                 created_at=overrides.get("created_at", datetime.utcnow()),
                 updated_at=overrides.get("updated_at", datetime.utcnow()),
             )
@@ -139,6 +147,18 @@ def _add_generation(session_factory, user_id: str, **overrides) -> AIGCGeneratio
             await db.commit()
             await db.refresh(generation)
             return generation
+
+    return asyncio.run(_run())
+
+
+def _add_grant(session_factory, user_id: str, amount: int, reason: str | None = None):
+    async def _run() -> AigcQuotaGrant:
+        async with session_factory() as db:
+            grant = AigcQuotaGrant(user_id=user_id, amount=amount, reason=reason)
+            db.add(grant)
+            await db.commit()
+            await db.refresh(grant)
+            return grant
 
     return asyncio.run(_run())
 
@@ -166,7 +186,7 @@ def test_config_lists_sizes_and_model(aigc_env):
     assert keys == set(settings.AIGC_IMAGE_SIZES.keys())
     square = next(item for item in data["sizes"] if item["key"] == "square")
     assert (square["width"], square["height"], square["ratio"]) == (1328, 1328, "1:1")
-    assert data["daily_limit"] == 5
+    assert data["daily_limit"] == 3
 
 
 def test_config_reports_disabled_when_switch_off(aigc_env, monkeypatch):
@@ -223,11 +243,73 @@ def test_daily_limit_blocks_new_generation(aigc_env, monkeypatch):
         listing = client.get("/api/v1/aigc/generations", headers=headers)
     assert first.status_code == 202
     assert second.status_code == 429
-    assert "次数" in second.json()["detail"]
+    assert "额度" in second.json()["detail"]
     body = listing.json()
-    assert body["daily_used"] == 1
-    assert body["daily_limit"] == 1
+    assert body["quota"]["daily_used"] == 1
+    assert body["quota"]["daily_limit"] == 1
+    assert body["quota"]["bonus_remaining"] == 0
     assert body["total"] == 1
+
+
+def test_bonus_pool_covers_after_daily_limit(aigc_env, monkeypatch):
+    """每日额度用尽后自动扣赠送池，且 quota_source 如实落库。"""
+    state = aigc_env
+    monkeypatch.setattr(get_settings(), "AIGC_IMAGE_DAILY_LIMIT", 1)
+    _add_grant(state["session_factory"], state["owner"].id, 2, reason="内测奖励")
+    headers = _headers(state["tokens"]["owner"])
+    with TestClient(app) as client:
+        first = _post(client, headers, "黄昏的校园")
+        second = _post(client, headers, "清晨的校园")
+        third = _post(client, headers, "正午的校园")
+        fourth = _post(client, headers, "夜晚的校园")
+        quota = client.get("/api/v1/aigc/quota", headers=headers)
+    assert [first.status_code, second.status_code, third.status_code] == [202, 202, 202]
+    assert first.json()["quota_source"] == "daily"
+    assert second.json()["quota_source"] == "bonus"
+    assert third.json()["quota_source"] == "bonus"
+    assert fourth.status_code == 429
+    body = quota.json()
+    assert body["unlimited"] is False
+    assert (body["daily_used"], body["daily_remaining"]) == (1, 0)
+    assert (body["bonus_total"], body["bonus_used"], body["bonus_remaining"]) == (2, 2, 0)
+    assert body["total_remaining"] == 0
+
+
+def test_failed_bonus_generation_does_not_consume_pool(aigc_env, monkeypatch):
+    state = aigc_env
+    monkeypatch.setattr(get_settings(), "AIGC_IMAGE_DAILY_LIMIT", 1)
+    _add_grant(state["session_factory"], state["owner"].id, 1)
+    _add_generation(state["session_factory"], state["owner"].id, status="failed")
+    _add_generation(
+        state["session_factory"], state["owner"].id, status="failed", quota_source="bonus"
+    )
+    headers = _headers(state["tokens"]["owner"])
+    with TestClient(app) as client:
+        daily = client.post("/api/v1/aigc/generations", json={"prompt": "黄昏的校园"}, headers=headers)
+        bonus = client.post("/api/v1/aigc/generations", json={"prompt": "清晨的校园"}, headers=headers)
+        quota = client.get("/api/v1/aigc/quota", headers=headers)
+    assert (daily.status_code, bonus.status_code) == (202, 202)
+    assert bonus.json()["quota_source"] == "bonus"
+    assert quota.json()["bonus_remaining"] == 0
+
+
+def test_admin_has_unlimited_quota(aigc_env, monkeypatch):
+    state = aigc_env
+    monkeypatch.setattr(get_settings(), "AIGC_IMAGE_DAILY_LIMIT", 1)
+    headers = _headers(state["tokens"]["admin"])
+    with TestClient(app) as client:
+        for _ in range(4):
+            resp = _post(client, headers, "黄昏的校园")
+            assert resp.status_code == 202
+            assert resp.json()["quota_source"] == "unlimited"
+        quota = client.get("/api/v1/aigc/quota", headers=headers).json()
+    assert quota["unlimited"] is True
+    assert quota["daily_used"] == 0  # 管理员不消耗任何额度
+
+
+def test_quota_endpoint_requires_login(aigc_env):
+    with TestClient(app) as client:
+        assert client.get("/api/v1/aigc/quota").status_code == 401
 
 
 def test_failed_generation_does_not_consume_quota(aigc_env, monkeypatch):

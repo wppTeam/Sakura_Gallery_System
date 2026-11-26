@@ -2,6 +2,7 @@
 Storage backends for local filesystem and S3-compatible object storage.
 """
 import logging
+from functools import lru_cache
 import os
 import shutil
 import tempfile
@@ -147,6 +148,22 @@ class StorageBackend:
         避免账号注销 / 批量清理时产生成百上千次网络往返。
         """
         return sum(1 for path in file_paths if path and self.delete_file(path))
+
+    def presign_url(
+        self,
+        file_path: str,
+        *,
+        content_type: Optional[str] = None,
+        expires_in: Optional[int] = None,
+    ) -> Optional[str]:
+        """返回可直接给浏览器的绝对媒体 URL（对象存储预签名），本地后端返回 None。
+
+        为什么需要它：前端 <picture>/srcset 里若是同源的 ``/api/.../image/...``，
+        每张图都要先经过一次 API 请求（公网经 Cloudflare Tunnel 时单次往返
+        可达 1–3 秒）拿到 307 才跳到对象存储。把预签名直链直接写进列表/详情
+        响应，浏览器就能直连对象存储，少一次隧道往返（见第 43 轮性能优化）。
+        """
+        return None
 
     def build_media_response(
         self,
@@ -495,6 +512,33 @@ class S3StorageBackend(StorageBackend):
                 removed += sum(1 for path in batch if self.delete_file(path))
         return removed
 
+    def presign_url(
+        self,
+        file_path: str,
+        *,
+        content_type: Optional[str] = None,
+        expires_in: Optional[int] = None,
+    ) -> Optional[str]:
+        """生成对象存储直链（预签名 GET），留给公开响应内联使用。"""
+        if not file_path:
+            return None
+        params: Dict[str, Any] = {
+            "Bucket": self.bucket,
+            "Key": file_path.lstrip("/"),
+        }
+        if content_type:
+            params["ResponseContentType"] = content_type
+        ttl = int(expires_in if expires_in is not None else settings.S3_PRESIGN_EXPIRE_SECONDS)
+        try:
+            return self.client.generate_presigned_url(
+                "get_object", Params=params, ExpiresIn=ttl
+            )
+        except Exception as exc:  # noqa: BLE001 - 预签名失败要能优雅退回 API 路径
+            logging.getLogger(__name__).warning(
+                "Presign inline failed for key=%s bucket=%s: %s", file_path, self.bucket, exc
+            )
+            return None
+
     def build_media_response(
         self,
         file_path: str,
@@ -583,3 +627,33 @@ def get_storage() -> StorageBackend:
 def delete_file(file_path: Optional[str]) -> bool:
     """Backward-compatible delete helper."""
     return get_storage().delete_file(file_path)
+
+
+@lru_cache(maxsize=1)
+def _direct_media_backend() -> StorageBackend:
+    """进程内缓存的存储后端，专供「公开响应内联预签名直链」使用。
+
+    每个请求都 new 一个 boto3 client 代价很高（解析配置、构造签名器），
+    而预签名只是本地 HMAC 计算，复用单例即可；线程安全（boto3 client
+    的 generate_presigned_url 无网络 IO）。
+    """
+    return get_storage_backend()
+
+
+def direct_media_url(
+    file_path: Optional[str],
+    *,
+    content_type: Optional[str] = None,
+    expires_in: Optional[int] = None,
+) -> Optional[str]:
+    """对象存储模式返回绝对预签名直链；本地模式返回 None（调用方回退 API 路径）。"""
+    if not file_path or settings.STORAGE_BACKEND != "s3":
+        return None
+    try:
+        backend = _direct_media_backend()
+        return backend.presign_url(file_path, content_type=content_type, expires_in=expires_in)
+    except Exception as exc:  # noqa: BLE001 - 直链失败不能影响主流程
+        logging.getLogger(__name__).warning(
+            "direct_media_url failed for key=%s: %s", file_path, exc
+        )
+        return None

@@ -1,7 +1,8 @@
 """站内 AI 生图（AI 创作台）接口。
 
-- ``GET  /api/v1/aigc/config``：创作台配置（开关、尺寸档位、每日额度、模型名）
-- ``POST /api/v1/aigc/generations``：发起生成（登录 + 3 次/分钟 + 每日额度）
+- ``GET  /api/v1/aigc/config``：创作台配置（开关、尺寸档位、基础每日额度、模型名）
+- ``GET  /api/v1/aigc/quota``：我的额度（每日基础 + 管理员赠送池）
+- ``POST /api/v1/aigc/generations``：发起生成（登录 + 3 次/分钟 + 额度）
 - ``GET  /api/v1/aigc/generations``：我的生成记录
 - ``GET  /api/v1/aigc/generations/{id}``：状态（前端轮询）
 - ``GET  /api/v1/aigc/generations/{id}/image``：取草稿图（仅本人/管理员）
@@ -16,7 +17,15 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
 from fastapi.responses import FileResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -32,11 +41,12 @@ from app.schemas.aigc_generation import (
     AigcGenerationCreate,
     AigcGenerationListResponse,
     AigcGenerationResponse,
+    AigcQuotaResponse,
     AigcSizeOption,
 )
 from app.services import aigc_generation as aigc_service
+from app.services import aigc_quota
 from app.services.aigc_generation import (
-    GenerationError,
     run_generation,
     size_dimensions,
 )
@@ -84,12 +94,26 @@ def _to_response(generation: AIGCGeneration) -> AigcGenerationResponse:
         height=generation.height,
         status=generation.status,  # type: ignore[arg-type]
         model=generation.model_id,
+        quota_source=generation.quota_source or "daily",  # type: ignore[arg-type]
         image_url=_image_url(generation),
         error=generation.error,
         latency_ms=generation.latency_ms,
         cost_usd=float(generation.cost_usd or 0.0),
         created_at=generation.created_at,
         finished_at=generation.finished_at,
+    )
+
+
+def _quota_response(state: aigc_quota.QuotaState) -> AigcQuotaResponse:
+    return AigcQuotaResponse(
+        unlimited=state.unlimited,
+        daily_limit=state.daily_limit,
+        daily_used=state.daily_used,
+        daily_remaining=state.daily_remaining,
+        bonus_total=state.bonus_total,
+        bonus_used=state.bonus_used,
+        bonus_remaining=state.bonus_remaining,
+        total_remaining=state.total_remaining,
     )
 
 
@@ -138,13 +162,12 @@ async def create_generation(
     if payload.size not in settings.AIGC_IMAGE_SIZES:
         raise HTTPException(status_code=400, detail="不支持的尺寸档位")
 
-    daily_used = await aigc_service.count_today_generations(db, current_user.id)
-    daily_limit = int(settings.AIGC_IMAGE_DAILY_LIMIT)
-    if daily_limit > 0 and daily_used >= daily_limit:
+    try:
+        quota_source = await aigc_quota.resolve_quota_source(db, current_user)
+    except aigc_quota.QuotaExhausted as exc:
         raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"今天的生成次数已用完（{daily_limit} 次/天），明天再来吧",
-        )
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)
+        ) from exc
 
     width, height = size_dimensions(payload.size)
     generation = AIGCGeneration(
@@ -154,6 +177,7 @@ async def create_generation(
         status="queued",
         provider="dashscope",
         model_id=settings.AIGC_IMAGE_MODEL,
+        quota_source=quota_source,
         width=width,
         height=height,
     )
@@ -192,13 +216,20 @@ async def list_my_generations(
         ).scalar_one()
         or 0
     )
-    daily_used = await aigc_service.count_today_generations(db, current_user.id)
     return AigcGenerationListResponse(
         items=[_to_response(row) for row in rows],
         total=total,
-        daily_used=daily_used,
-        daily_limit=int(settings.AIGC_IMAGE_DAILY_LIMIT),
+        quota=_quota_response(await aigc_quota.get_quota(db, current_user)),
     )
+
+
+@router.get("/quota", response_model=AigcQuotaResponse, summary="我的生图额度")
+async def get_my_quota(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AigcQuotaResponse:
+    """每日基础额度 + 管理员赠送池的实时余量（创作台轮询用）。"""
+    return _quota_response(await aigc_quota.get_quota(db, current_user))
 
 
 @router.get(

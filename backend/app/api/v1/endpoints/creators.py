@@ -72,9 +72,21 @@ async def _count_public_works(db: AsyncSession, user_id: str) -> int:
 
 
 async def _load_works(
-    db: AsyncSession, user: User, *, limit: int, offset: int
+    db: AsyncSession,
+    user: User,
+    *,
+    limit: int,
+    offset: int,
+    season: Optional[str] = None,
+    period: Optional[str] = None,
+    sort: str = "newest",
 ) -> Tuple[List, int]:
     """复用公开列表的查询（eager-load 分类），只按作者过滤。"""
+    sort_by, sort_order = {
+        "newest": ("created_at", "desc"),
+        "oldest": ("created_at", "asc"),
+        "popular": ("views", "desc"),
+    }.get(sort, ("created_at", "desc"))
     photos, total = await photo_crud.get_photos(
         db,
         skip=offset,
@@ -82,8 +94,10 @@ async def _load_works(
         uploader_id=user.id,
         status="approved",
         exclude_sensitive=True,
-        sort_by="created_at",
-        sort_order="desc",
+        season=season,
+        period=period,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
     items = []
     for photo in photos:
@@ -200,6 +214,10 @@ async def _build_profile(
     return CreatorProfile(
         username=user.username or "",
         display_name=user.display_name or user.username,
+        bio=user.bio,
+        avatar_url=(
+            f"/api/v1/user/avatar/{user.id}" if user.avatar_path else None
+        ),
         joined_at=user.created_at,
         works_count=int(works_count),
         views_total=int(views_total),
@@ -311,12 +329,15 @@ async def _load_creator(
     works_limit: int,
     works_offset: int,
     collections_limit: int,
+    season: Optional[str] = None,
+    period: Optional[str] = None,
+    sort: str = "newest",
 ) -> CreatorResponse:
     user = await _get_creator(db, username)
     collections = await _load_collections(db, user, limit=collections_limit)
     profile = await _build_profile(db, user, collections_count=len(collections))
     items, total = await _load_works(
-        db, user, limit=works_limit, offset=works_offset
+        db, user, limit=works_limit, offset=works_offset, season=season, period=period, sort=sort
     )
     return CreatorResponse(
         profile=profile,
@@ -348,6 +369,9 @@ async def get_creator(
     collections_limit: int = Query(
         DEFAULT_COLLECTIONS_LIMIT, ge=0, le=MAX_COLLECTIONS_LIMIT
     ),
+    season: Optional[str] = Query(None, description="按季节过滤作品"),
+    period: Optional[str] = Query(None, description="按时段过滤作品"),
+    sort: Literal["newest", "oldest", "popular"] = Query("newest"),
     db: AsyncSession = Depends(get_db),
 ) -> CreatorResponse:
     """创作者主页首屏：个人资料 + 第一页作品 + 作品集 rail。"""
@@ -357,6 +381,9 @@ async def get_creator(
         works_limit=works_limit,
         works_offset=works_offset,
         collections_limit=collections_limit,
+        season=season,
+        period=period,
+        sort=sort,
     )
 
 
@@ -365,9 +392,14 @@ async def list_creator_works(
     username: str,
     limit: int = Query(DEFAULT_WORKS_LIMIT, ge=1, le=MAX_WORKS_LIMIT),
     offset: int = Query(0, ge=0, le=5000),
+    season: Optional[str] = Query(None),
+    period: Optional[str] = Query(None),
+    sort: Literal["newest", "oldest", "popular"] = Query("newest"),
     db: AsyncSession = Depends(get_db),
 ) -> CreatorWorkList:
     """创作者作品分页（「加载更多」用）。"""
     user = await _get_creator(db, username)
-    items, total = await _load_works(db, user, limit=limit, offset=offset)
+    items, total = await _load_works(
+        db, user, limit=limit, offset=offset, season=season, period=period, sort=sort
+    )
     return CreatorWorkList(items=items, total=total, limit=limit, offset=offset)

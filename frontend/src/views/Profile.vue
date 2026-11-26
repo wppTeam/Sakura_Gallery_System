@@ -11,6 +11,8 @@
             管理你的收藏与投稿，维护公开资料。所有作品展示尊重原始构图，不裁切。
           </p>
           <div class="profile-quick-links">
+            <RouterLink class="profile-quick-link" to="/my-submissions">我的投稿 →</RouterLink>
+            <RouterLink class="profile-quick-link" to="/create">AI 创作台 →</RouterLink>
             <RouterLink class="profile-quick-link" to="/notifications">通知中心 →</RouterLink>
             <RouterLink class="profile-quick-link" to="/favorites">我的收藏 →</RouterLink>
             <RouterLink class="profile-quick-link" to="/my-collections">我的策展 →</RouterLink>
@@ -26,14 +28,44 @@
               <span class="chip-label">已发布</span>
             </li>
             <li>
+              <span class="chip-num">{{ formatInteger(stats.pending) }}</span>
+              <span class="chip-label">待审</span>
+            </li>
+            <li>
               <span class="chip-num">{{ formatInteger(stats.favorites) }}</span>
               <span class="chip-label">收藏</span>
+            </li>
+            <li>
+              <span class="chip-num">{{ aigcQuota ? (aigcQuota.unlimited ? '∞' : aigcQuota.totalRemaining) : '—' }}</span>
+              <span class="chip-label">今日可生图</span>
             </li>
             <li class="chip-role">
               <n-tag :type="roleTagType" size="small" :bordered="false" round>{{ roleLabel }}</n-tag>
             </li>
           </ul>
         </header>
+
+        <section class="public-card" aria-labelledby="public-card-title">
+          <div class="public-avatar-wrap">
+            <img v-if="publicAvatarUrl" :src="publicAvatarUrl" alt="我的公开头像" class="public-avatar" />
+            <span v-else class="public-avatar public-avatar--placeholder" aria-hidden="true">{{ publicMonogram }}</span>
+            <input ref="avatarInput" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" @change="onAvatarPick" />
+          </div>
+          <div class="public-meta">
+            <h2 id="public-card-title" class="public-title">公开主页</h2>
+            <p class="public-sub">
+              {{ authStore.user?.display_name || authStore.user?.username || '未设置昵称' }}
+              <span class="public-handle">@{{ authStore.user?.username || '未设置用户名' }}</span>
+            </p>
+            <p class="public-bio">{{ authStore.user?.bio || '还没有简介，写一句让浏览者认识你。' }}</p>
+          </div>
+          <div class="public-actions">
+            <n-button size="small" secondary :loading="avatarBusy" @click="avatarInput?.click()">换头像</n-button>
+            <n-button v-if="publicAvatarUrl" size="small" text type="error" :loading="avatarBusy" @click="removeAvatar">移除</n-button>
+            <n-button size="small" type="primary" @click="openPublicEditor">编辑资料</n-button>
+            <RouterLink v-if="publicProfilePath" class="public-view-link" :to="publicProfilePath">查看公开主页 →</RouterLink>
+          </div>
+        </section>
 
         <n-tabs v-model:value="activeTab" type="line" animated class="profile-tabs" @update:value="onTabChange">
           <!-- 我的收藏 -->
@@ -254,6 +286,35 @@
         </div>
       </template>
     </n-modal>
+
+    <!-- 公开主页资料编辑 -->
+    <n-modal
+      v-model:show="publicOpen"
+      preset="card"
+      title="编辑公开主页"
+      :bordered="false"
+      :mask-closable="!publicSaving"
+      style="width: min(92vw, 480px)"
+    >
+      <n-form label-placement="top">
+        <n-form-item label="用户名（公开链接 /u/用户名）">
+          <n-input v-model:value="publicForm.username" placeholder="字母 / 数字 / 下划线 / 连字符，3–32 位" maxlength="32" />
+        </n-form-item>
+        <n-form-item label="公开昵称">
+          <n-input v-model:value="publicForm.display_name" placeholder="浏览者看到的名字" maxlength="64" />
+        </n-form-item>
+        <n-form-item label="简介">
+          <n-input v-model:value="publicForm.bio" type="textarea" :autosize="{ minRows: 2, maxRows: 4 }" maxlength="200" show-count placeholder="一句话介绍你的创作" />
+        </n-form-item>
+      </n-form>
+      <p class="public-edit-note">公开主页只展示用户名、昵称、简介与头像，绝不展示学号与真实姓名。</p>
+      <template #footer>
+        <div class="delete-modal-actions">
+          <n-button :disabled="publicSaving" @click="publicOpen = false">取消</n-button>
+          <n-button type="primary" :loading="publicSaving" @click="savePublic">保存</n-button>
+        </div>
+      </template>
+    </n-modal>
   </div>
 </template>
 
@@ -272,7 +333,8 @@ import type { PublicPhoto } from '../api/public'
 import { toPublicPhoto } from '../api/public'
 import * as photoApi from '../api/photo'
 import * as authApi from '../api/auth'
-import { deleteAccount } from '../api/user'
+import { deleteAccount, uploadAvatar, deleteAvatar, avatarUrlOf } from '../api/user'
+import { getAigcQuota, type AigcQuota } from '../api/aigc'
 import { formatDate, getPhotoUrl } from '../utils/format'
 import { displayPhotoTitle } from '../utils/photoDisplay'
 import type { Photo } from '../types/photo'
@@ -302,6 +364,97 @@ const formRules: FormRules = {
 }
 
 const stats = reactive({ total: 0, approved: 0, pending: 0, rejected: 0, favorites: 0 })
+
+/* ---------- 公开主页装修 ---------- */
+
+const publicOpen = ref(false)
+const publicSaving = ref(false)
+const avatarBusy = ref(false)
+const avatarInput = ref<HTMLInputElement | null>(null)
+const publicForm = reactive({ username: '', display_name: '', bio: '' })
+const aigcQuota = ref<AigcQuota | null>(null)
+
+const publicAvatarUrl = computed(() => avatarUrlOf(authStore.user))
+const publicProfilePath = computed(() =>
+  authStore.user?.username ? `/u/${authStore.user.username}` : '',
+)
+const publicMonogram = computed(() => {
+  const name = authStore.user?.display_name || authStore.user?.username || '?'
+  return Array.from(name.trim())[0]?.toUpperCase() ?? '?'
+})
+
+function openPublicEditor() {
+  publicForm.username = authStore.user?.username || ''
+  publicForm.display_name = authStore.user?.display_name || ''
+  publicForm.bio = authStore.user?.bio || ''
+  publicOpen.value = true
+}
+
+async function savePublic() {
+  publicSaving.value = true
+  try {
+    await authApi.updateProfile({
+      username: publicForm.username.trim() || undefined,
+      display_name: publicForm.display_name.trim() || undefined,
+      bio: publicForm.bio.trim(),
+    })
+    await authStore.fetchCurrentUser()
+    publicOpen.value = false
+    message.success('公开主页已更新')
+  } catch (error) {
+    const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail
+    message.error(typeof detail === 'string' ? detail : '保存失败，请稍后重试')
+  } finally {
+    publicSaving.value = false
+  }
+}
+
+async function onAvatarPick(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+    message.warning('头像支持 PNG / JPEG / WebP')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    message.warning('头像不能超过 5MB')
+    return
+  }
+  avatarBusy.value = true
+  try {
+    await uploadAvatar(file)
+    await authStore.fetchCurrentUser()
+    message.success('头像已更新')
+  } catch (error) {
+    const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail
+    message.error(typeof detail === 'string' ? detail : '头像上传失败')
+  } finally {
+    avatarBusy.value = false
+  }
+}
+
+async function removeAvatar() {
+  avatarBusy.value = true
+  try {
+    await deleteAvatar()
+    await authStore.fetchCurrentUser()
+    message.success('头像已移除')
+  } catch {
+    message.error('移除失败，请稍后重试')
+  } finally {
+    avatarBusy.value = false
+  }
+}
+
+async function loadQuota() {
+  try {
+    aigcQuota.value = await getAigcQuota()
+  } catch {
+    aigcQuota.value = null
+  }
+}
 
 /* ---------- 账号与安全：注销 ---------- */
 
@@ -540,10 +693,104 @@ onMounted(() => {
   loadedTabs.submissions = true
   void loadFavorites(true)
   void loadSubmissions()
+  void loadQuota()
 })
 </script>
 
 <style scoped>
+.public-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--line, #f3dde5);
+  border-radius: 16px;
+  background: var(--surface, #fff);
+  box-shadow: 0 2px 10px rgba(201, 58, 99, 0.05);
+}
+
+.public-avatar-wrap {
+  flex: none;
+}
+
+.public-avatar {
+  display: block;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--line, #f3dde5);
+}
+
+.public-avatar--placeholder {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(140deg, var(--sakura-pale, #ffe9f0), var(--spring-pale, #d4f0e4));
+  color: var(--sakura-deep, #c93a63);
+  font-family: var(--display, 'ZCOOL QingKe HuangYou', sans-serif);
+  font-size: 28px;
+}
+
+.public-meta {
+  flex: 1;
+  min-width: 200px;
+}
+
+.public-title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink, #4a2b35);
+}
+
+.public-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink, #4a2b35);
+  font-weight: 600;
+}
+
+.public-handle {
+  margin-left: 6px;
+  font-weight: 400;
+  color: var(--muted, #63474f);
+}
+
+.public-bio {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted, #63474f);
+}
+
+.public-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.public-view-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sakura-deep, #c93a63);
+  text-decoration: none;
+}
+
+.public-view-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.public-edit-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--faint, #ad8e97);
+}
+
 .profile-page {
   min-height: 100vh;
   background: var(--ground, #fff6f9);

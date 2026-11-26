@@ -5,23 +5,35 @@
 """
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
-from sqlalchemy import func, select
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_db, get_current_admin_user
+from app.core.deps import get_current_admin_user, get_db
 from app.crud import user as user_crud
+from app.models.aigc_generation import AIGCGeneration
+from app.models.aigc_quota import AigcQuotaGrant
+from app.models.appeal import PhotoAppeal
+from app.models.audit_log import AuditLog
+from app.models.collection import Collection
+from app.models.photo import Photo
+from app.models.report import Report
 from app.models.user import User
-from app.services.audit import log_audit
-from app.services.notification import notify_user
+from app.schemas.aigc_generation import AigcQuotaResponse
+from app.schemas.user import (
+    AdminPasswordReset,
+    UserCreateByAdmin,
+    UserList,
+    UserRoleUpdate,
+    UserUpdateByAdmin,
+)
 from app.schemas.user import (
     User as UserSchema,
-    UserList,
-    UserCreateByAdmin,
-    UserUpdateByAdmin,
-    UserRoleUpdate,
-    AdminPasswordReset,
 )
+from app.services import aigc_quota
+from app.services.audit import log_audit
+from app.services.notification import notify_user
 
 router = APIRouter(prefix="/users")
 
@@ -347,3 +359,154 @@ async def delete_user(
             detail="删除用户失败"
         )
     return None
+
+
+@router.get("/{user_id}/detail", summary="用户详情抽屉聚合")
+async def get_user_detail(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    _current_user: User = Depends(get_current_admin_user),
+):
+    """一个抽屉看全：资料 + 作品分布 + 最近作品 + 生图额度 + 申诉/举报 + 审计。"""
+    user = await user_crud.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    photo_status = dict(
+        (
+            await db.execute(
+                select(Photo.status, func.count()).where(Photo.uploader_id == user_id).group_by(Photo.status)
+            )
+        ).all()
+    )
+    views_total = int(
+        (
+            await db.execute(
+                select(func.coalesce(func.sum(Photo.views), 0)).where(Photo.uploader_id == user_id)
+            )
+        ).scalar_one()
+        or 0
+    )
+    recent_photos = (
+        (
+            await db.execute(
+                select(Photo)
+                .where(Photo.uploader_id == user_id, Photo.status != "deleted")
+                .order_by(Photo.created_at.desc())
+                .limit(6)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    state = await aigc_quota.get_quota(db, user)
+    generation_total = int(
+        (
+            await db.execute(
+                select(func.count()).select_from(AIGCGeneration).where(AIGCGeneration.user_id == user_id)
+            )
+        ).scalar_one()
+        or 0
+    )
+    grant_count = int(
+        (
+            await db.execute(
+                select(func.count()).select_from(AigcQuotaGrant).where(AigcQuotaGrant.user_id == user_id)
+            )
+        ).scalar_one()
+        or 0
+    )
+    collections_count = int(
+        (
+            await db.execute(
+                select(func.count()).select_from(Collection).where(Collection.owner_id == user_id)
+            )
+        ).scalar_one()
+        or 0
+    )
+
+    appeal_rows = dict(
+        (
+            await db.execute(
+                select(PhotoAppeal.status, func.count())
+                .join(Photo, Photo.id == PhotoAppeal.photo_id)
+                .where(Photo.uploader_id == user_id)
+                .group_by(PhotoAppeal.status)
+            )
+        ).all()
+    )
+    reports_pending = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(Report)
+                .join(Photo, Photo.id == Report.target_id)
+                .where(Report.target_type == "photo", Photo.uploader_id == user_id, Report.status == "pending")
+            )
+        ).scalar_one()
+        or 0
+    )
+
+    audit_rows = (
+        (
+            await db.execute(
+                select(AuditLog)
+                .where(or_(AuditLog.resource_id == user_id, AuditLog.user_id == user_id))
+                .order_by(AuditLog.created_at.desc())
+                .limit(10)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    return {
+        "user": UserSchema.model_validate(user),
+        "photos": {
+            "total": sum(int(v) for k, v in photo_status.items() if k != "deleted"),
+            "approved": int(photo_status.get("approved", 0)),
+            "pending": int(photo_status.get("pending", 0)),
+            "rejected": int(photo_status.get("rejected", 0)),
+            "views": views_total,
+        },
+        "recent_photos": [
+            {
+                "id": photo.id,
+                "title": photo.title,
+                "status": photo.status,
+                "views": photo.views or 0,
+                "thumb_url": f"/api/v1/photos/{photo.id}/image/thumbnail",
+            }
+            for photo in recent_photos
+        ],
+        "aigc": {
+            "quota": AigcQuotaResponse(
+                unlimited=state.unlimited,
+                daily_limit=state.daily_limit,
+                daily_used=state.daily_used,
+                daily_remaining=state.daily_remaining,
+                bonus_total=state.bonus_total,
+                bonus_used=state.bonus_used,
+                bonus_remaining=state.bonus_remaining,
+                total_remaining=state.total_remaining,
+            ),
+            "generation_total": generation_total,
+            "grant_count": grant_count,
+        },
+        "collections_count": collections_count,
+        "appeals": {
+            "pending": int(appeal_rows.get("pending", 0)),
+            "total": sum(int(v) for v in appeal_rows.values()),
+        },
+        "reports_pending": reports_pending,
+        "recent_audit": [
+            {
+                "id": row.id,
+                "action": row.action,
+                "detail": row.detail,
+                "created_at": row.created_at,
+            }
+            for row in audit_rows
+        ],
+    }

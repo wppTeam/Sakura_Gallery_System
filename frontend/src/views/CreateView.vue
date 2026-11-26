@@ -29,9 +29,14 @@
           </div>
           <div>
             <dt>今日额度</dt>
-            <dd class="quota" :class="{ 'is-used': quotaLeft <= 0 }">
-              {{ dailyUsed }} / {{ dailyLimit }}
+            <dd class="quota" :class="{ 'is-used': !unlimited && dailyRemaining <= 0 }">
+              <template v-if="unlimited">不限</template>
+              <template v-else>{{ dailyRemaining }} / {{ dailyLimit }}</template>
             </dd>
+          </div>
+          <div v-if="!unlimited && bonusTotal > 0">
+            <dt>赠送额度</dt>
+            <dd class="quota quota--bonus">{{ bonusRemaining }} 张</dd>
           </div>
         </dl>
       </header>
@@ -115,10 +120,7 @@
               </template>
               {{ generating ? '生成中…' : '开始生成' }}
             </n-button>
-            <p class="quota-note">
-              <template v-if="quotaLeft > 0">今日还可生成 {{ quotaLeft }} 张 · 每张约 {{ estSeconds }} 秒</template>
-              <template v-else>今天的生成次数已用完，明天再来试试</template>
-            </p>
+            <p class="quota-note">{{ quotaNote }}</p>
           </div>
         </section>
 
@@ -304,11 +306,14 @@ import {
   fetchAigcImageBlob,
   getAigcConfig,
   getAigcGeneration,
+  getAigcQuota,
   listAigcGenerations,
   publishAigcDraft,
   type AigcConfig,
   type AigcGeneration,
   type AigcGenerationStatus,
+  type AigcQuota,
+  type AigcQuotaSource,
   type AigcSize,
 } from '../api/aigc'
 
@@ -335,9 +340,26 @@ const sizes = computed<AigcSize[]>(() => {
   ]
 })
 
-const dailyUsed = ref(0)
-const dailyLimit = computed(() => config.value?.dailyLimit || 5)
-const quotaLeft = computed(() => Math.max(0, dailyLimit.value - dailyUsed.value))
+const quota = ref<AigcQuota | null>(null)
+const unlimited = computed(() => quota.value?.unlimited === true)
+const dailyLimit = computed(() => quota.value?.dailyLimit ?? config.value?.dailyLimit ?? 3)
+const dailyRemaining = computed(() => quota.value?.dailyRemaining ?? 0)
+const bonusRemaining = computed(() => quota.value?.bonusRemaining ?? 0)
+const bonusTotal = computed(() => quota.value?.bonusTotal ?? 0)
+const quotaLeft = computed(() =>
+  unlimited.value ? Number.POSITIVE_INFINITY : (quota.value?.totalRemaining ?? 0),
+)
+const quotaNote = computed(() => {
+  if (unlimited.value) return `管理员账号 · 额度不限 · 每张约 ${estSeconds.value} 秒`
+  if (dailyRemaining.value > 0) {
+    const bonus = bonusRemaining.value > 0 ? ` · 另有赠送 ${bonusRemaining.value} 张` : ''
+    return `今日还可生成 ${dailyRemaining.value} 张${bonus} · 每张约 ${estSeconds.value} 秒`
+  }
+  if (bonusRemaining.value > 0) {
+    return `今日基础额度已用完，本次将消耗赠送额度（剩 ${bonusRemaining.value} 张）`
+  }
+  return `今天的 ${dailyLimit.value} 张基础额度已用完，明天 0 点重置；也可以联系管理员申请额外额度`
+})
 
 const stage = ref<'idle' | 'loading' | 'succeeded' | 'failed'>('idle')
 const submitting = ref(false)
@@ -407,7 +429,7 @@ function describeError(error: unknown, fallback: string): string {
   if (status === 409) return text || '当前状态不允许这个操作。'
   if (status === 422) return text || '提交的内容不符合要求，请检查后重试。'
   if (status === 429) {
-    if (/额度|次数|limit|daily/i.test(text)) return '今天的生成次数已用完，明天再来试试。'
+    if (/额度|次数|limit|daily/i.test(text)) return text || '今天的生成额度已用完，明天 0 点重置。'
     return '请求过于频繁，请稍后再试。'
   }
   if (status === 503) return 'AI 创作台暂未开启，请稍后再来。'
@@ -496,11 +518,35 @@ async function loadConfig() {
   }
 }
 
+async function refreshQuota() {
+  try {
+    quota.value = await getAigcQuota()
+  } catch {
+    /* 额度拉取失败不阻塞创作台，生成时后端仍会校验 */
+  }
+}
+
+/** 提交成功后先本地扣减，避免按钮状态等服务端往返。 */
+function consumeQuotaLocally(source: AigcQuotaSource) {
+  const current = quota.value
+  if (!current || current.unlimited || source === 'unlimited') return
+  const next = { ...current }
+  if (source === 'bonus') {
+    next.bonusUsed += 1
+    next.bonusRemaining = Math.max(0, next.bonusRemaining - 1)
+  } else {
+    next.dailyUsed += 1
+    next.dailyRemaining = Math.max(0, next.dailyRemaining - 1)
+  }
+  next.totalRemaining = next.dailyRemaining + next.bonusRemaining
+  quota.value = next
+}
+
 async function loadHistory() {
   historyLoading.value = true
   try {
     const data = await listAigcGenerations(12)
-    dailyUsed.value = data.dailyUsed
+    quota.value = data.quota
     history.value = data.items
     for (const item of data.items) void loadThumbFor(item)
   } catch {
@@ -597,7 +643,7 @@ function schedulePoll(generationId: string, delay = 3000) {
 async function startGenerate() {
   if (!config.value?.enabled) return
   if (quotaLeft.value <= 0) {
-    message.warning('今天的生成次数已用完，明天再来试试')
+    message.warning(quotaNote.value)
     return
   }
   const text = prompt.value.trim()
@@ -620,7 +666,7 @@ async function startGenerate() {
     elapsed.value = 0
     startElapsedTimer()
     rememberLastId(created.id)
-    dailyUsed.value = Math.min(dailyLimit.value, dailyUsed.value + 1)
+    consumeQuotaLocally(created.quotaSource)
     schedulePoll(created.id, 3000)
   } catch (error) {
     stage.value = 'failed'
@@ -764,7 +810,7 @@ async function restoreLastGeneration() {
 
 onMounted(async () => {
   await loadConfig()
-  await Promise.all([loadHistory(), restoreLastGeneration()])
+  await Promise.all([loadHistory(), restoreLastGeneration(), refreshQuota()])
 })
 
 onBeforeUnmount(() => {
@@ -890,6 +936,10 @@ onBeforeUnmount(() => {
 
 .create-meta .quota.is-used {
   color: var(--autumn, #b5703c);
+}
+
+.create-meta .quota--bonus {
+  color: var(--summer, #3b9c80);
 }
 
 .create-disabled {

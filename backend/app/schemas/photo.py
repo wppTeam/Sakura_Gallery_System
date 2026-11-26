@@ -81,6 +81,10 @@ class PhotoResponse(PhotoInDB):
     # 人像隐私分级：normal | sensitive；sensitive 对外只给脱敏图（is_redacted=True）
     privacy_level: Optional[str] = None
     is_redacted: Optional[bool] = None
+    # 对象存储模式下的绝对预签名直链（None 表示前端回退同源 /api/... 媒体端点）。
+    # 目的：省掉「同源 API → 307 → 对象存储」每张图一次的隧道往返。
+    thumb_url: Optional[str] = None
+    compressed_url: Optional[str] = None
     # AI 画面描述（快筛生成，用于详情页「画面笔记」与检索；人像脱敏视角不返回）
     ai_caption: Optional[str] = Field(
         None,

@@ -88,7 +88,7 @@
           <tbody>
             <tr v-for="row in users" :key="row.id" :class="{ 'is-self': row.id === selfId }">
               <td class="col-user">
-                <div class="user-cell">
+                <button type="button" class="user-cell user-cell--link" title="查看详情" @click="openDetail(row.id)">
                   <n-avatar round :size="34" class="row-avatar">{{ avatarOf(row) }}</n-avatar>
                   <div class="user-meta">
                     <span class="user-title">
@@ -97,7 +97,7 @@
                     </span>
                     <span class="user-sub">@{{ row.username || '未设置用户名' }}</span>
                   </div>
-                </div>
+                </button>
               </td>
               <td class="col-contact">
                 <div class="contact-line">
@@ -268,11 +268,69 @@
         </n-card>
       </n-space>
     </n-modal>
+
+    <n-drawer v-model:show="detailOpen" :width="480" placement="right">
+      <n-drawer-content :title="detailTitle" closable>
+        <n-spin :show="detailLoading">
+          <template v-if="detail">
+            <div class="detail-head">
+              <n-avatar round :size="44">{{ avatarOf(detail.user) }}</n-avatar>
+              <div class="detail-head-meta">
+                <strong>{{ displayNameOf(detail.user) }}</strong>
+                <span class="mono">@{{ detail.user.username || '未设置' }} · {{ detail.user.student_id }}</span>
+                <span class="detail-email">{{ detail.user.email || '无邮箱' }}</span>
+              </div>
+              <n-tag size="small" :type="roleTag(detail.user.role).type" :bordered="false">{{ roleTag(detail.user.role).label }}</n-tag>
+            </div>
+
+            <dl class="detail-stats">
+              <div><dt>作品</dt><dd>{{ detail.photos.total }}（过审 {{ detail.photos.approved }} / 待审 {{ detail.photos.pending }} / 驳回 {{ detail.photos.rejected }}）</dd></div>
+              <div><dt>浏览</dt><dd>{{ detail.photos.views.toLocaleString('zh-CN') }}</dd></div>
+              <div><dt>作品集</dt><dd>{{ detail.collections_count }}</dd></div>
+              <div><dt>生图</dt><dd>累计 {{ detail.aigc.generation_total }} 张 · 赠送 {{ detail.aigc.grant_count }} 笔</dd></div>
+              <div><dt>今日额度</dt><dd>{{ detail.aigc.quota.unlimited ? '不限' : `${detail.aigc.quota.dailyRemaining} / ${detail.aigc.quota.dailyLimit}` }}</dd></div>
+              <div><dt>赠送池</dt><dd>剩 {{ detail.aigc.quota.bonusRemaining }} 张</dd></div>
+              <div><dt>申诉</dt><dd>待处理 {{ detail.appeals.pending }} / 共 {{ detail.appeals.total }}</dd></div>
+              <div><dt>被举报</dt><dd>待处理 {{ detail.reports_pending }}</dd></div>
+            </dl>
+
+            <div class="detail-actions">
+              <n-button size="small" secondary @click="openRole(detail.user)">调整角色</n-button>
+              <n-button size="small" secondary @click="openEdit(detail.user)">编辑资料</n-button>
+              <n-button size="small" secondary @click="openReset(detail.user)">重置密码</n-button>
+              <n-button size="small" secondary @click="goAigc(detail.user.id)">生图额度</n-button>
+            </div>
+
+            <h3 class="detail-sub">最近作品</h3>
+            <n-empty v-if="!detail.recent_photos.length" description="没有作品" size="small" />
+            <ul v-else class="detail-photos">
+              <li v-for="photo in detail.recent_photos" :key="photo.id">
+                <img v-if="detailThumbs[photo.id]" :src="detailThumbs[photo.id]" alt="" class="detail-thumb" />
+                <span v-else class="detail-thumb detail-thumb--placeholder" aria-hidden="true"></span>
+                <RouterLink :to="`/photo/${photo.id}`" class="detail-photo-title">{{ photo.title || '未命名' }}</RouterLink>
+                <n-tag size="tiny" :bordered="false">{{ photo.status }}</n-tag>
+              </li>
+            </ul>
+
+            <h3 class="detail-sub">最近审计</h3>
+            <n-empty v-if="!detail.recent_audit.length" description="没有审计记录" size="small" />
+            <ul v-else class="detail-audit">
+              <li v-for="log in detail.recent_audit" :key="log.id">
+                <span class="mono">{{ formatRelativeTime(log.created_at) }}</span>
+                <span class="audit-action">{{ log.action }}</span>
+                <span class="audit-detail" :title="log.detail || ''">{{ log.detail || '—' }}</span>
+              </li>
+            </ul>
+          </template>
+        </n-spin>
+      </n-drawer-content>
+    </n-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, h, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useDialog, useMessage, NButton, type FormInst } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import {
@@ -284,7 +342,8 @@ import {
 } from '@vicons/ionicons5'
 import type { User, UserRole, UserUpdateRequest } from '../../types/user'
 import * as usersApi from '../../api/users'
-import type { AdminUserStats } from '../../api/users'
+import type { AdminUserStats, AdminUserDetail } from '../../api/users'
+import { fetchAdminThumbUrl } from '../../api/admin_appeals'
 import * as permissionApi from '../../api/permissions'
 import type { PermissionResponse, PermissionGrantRequest } from '../../api/permissions'
 import { useAuthStore } from '../../stores/auth'
@@ -293,6 +352,8 @@ import { formatDate, formatRelativeTime } from '../../utils/format'
 const message = useMessage()
 const dialog = useDialog()
 const authStore = useAuthStore()
+const route = useRoute()
+const router = useRouter()
 
 const isNarrow = ref(false)
 const users = ref<User[]>([])
@@ -677,6 +738,7 @@ function handleDelete(row: User) {
 
 function actionsFor(row: User) {
   const options = [
+    { label: '查看详情', key: 'detail' },
     { label: '调整角色', key: 'role' },
     { label: row.is_active ? '禁用账号' : '启用账号', key: 'toggle' },
     { label: '重置密码', key: 'reset' },
@@ -691,6 +753,7 @@ function actionsFor(row: User) {
 }
 
 function onAction(key: string, row: User) {
+  if (key === 'detail') return openDetail(row.id)
   if (key === 'role') return openRole(row)
   if (key === 'toggle') return toggleActive(row)
   if (key === 'reset') return openReset(row)
@@ -792,11 +855,58 @@ function syncNarrow(event: MediaQueryListEvent | MediaQueryList) {
   isNarrow.value = event.matches
 }
 
+/* ---------- 用户详情抽屉 ---------- */
+const detailOpen = ref(false)
+const detailLoading = ref(false)
+const detail = ref<AdminUserDetail | null>(null)
+const detailThumbs = ref<Record<string, string>>({})
+
+const detailTitle = computed(() => {
+  const user = detail.value?.user
+  if (!user) return '用户详情'
+  return `${displayNameOf(user)} 的详情`
+})
+
+async function openDetail(userId: string) {
+  if (!userId) return
+  detailOpen.value = true
+  detailLoading.value = true
+  detail.value = null
+  detailThumbs.value = {}
+  try {
+    detail.value = await usersApi.getUserDetail(userId)
+    const entries = await Promise.all(
+      detail.value.recent_photos.map(async (photo) => [photo.id, await fetchAdminThumbUrl(photo.thumb_url)] as const),
+    )
+    const thumbs: Record<string, string> = {}
+    for (const [id, url] of entries) if (url) thumbs[id] = url
+    detailThumbs.value = thumbs
+  } catch (err) {
+    message.error((err as { message?: string })?.message || '用户详情加载失败')
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+function goAigc(userId: string) {
+  detailOpen.value = false
+  router.push(`/admin/aigc?user=${userId}`)
+}
+
+watch(
+  () => route.query.focus,
+  (focus) => {
+    if (typeof focus === 'string' && focus) void openDetail(focus)
+  },
+)
+
 onMounted(() => {
   mediaQuery = window.matchMedia('(max-width: 1100px)')
   syncNarrow(mediaQuery)
   mediaQuery.addEventListener('change', syncNarrow)
   refreshAll()
+  const focus = route.query.focus
+  if (typeof focus === 'string' && focus) void openDetail(focus)
 })
 
 onBeforeUnmount(() => {
@@ -962,6 +1072,159 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.user-cell--link {
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-cell--link:hover .user-title {
+  color: var(--sakura-deep, #c93a63);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.user-cell--link:focus-visible {
+  outline: 3px solid var(--sakura-deep, #c93a63);
+  outline-offset: 2px;
+}
+
+.detail-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.detail-head-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+  font-size: 12px;
+  color: var(--muted, #63474f);
+}
+
+.detail-head-meta strong {
+  font-size: 15px;
+  color: var(--ink, #4a2b35);
+}
+
+.detail-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.detail-stats div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--line, #f3dde5);
+  font-size: 12px;
+}
+
+.detail-stats dt {
+  color: var(--muted, #63474f);
+}
+
+.detail-stats dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--ink, #4a2b35);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.detail-sub {
+  margin: 18px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #4a2b35);
+}
+
+.detail-photos,
+.detail-audit {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.detail-photos li,
+.detail-audit li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-thumb {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--sakura-mist, #fff6f9);
+}
+
+.detail-thumb--placeholder {
+  display: inline-block;
+}
+
+.detail-photo-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink, #4a2b35);
+  text-decoration: none;
+}
+
+.detail-photo-title:hover {
+  color: var(--sakura-deep, #c93a63);
+  text-decoration: underline;
+}
+
+.audit-action {
+  flex: none;
+  font-weight: 600;
+  color: var(--sakura-deep, #c93a63);
+}
+
+.audit-detail {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted, #63474f);
 }
 
 .row-avatar {

@@ -294,7 +294,18 @@
               loading="lazy"
               decoding="async"
             />
-            <img v-else class="join-img" src="/art/spring.webp" alt="春季季相插画" width="1472" height="1140" loading="lazy" decoding="async" />
+            <img
+              v-else
+              class="join-img"
+              src="/art/spring-sm.webp"
+              srcset="/art/spring-sm.webp 900w, /art/spring.webp 1472w"
+              sizes="(max-width: 900px) 100vw, 560px"
+              alt="春季季相插画"
+              width="1472"
+              height="1140"
+              loading="lazy"
+              decoding="async"
+            />
             <figcaption class="join-credit">
               {{ joinPhoto ? `《${joinPhoto.title}》 · ${joinPhoto.author}` : '季相插画 · AI 生成' }}
             </figcaption>

@@ -118,7 +118,8 @@ class Settings(BaseSettings):
             "portrait": "928*1664",
         }
     )
-    AIGC_IMAGE_DAILY_LIMIT: int = 5  # 每用户每日生成次数（失败不计）
+    # 每用户每日基础额度（失败不计）；管理员不限，用尽后可消耗管理员赠送池
+    AIGC_IMAGE_DAILY_LIMIT: int = 3
     AIGC_IMAGE_PRICE_USD: float = 0.0  # 按张成本；按渠道实际单价填写，用于用量页估算
     AIGC_IMAGE_MAX_BYTES: int = 20 * 1024 * 1024
 

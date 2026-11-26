@@ -23,13 +23,12 @@ from pathlib import Path
 from typing import Any, Callable
 
 import httpx
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
-from app.models.aigc_generation import AIGCGeneration
 from app.models.ai_usage import AIUsageEvent
+from app.models.aigc_generation import AIGCGeneration
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -198,29 +197,6 @@ async def generate_image(prompt: str, size_key: str) -> dict[str, Any]:
         "width": width,
         "height": height,
     }
-
-
-# ---------------------------------------------------------------------------
-# 每日额度
-# ---------------------------------------------------------------------------
-def _today_start_utc() -> datetime:
-    """按东八区「今天」换算成 UTC naive（数据库统一存 UTC）。"""
-    now_utc8 = datetime.utcnow() + timedelta(hours=8)
-    local_midnight = datetime(now_utc8.year, now_utc8.month, now_utc8.day)
-    return local_midnight - timedelta(hours=8)
-
-
-async def count_today_generations(db: AsyncSession, user_id: str) -> int:
-    stmt = (
-        select(func.count())
-        .select_from(AIGCGeneration)
-        .where(
-            AIGCGeneration.user_id == user_id,
-            AIGCGeneration.created_at >= _today_start_utc(),
-            AIGCGeneration.status != "failed",
-        )
-    )
-    return int((await db.execute(stmt)).scalar_one() or 0)
 
 
 # ---------------------------------------------------------------------------

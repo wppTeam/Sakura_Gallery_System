@@ -2,7 +2,8 @@
  * AI 创作台（站内 AI 生图）前端 API。
  *
  * 后端接口（均需登录）：
- * - GET  /api/v1/aigc/config                开关 / 模型 / 尺寸档位 / 每日额度
+ * - GET  /api/v1/aigc/config                开关 / 模型 / 尺寸档位 / 基础每日额度
+ * - GET  /api/v1/aigc/quota                 我的额度（每日基础 + 管理员赠送池）
  * - POST /api/v1/aigc/generations           202 + 后台任务（3 次/分钟）
  * - GET  /api/v1/aigc/generations/{id}      轮询状态
  * - GET  /api/v1/aigc/generations           我的生成记录
@@ -34,6 +35,19 @@ export interface AigcConfig {
 }
 
 export type AigcGenerationStatus = 'queued' | 'running' | 'succeeded' | 'failed'
+export type AigcQuotaSource = 'daily' | 'bonus' | 'unlimited'
+
+/** 生图额度：每日基础额度（0 点重置）+ 管理员赠送池（不重置）。 */
+export interface AigcQuota {
+  unlimited: boolean
+  dailyLimit: number
+  dailyUsed: number
+  dailyRemaining: number
+  bonusTotal: number
+  bonusUsed: number
+  bonusRemaining: number
+  totalRemaining: number
+}
 
 export interface AigcGeneration {
   id: string
@@ -43,6 +57,7 @@ export interface AigcGeneration {
   height: number | null
   status: AigcGenerationStatus
   model: string | null
+  quotaSource: AigcQuotaSource
   imageUrl: string | null
   error: string | null
   latencyMs: number | null
@@ -54,8 +69,7 @@ export interface AigcGeneration {
 export interface AigcGenerationList {
   items: AigcGeneration[]
   total: number
-  dailyUsed: number
-  dailyLimit: number
+  quota: AigcQuota
 }
 
 export interface PublishAigcPayload {
@@ -95,9 +109,34 @@ function textOf(value: unknown): string | null {
 }
 
 const STATUSES: AigcGenerationStatus[] = ['queued', 'running', 'succeeded', 'failed']
+const QUOTA_SOURCES: AigcQuotaSource[] = ['daily', 'bonus', 'unlimited']
 
 function normalizeStatus(value: unknown): AigcGenerationStatus {
   return STATUSES.includes(value as AigcGenerationStatus) ? (value as AigcGenerationStatus) : 'queued'
+}
+
+function normalizeQuotaSource(value: unknown): AigcQuotaSource {
+  return QUOTA_SOURCES.includes(value as AigcQuotaSource) ? (value as AigcQuotaSource) : 'daily'
+}
+
+export function normalizeAigcQuota(raw: unknown): AigcQuota {
+  const data = isRecord(raw) ? raw : {}
+  const dailyLimit = numOf(data.daily_limit, 3)
+  const dailyUsed = numOf(data.daily_used)
+  const bonusTotal = numOf(data.bonus_total)
+  const bonusUsed = numOf(data.bonus_used)
+  const dailyRemaining = numOf(data.daily_remaining, Math.max(0, dailyLimit - dailyUsed))
+  const bonusRemaining = numOf(data.bonus_remaining, Math.max(0, bonusTotal - bonusUsed))
+  return {
+    unlimited: data.unlimited === true,
+    dailyLimit,
+    dailyUsed,
+    dailyRemaining,
+    bonusTotal,
+    bonusUsed,
+    bonusRemaining,
+    totalRemaining: numOf(data.total_remaining, dailyRemaining + bonusRemaining),
+  }
 }
 
 function normalizeSize(raw: unknown): AigcSize | null {
@@ -129,7 +168,7 @@ export function normalizeAigcConfig(raw: unknown): AigcConfig {
             { key: 'portrait', label: '竖图', width: 928, height: 1664, ratio: '9:16' },
           ],
     promptMax: numOf(data.prompt_max, 300),
-    dailyLimit: numOf(data.daily_limit, 5),
+    dailyLimit: numOf(data.daily_limit, 3),
     estSeconds: numOf(data.est_seconds, 60),
   }
 }
@@ -147,6 +186,7 @@ export function normalizeAigcGeneration(raw: unknown): AigcGeneration | null {
     height: data.height == null ? null : numOf(data.height),
     status: normalizeStatus(data.status),
     model: textOf(data.model),
+    quotaSource: normalizeQuotaSource(data.quota_source),
     imageUrl: textOf(data.image_url),
     error: textOf(data.error),
     latencyMs: data.latency_ms == null ? null : numOf(data.latency_ms),
@@ -164,8 +204,7 @@ function normalizeGenerationList(raw: unknown): AigcGenerationList {
   return {
     items,
     total: numOf(data.total, items.length),
-    dailyUsed: numOf(data.daily_used),
-    dailyLimit: numOf(data.daily_limit, 5),
+    quota: normalizeAigcQuota(data.quota),
   }
 }
 
@@ -176,6 +215,11 @@ function normalizeGenerationList(raw: unknown): AigcGenerationList {
 export async function getAigcConfig(): Promise<AigcConfig> {
   const data = await request({ url: '/api/v1/aigc/config', method: 'get', timeout: 20000 })
   return normalizeAigcConfig(data)
+}
+
+export async function getAigcQuota(): Promise<AigcQuota> {
+  const data = await request({ url: '/api/v1/aigc/quota', method: 'get', timeout: 20000 })
+  return normalizeAigcQuota(data)
 }
 
 export async function createAigcGeneration(prompt: string, size: AigcSizeKey | string): Promise<AigcGeneration> {

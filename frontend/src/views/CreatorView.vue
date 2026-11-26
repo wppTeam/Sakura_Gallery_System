@@ -53,6 +53,14 @@
       <template v-else-if="profile">
         <CreatorHero :profile="profile" />
 
+        <div class="cr-toolbar">
+          <p class="cr-toolbar-note">共 {{ worksTotal.toLocaleString('zh-CN') }} 件公开作品</p>
+          <button type="button" class="cr-share" @click="shareProfile">
+            <n-icon :component="ShareSocialOutline" :size="14" />
+            分享主页
+          </button>
+        </div>
+
         <section class="cr-works" aria-labelledby="cr-works-title">
           <SectionHeader
             title-id="cr-works-title"
@@ -62,12 +70,57 @@
             :description="worksDescription"
           />
 
+          <div class="cr-filters" role="group" aria-label="作品筛选">
+            <div class="cr-filter-row">
+              <span class="cr-filter-label">季节</span>
+              <button
+                v-for="option in SEASON_OPTIONS"
+                :key="option.value"
+                type="button"
+                class="cr-chip"
+                :class="{ 'is-active': season === option.value }"
+                :aria-pressed="season === option.value"
+                @click="setSeason(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+            <div class="cr-filter-row">
+              <span class="cr-filter-label">光线</span>
+              <button
+                v-for="option in PERIOD_OPTIONS"
+                :key="option.value"
+                type="button"
+                class="cr-chip"
+                :class="{ 'is-active': period === option.value }"
+                :aria-pressed="period === option.value"
+                @click="setPeriod(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+            <div class="cr-filter-row">
+              <span class="cr-filter-label">排序</span>
+              <button
+                v-for="option in SORT_OPTIONS"
+                :key="option.value"
+                type="button"
+                class="cr-chip"
+                :class="{ 'is-active': sort === option.value }"
+                :aria-pressed="sort === option.value"
+                @click="setSort(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+          </div>
+
           <div v-if="!works.length" class="cr-state cr-state--works">
             <EmptyState
-              title="还没有公开作品"
-              description="ta 的作品可能还在审核中，过一会儿再来看看。"
-              action-label="去探索页看看"
-              @action="goExplore"
+              :title="hasFilter ? '这个筛选下还没有作品' : '还没有公开作品'"
+              :description="hasFilter ? '换个季节或光线看看，或清除筛选。' : 'ta 的作品可能还在审核中，过一会儿再来看看。'"
+              :action-label="hasFilter ? '清除筛选' : '去探索页看看'"
+              @action="hasFilter ? clearFilters() : goExplore()"
             />
           </div>
 
@@ -107,8 +160,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NIcon } from 'naive-ui'
-import { ArrowBackOutline } from '@vicons/ionicons5'
+import { NIcon, useMessage } from 'naive-ui'
+import { ArrowBackOutline, ShareSocialOutline } from '@vicons/ionicons5'
 import {
   CreatorRequestError,
   fetchCreator,
@@ -125,8 +178,29 @@ import EmptyState from '../components/public/EmptyState.vue'
 
 const PAGE_SIZE = 12
 
+const SEASON_OPTIONS = [
+  { label: '全部', value: '' },
+  { label: '春', value: 'spring' },
+  { label: '夏', value: 'summer' },
+  { label: '秋', value: 'autumn' },
+  { label: '冬', value: 'winter' },
+]
+const PERIOD_OPTIONS = [
+  { label: '全部', value: '' },
+  { label: '晨', value: 'dawn' },
+  { label: '昼', value: 'noon' },
+  { label: '暮', value: 'dusk' },
+  { label: '夜', value: 'night' },
+]
+const SORT_OPTIONS = [
+  { label: '最新', value: 'newest' },
+  { label: '最早', value: 'oldest' },
+  { label: '最热', value: 'popular' },
+] as const
+
 const route = useRoute()
 const router = useRouter()
+const message = useMessage()
 
 const loading = ref(true)
 const notFound = ref(false)
@@ -138,6 +212,11 @@ const collections = ref<CreatorCollection[]>([])
 const loadingMore = ref(false)
 const moreError = ref(false)
 const narrow = ref(false)
+const season = ref('')
+const period = ref('')
+const sort = ref<'newest' | 'oldest' | 'popular'>('newest')
+
+const hasFilter = computed(() => !!season.value || !!period.value || sort.value !== 'newest')
 
 let mediaQuery: MediaQueryList | null = null
 let loadToken = 0
@@ -200,13 +279,20 @@ async function load() {
   }
 
   try {
-    const data = await fetchCreator(handle, { worksLimit: PAGE_SIZE, collectionsLimit: 12 })
+    const data = await fetchCreator(handle, {
+      worksLimit: PAGE_SIZE,
+      collectionsLimit: 12,
+      season: season.value || undefined,
+      period: period.value || undefined,
+      sort: sort.value,
+    })
     if (token !== loadToken) return
     profile.value = data.profile
     works.value = data.works.items
     worksTotal.value = data.works.total || data.profile.worksCount
     collections.value = data.collections
     updateTitle(data.profile.displayName || `@${data.profile.username}`)
+    applyOpenGraph(data.profile)
   } catch (err) {
     if (token !== loadToken) return
     if (isNotFound(err)) {
@@ -227,7 +313,13 @@ async function loadMore() {
   loadingMore.value = true
   moreError.value = false
   try {
-    const page = await fetchCreatorWorks(handle, { limit: PAGE_SIZE, offset: works.value.length })
+    const page = await fetchCreatorWorks(handle, {
+      limit: PAGE_SIZE,
+      offset: works.value.length,
+      season: season.value || undefined,
+      period: period.value || undefined,
+      sort: sort.value,
+    })
     const seen = new Set(works.value.map((item) => item.id))
     works.value = [...works.value, ...page.items.filter((item) => !seen.has(item.id))]
     worksTotal.value = Math.max(page.total, works.value.length)
@@ -236,6 +328,85 @@ async function loadMore() {
   } finally {
     loadingMore.value = false
   }
+}
+
+function filterQuery() {
+  return {
+    season: season.value || undefined,
+    period: period.value || undefined,
+    sort: sort.value,
+  }
+}
+
+async function reloadWorks() {
+  const handle = currentUsername()
+  if (!handle) return
+  loadingMore.value = true
+  moreError.value = false
+  try {
+    const page = await fetchCreatorWorks(handle, { limit: PAGE_SIZE, offset: 0, ...filterQuery() })
+    works.value = page.items
+    worksTotal.value = page.total
+  } catch {
+    moreError.value = true
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+function setSeason(value: string) {
+  if (season.value === value) return
+  season.value = value
+  void reloadWorks()
+}
+
+function setPeriod(value: string) {
+  if (period.value === value) return
+  period.value = value
+  void reloadWorks()
+}
+
+function setSort(value: 'newest' | 'oldest' | 'popular') {
+  if (sort.value === value) return
+  sort.value = value
+  void reloadWorks()
+}
+
+function clearFilters() {
+  season.value = ''
+  period.value = ''
+  sort.value = 'newest'
+  void reloadWorks()
+}
+
+async function shareProfile() {
+  const url = window.location.href
+  try {
+    await navigator.clipboard.writeText(url)
+    message.success('主页链接已复制，去分享吧')
+  } catch {
+    message.info(url)
+  }
+}
+
+function setMeta(property: string, content: string) {
+  let tag = document.head.querySelector<HTMLMetaElement>(`meta[property="${property}"]`)
+  if (!tag) {
+    tag = document.createElement('meta')
+    tag.setAttribute('property', property)
+    document.head.appendChild(tag)
+  }
+  tag.setAttribute('content', content)
+}
+
+function applyOpenGraph(profile: CreatorProfile) {
+  const title = `${profile.displayName} · 创作者 · 视觉百花`
+  const description = profile.bio || `${profile.displayName} 在视觉百花公开了 ${profile.worksCount} 件作品。`
+  setMeta('og:title', title)
+  setMeta('og:description', description)
+  setMeta('og:type', 'profile')
+  setMeta('og:url', window.location.href)
+  if (profile.avatarUrl) setMeta('og:image', new URL(profile.avatarUrl, window.location.origin).href)
 }
 
 function reload() {
@@ -317,6 +488,110 @@ watch(
 
 .cr-works {
   margin-top: var(--sp-4);
+}
+
+.cr-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: calc(-1 * var(--sp-6));
+}
+
+.cr-toolbar-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.cr-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--sakura-deep);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cr-share:hover {
+  border-color: var(--sakura-deep);
+}
+
+.cr-share:focus-visible {
+  outline: 3px solid var(--sakura-deep);
+  outline-offset: 2px;
+}
+
+.cr-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 var(--sp-6);
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+.cr-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cr-filter-label {
+  flex: none;
+  width: 3em;
+  color: var(--faint);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+}
+
+.cr-chip {
+  min-height: 30px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--ground);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.cr-chip:hover {
+  border-color: var(--line-strong);
+}
+
+.cr-chip.is-active {
+  border-color: var(--sakura-deep);
+  background: var(--sakura-wash);
+  color: var(--sakura-deep);
+  font-weight: 600;
+}
+
+.cr-chip:focus-visible {
+  outline: 3px solid var(--sakura-deep);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .cr-chip {
+    min-height: 44px;
+  }
+
+  .cr-share {
+    min-height: 44px;
+  }
 }
 
 .cr-more {

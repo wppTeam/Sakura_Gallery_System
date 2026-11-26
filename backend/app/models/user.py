@@ -6,8 +6,10 @@
 """
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Boolean, DateTime, Integer
+
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 
 
@@ -33,6 +35,8 @@ class User(Base):
     # ── 公开身份字段（公开响应只允许用这两个，禁止暴露学号/真实姓名）──
     username = Column(String(32), unique=True, nullable=True, index=True, comment="公开用户名，唯一；缺省时前端回退到展示名")
     display_name = Column(String(64), nullable=True, comment="公开昵称，展示用")
+    bio = Column(String(200), nullable=True, comment="公开简介，展示在创作者主页")
+    avatar_path = Column(String(500), nullable=True, comment="头像相对 UPLOAD_DIR 路径（本地存储）")
     role = Column(String(20), default="user", nullable=False)  # admin/auditor/tagger/dept_user/user
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False)

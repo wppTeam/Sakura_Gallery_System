@@ -14,6 +14,8 @@ from app.schemas.photo import PhotoNeighborItem, PhotoResponse
 class CreatorProfile(BaseModel):
     username: str
     display_name: Optional[str] = None
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
     joined_at: Optional[datetime] = None
     works_count: int = 0
     views_total: int = 0

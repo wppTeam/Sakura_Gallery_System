@@ -60,6 +60,11 @@ function getApiBase(): string {
 
 export function getImageUrl(path: string | null, baseUrl?: string): string {
   if (!path) return ''
+  // 对象存储模式后端会把预签名直链（绝对 URL）直接写进响应，
+  // 这里必须原样放行，否则会拼成 https://api...https://cos... 这样的坏地址。
+  if (/^(https?:)?\/\//i.test(path) || path.startsWith('data:') || path.startsWith('blob:')) {
+    return path
+  }
   const base = baseUrl || getApiBase()
   return `${base}${path.startsWith('/') ? '' : '/'}${path}`
 }

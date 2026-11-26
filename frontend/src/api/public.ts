@@ -186,6 +186,10 @@ interface RawPhotoExtra {
   lqip_color?: string | null
   /** AI 画面描述（审核快筛打标写入，公开详情返回；人像脱敏视角为 null） */
   ai_caption?: string | null
+  /** 对象存储模式下的绝对预签名直链（None/缺省时回退同源 API 路径） */
+  thumb_url?: string | null
+  compressed_url?: string | null
+  original_url?: string | null
 }
 
 function toPublicVariants(raw: Photo['variants'] | null | undefined): PublicVariant[] {
@@ -252,9 +256,9 @@ export function toPublicPhoto(photo: Photo): PublicPhoto {
     width: knownRatio ? width : 0,
     height: knownRatio ? height : 0,
     aspectRatio: Math.min(Math.max(aspectRatio, 0.55), 2.2),
-    thumbUrl: getPhotoUrl(photo.id, 'thumbnail'),
+    thumbUrl: extra.thumb_url ? getImageUrl(extra.thumb_url) : getPhotoUrl(photo.id, 'thumbnail'),
     variants: toPublicVariants(extra.variants),
-    imageUrl: getPhotoUrl(photo.id, 'compressed'),
+    imageUrl: extra.compressed_url ? getImageUrl(extra.compressed_url) : getPhotoUrl(photo.id, 'compressed'),
     downloadUrl: getPhotoDownloadUrl(photo.id),
     season,
     campus,
@@ -566,6 +570,8 @@ function textOrNull(value: unknown): string | null {
 export interface CreatorProfile {
   username: string
   displayName: string
+  bio: string | null
+  avatarUrl: string | null
   joinedAt: string | null
   worksCount: number
   viewsTotal: number
@@ -601,6 +607,9 @@ export interface CreatorFetchOptions {
   worksLimit?: number
   worksOffset?: number
   collectionsLimit?: number
+  season?: string
+  period?: string
+  sort?: 'newest' | 'oldest' | 'popular'
 }
 
 function normalizeCreatorProfile(raw: Record<string, unknown>): CreatorProfile | null {
@@ -609,6 +618,8 @@ function normalizeCreatorProfile(raw: Record<string, unknown>): CreatorProfile |
   return {
     username,
     displayName: textOrNull(raw.display_name) ?? username,
+    bio: textOrNull(raw.bio),
+    avatarUrl: textOrNull(raw.avatar_url),
     joinedAt: textOrNull(raw.joined_at),
     worksCount: countOf(raw.works_count),
     viewsTotal: countOf(raw.views_total),
@@ -662,6 +673,9 @@ export async function fetchCreator(
   if (typeof options.collectionsLimit === 'number') {
     query.set('collections_limit', String(options.collectionsLimit))
   }
+  if (options.season) query.set('season', options.season)
+  if (options.period) query.set('period', options.period)
+  if (options.sort) query.set('sort', options.sort)
   const suffix = query.toString() ? `?${query.toString()}` : ''
   const data = await fetchCreatorJson<Record<string, unknown>>(
     `/api/v1/creators/${encodeURIComponent(handle)}${suffix}`,
@@ -687,13 +701,16 @@ export async function fetchCreator(
 /** 创作者作品「加载更多」（GET /api/v1/creators/{username}/works） */
 export async function fetchCreatorWorks(
   username: string,
-  options: { limit?: number; offset?: number } = {},
+  options: { limit?: number; offset?: number; season?: string; period?: string; sort?: 'newest' | 'oldest' | 'popular' } = {},
 ): Promise<CreatorWorksPage> {
   const handle = (username || '').trim()
   if (!handle) throw new CreatorRequestError('缺少创作者用户名', 0)
   const query = new URLSearchParams()
   query.set('limit', String(options.limit ?? 12))
   query.set('offset', String(options.offset ?? 0))
+  if (options.season) query.set('season', options.season)
+  if (options.period) query.set('period', options.period)
+  if (options.sort) query.set('sort', options.sort)
   const data = await fetchCreatorJson<unknown>(
     `/api/v1/creators/${encodeURIComponent(handle)}/works?${query.toString()}`,
   )

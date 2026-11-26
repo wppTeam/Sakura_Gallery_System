@@ -57,6 +57,7 @@ from app.services.ai_tasks import (
 )
 from app.services.image_processing import VARIANT_LONG_EDGES, process_uploaded_image
 from app.services.photo_assets import delete_photo_assets, variant_meta
+from app.services.storage import direct_media_url
 from app.services.runtime_settings import get_runtime_settings
 from app.services.search_interpreter import get_search_interpreter
 from app.services.storage import cleanup_staged_files, get_storage, stage_photo_upload
@@ -283,9 +284,17 @@ def _public_variants(photo: Photo) -> Optional[Dict[str, Dict[str, Any]]]:
     for size in sorted(meta, key=lambda key: int(key) if str(key).isdigit() else 0):
         info = meta[size] if isinstance(meta[size], dict) else {}
         url_base = f"/api/v1/photos/{photo.id}/image/variant/{size}"
+        # 对象存储模式下直接内联预签名直链：浏览器可绕过「API 307 → 对象存储」
+        # 的一次隧道往返（公网单张图 1–3 秒的感知延迟主要来自这一次往返）。
+        webp_url = direct_media_url(
+            f"variants/{photo.id}_{size}.webp", content_type="image/webp"
+        ) or f"{url_base}?format=webp"
+        jpeg_url = direct_media_url(
+            f"variants/{photo.id}_{size}.jpg", content_type="image/jpeg"
+        ) or f"{url_base}?format=jpeg"
         out[str(size)] = {
-            "webp": f"{url_base}?format=webp",
-            "jpeg": f"{url_base}?format=jpeg",
+            "webp": webp_url,
+            "jpeg": jpeg_url,
             "width": info.get("width"),
             "height": info.get("height"),
         }
@@ -339,6 +348,18 @@ def _photo_common_dict(photo: Photo, *, redact: bool = False) -> dict:
         # 人像隐私分级：sensitive 作品对外只给脱敏图
         "privacy_level": photo.privacy_level or privacy.PRIVACY_NORMAL,
         "is_redacted": bool(use_redacted),
+        # 绝对媒体直链（仅对象存储模式）：非 None 时前端直接用它，省掉
+        # 「同源 API → 307 → 对象存储」的隧道往返；None 表示回退同源路径。
+        "thumb_url": direct_media_url(
+            redacted_thumb if use_redacted else photo.thumb_path,
+            content_type="image/jpeg",
+        ),
+        "compressed_url": direct_media_url(
+            redacted_path if use_redacted else photo.compressed_path,
+            content_type="image/jpeg",
+        ),
+        # 刻意不给原图直链：原图只保留在鉴权媒体端点（下载/查看原图时按需请求），
+        # 既避免公开 JSON 里出现可离线保存的高清原图直链，也省掉每张约 350B 的签名串。
     }
 
 
@@ -1150,7 +1171,8 @@ def _neighbor_item(photo: Photo) -> PhotoNeighborItem:
         is_aigc=bool(photo.is_aigc),
         aigc_label=photo.aigc_label,
         lqip_color=exif.get("_lqip_color"),
-        thumb_url=f"/api/v1/photos/{photo.id}/image/thumbnail",
+        thumb_url=direct_media_url(photo.thumb_path, content_type="image/jpeg")
+        or f"/api/v1/photos/{photo.id}/image/thumbnail",
     )
 
 

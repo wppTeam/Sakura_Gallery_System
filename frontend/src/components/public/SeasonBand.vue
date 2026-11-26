@@ -37,7 +37,9 @@
 
         <figure class="band-art">
           <img
-            :src="`/art/${season.key}.webp`"
+            :src="`/art/${season.key}-sm.webp`"
+            :srcset="`/art/${season.key}-sm.webp 900w, /art/${season.key}.webp 1472w`"
+            sizes="(max-width: 900px) 100vw, 620px"
             :alt="`${season.label}季相插画：${copy.title}`"
             width="1472"
             height="1140"

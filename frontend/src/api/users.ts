@@ -4,6 +4,7 @@
  * 仅限管理员使用。
  */
 import request from './index'
+import { normalizeAigcQuota } from './aigc'
 import type {
     User,
     UserListResponse,
@@ -117,4 +118,33 @@ export interface AdminUserStats {
  */
 export async function getUserStats(): Promise<AdminUserStats> {
     return request.get(`${BASE_URL}/stats`)
+}
+
+/** 用户详情抽屉聚合（作品 / 生图额度 / 申诉举报 / 审计） */
+export interface AdminUserDetail {
+    user: User
+    photos: { total: number; approved: number; pending: number; rejected: number; views: number }
+    recent_photos: Array<{ id: string; title: string | null; status: string; views: number; thumb_url: string }>
+    aigc: {
+        quota: import('./aigc').AigcQuota
+        generation_total: number
+        grant_count: number
+    }
+    collections_count: number
+    appeals: { pending: number; total: number }
+    reports_pending: number
+    recent_audit: Array<{ id: string; action: string; detail: string | null; created_at: string }>
+}
+
+export async function getUserDetail(userId: string): Promise<AdminUserDetail> {
+    const raw = await request.get<Record<string, unknown>>(`${BASE_URL}/${encodeURIComponent(userId)}/detail`)
+    const aigc = (raw.aigc ?? {}) as Record<string, unknown>
+    return {
+        ...(raw as unknown as AdminUserDetail),
+        aigc: {
+            quota: normalizeAigcQuota(aigc.quota),
+            generation_total: Number(aigc.generation_total ?? 0),
+            grant_count: Number(aigc.grant_count ?? 0),
+        },
+    }
 }

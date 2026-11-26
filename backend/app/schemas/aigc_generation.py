@@ -17,6 +17,19 @@ class AigcSizeOption(BaseModel):
     ratio: str
 
 
+class AigcQuotaResponse(BaseModel):
+    """当前用户的生图额度：每日基础 + 管理员赠送池。"""
+
+    unlimited: bool = False
+    daily_limit: int = 0
+    daily_used: int = 0
+    daily_remaining: int = 0
+    bonus_total: int = 0
+    bonus_used: int = 0
+    bonus_remaining: int = 0
+    total_remaining: int = 0
+
+
 class AigcConfigResponse(BaseModel):
     """创作台配置：前端据此渲染尺寸选择与额度提示。"""
 
@@ -45,6 +58,7 @@ class AigcGenerationResponse(BaseModel):
     height: Optional[int] = None
     status: Literal["queued", "running", "succeeded", "failed"]
     model: str
+    quota_source: Literal["daily", "bonus", "unlimited"] = "daily"
     image_url: Optional[str] = None
     error: Optional[str] = None
     latency_ms: Optional[int] = None
@@ -56,5 +70,4 @@ class AigcGenerationResponse(BaseModel):
 class AigcGenerationListResponse(BaseModel):
     items: list[AigcGenerationResponse]
     total: int
-    daily_used: int
-    daily_limit: int
+    quota: AigcQuotaResponse

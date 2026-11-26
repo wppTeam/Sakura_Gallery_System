@@ -3,13 +3,15 @@
     <div class="cr-glow" aria-hidden="true"></div>
 
     <div class="cr-identity">
-      <div class="cr-avatar" aria-hidden="true">
-        <span>{{ monogram }}</span>
+      <div class="cr-avatar" :class="{ 'cr-avatar--image': profile.avatarUrl }">
+        <img v-if="profile.avatarUrl" :src="profile.avatarUrl" :alt="`${profile.displayName} 的头像`" />
+        <span v-else aria-hidden="true">{{ monogram }}</span>
       </div>
       <div class="cr-meta">
         <p class="cr-eyebrow">CREATOR · 创作者</p>
         <h1 class="cr-name">{{ profile.displayName }}</h1>
         <p class="cr-handle">@{{ profile.username }}</p>
+        <p v-if="profile.bio" class="cr-bio">{{ profile.bio }}</p>
       </div>
     </div>
 
@@ -118,6 +120,27 @@ function formatNumber(value: number): string {
   font-size: 42px;
   line-height: 1;
   box-shadow: 0 6px 18px rgba(201, 58, 99, 0.12);
+  overflow: hidden;
+}
+
+.cr-avatar--image {
+  background: var(--surface);
+}
+
+.cr-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cr-bio {
+  margin: 8px 0 0;
+  max-width: 46em;
+  color: var(--ink-soft);
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
 }
 
 .cr-meta {

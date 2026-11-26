@@ -25,3 +25,26 @@ export async function deleteAccount(payload: DeleteAccountPayload): Promise<void
     timeout: 60000,
   })
 }
+
+/** 上传公开头像（multipart）。后端裁方缩到 512 WebP。 */
+export async function uploadAvatar(file: File): Promise<{ avatar_path: string | null }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/api/v1/user/avatar',
+    method: 'post',
+    data: formData,
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 30000,
+  })
+}
+
+export async function deleteAvatar(): Promise<void> {
+  await request.delete('/api/v1/user/avatar')
+}
+
+/** 公开头像 URL（无头像返回 null）。 */
+export function avatarUrlOf(user: { id?: string; avatar_path?: string | null } | null | undefined): string | null {
+  if (!user?.id || !user.avatar_path) return null
+  return `/api/v1/user/avatar/${user.id}`
+}

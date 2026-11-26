@@ -380,7 +380,10 @@ export function normalizeWorkDetail(raw: RawPhoto): WorkDetail {
 
   const variants = normalizeVariants(raw, id)
   const displayVariant = pickDisplayVariant(variants)
-  const displayUrl = displayVariant?.url || getPhotoUrl(id, 'compressed')
+  const displayUrl =
+    displayVariant?.url ||
+    normalizeImageUrl(firstString((raw as UnknownRecord).compressed_url)) ||
+    getPhotoUrl(id, 'compressed')
   // 脱敏作品的 original/thumbnail/compressed 端点都会返回脱敏图；原图端点对非作者 403，
   // 因此脱敏时把「原图」退化为脱敏大图，并禁止下载。
   const isRedacted = raw.is_redacted === true
@@ -418,9 +421,14 @@ export function normalizeWorkDetail(raw: RawPhoto): WorkDetail {
     fileSize: firstNumber(raw.file_size) ?? 0,
     mimeType: textOf(raw.mime_type),
 
-    thumbUrl: getPhotoUrl(id, 'thumbnail'),
+    thumbUrl:
+      normalizeImageUrl(firstString((raw as UnknownRecord).thumb_url)) ||
+      getPhotoUrl(id, 'thumbnail'),
     displayUrl,
-    originalUrl: canViewOriginal ? getPhotoUrl(id, 'original') : displayUrl,
+    originalUrl: canViewOriginal
+      ? normalizeImageUrl(firstString((raw as UnknownRecord).original_url)) ||
+        getPhotoUrl(id, 'original')
+      : displayUrl,
     downloadUrl: canViewOriginal ? getPhotoDownloadUrl(id) : '',
     variants,
 

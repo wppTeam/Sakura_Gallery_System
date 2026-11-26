@@ -4,9 +4,11 @@ User Pydantic schemas
 用户相关的数据传输对象定义。
 支持 student_id (学号/工号) 作为核心身份标识。
 """
+import re
 from datetime import datetime
-from typing import Optional
 from enum import Enum
+from typing import Optional
+
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
@@ -91,10 +93,28 @@ class UserCreateByAdmin(UserBase):
 
 
 class UserUpdate(BaseModel):
-    """用户自我更新 schema"""
+    """用户自我更新 schema（含公开主页资料）"""
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     password: Optional[str] = None
+    username: Optional[str] = Field(None, min_length=3, max_length=32)
+    display_name: Optional[str] = Field(None, max_length=64)
+    bio: Optional[str] = Field(None, max_length=200)
+
+    @field_validator("username")
+    @classmethod
+    def check_username(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.strip()
+        if not re.fullmatch(r"[A-Za-z0-9_-]{3,32}", v):
+            raise ValueError("用户名只能含字母、数字、下划线或连字符，长度 3–32")
+        return v
+
+    @field_validator("display_name", "bio")
+    @classmethod
+    def strip_text(cls, v: Optional[str]) -> Optional[str]:
+        return v.strip() if isinstance(v, str) else v
 
 
 class UserUpdateByAdmin(BaseModel):
@@ -134,6 +154,8 @@ class UserInDB(UserBase):
     locked_until: Optional[datetime] = None
     token_version: int = 1
     email_verified: bool = False
+    bio: Optional[str] = None
+    avatar_path: Optional[str] = None
 
     class Config:
         from_attributes = True
