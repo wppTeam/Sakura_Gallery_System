@@ -261,6 +261,7 @@ cd backend && pytest
 | AIGC 法定标识 | ✅ 上传强制声明 + 显式角标/详情 + 下载 XMP 隐式标识 + 图生图/换脸限制（M2 四件套） |
 | 性能优化（媒体直连） | ✅ 2026-11-26 公开 JSON 内联对象存储预签名直链（`thumb_url`/`compressed_url`/`variants`），图片从「API 307 往返 2–3s」变 COS 直连 ≈0.3s；季节插画响应式 `-sm.webp`（-60% 体积）；`/tags/public/popular` 微缓存 |
 | 视觉相似 / 以图搜图 | ✅ 2026-11-25 dhash + 光谱色卡 + 构图/标签/季节/校区加权，详情页「视觉相似」带中文理由；`POST /api/v1/search/visual` 上传图内存算签名直接搜（不落盘/不花 AI 钱） |
+| 边缘缓存 | Cloudflare Cache Rules：SPA 壳 20s + 匿名公开 API 30s，媒体仍直连 COS；发版后 `scripts/purge_cloudflare_cache.py` 清 HTML | ✅ 已上线（2026-11-26 实测 HIT） |
 | 画面笔记 / 检索语料 | ✅ 2026-11-25 详情页 AI 画面描述 + 标签检索语料（`search_document` + trigger），公开热门关键词接口；旧图跑 `scripts/backfill_search_documents.py` |
 | 按光找图 | ✅ 2026-11-25 `/search` 与 `/photos/public` 接受 `period=dawn|noon|dusk|night`，探索页「光」筛选条与 URL 同步，agent 能识别「黄昏/清晨」等口语 |
 | 多轮追问 | ✅ 2026-11-25 `/search` 接受重复参数 `history`（最近 3 轮），planner 在省略式追问（「那黄昏呢」「还有春天的吗」）时承接上文条件，规则兜底不依赖模型 |

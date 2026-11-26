@@ -1125,6 +1125,59 @@ curl -s -o /dev/null -w '%{http_code}\n' -X DELETE \
    - 生成图不写 `ai_usage_events` 的 token，只记 `operation=aigc.generate` + `cost_usd`（按 `AIGC_IMAGE_PRICE_USD`）；
    - 验收后记得 `DELETE` 测试记录，避免占用额度与磁盘。
 
+### 15.9 Cloudflare 边缘缓存（2026-11-26 落地）
+
+目标：让 HTML 壳与匿名公开 API 也吃上 Cloudflare 边缘缓存，减少「边缘 → Tunnel → 源站」往返。
+前置：源站 nginx 已把 `/index.html` 改为可被共享缓存复用：
+`Cache-Control: public, max-age=0, s-maxage=20, stale-while-revalidate=10`
+（浏览器仍每次带 ETag 校验；CF 只缓存 20s）。仅靠响应头 CF 默认不缓存 HTML，必须显式配 Cache Rules。
+
+1. **两条 Cache Rules**（Zone → Caching → Cache Rules，或 API
+   `PUT /client/v4/zones/{zone}/rulesets/phases/http_request_cache_settings/entrypoint`）：
+
+| 规则 | 匹配表达式 | 动作 |
+|---|---|---|
+| SPA 壳 300s | `(http.host eq "buct-sakura.cn" or http.host eq "www.buct-sakura.cn") and http.request.method eq "GET" and not starts_with(http.request.uri.path, "/api/") and not starts_with(http.request.uri.path, "/admin")` | Cache eligible；Edge TTL = Override origin, 300s；Browser TTL = Respect origin |
+| 匿名公开 API 30s | `http.request.method eq "GET" and not any(http.request.headers["authorization"][*] ne "") and (starts_with(http.request.uri.path, "/api/v1/photos/public") or starts_with(http.request.uri.path, "/api/v1/collections") or starts_with(http.request.uri.path, "/api/v1/creators") or starts_with(http.request.uri.path, "/api/v1/search") or http.request.uri.path eq "/api/v1/tags/public/popular" or ends_with(http.request.uri.path, "/similar") or ends_with(http.request.uri.path, "/neighbors"))` | Cache eligible；Edge TTL 30s；Browser TTL = Respect origin |
+
+  注意：
+  - 表达式里用 `http.request.headers["authorization"][*]`（数组）判断，直接 `headers["authorization"] eq ""`
+    会报 `20127` 解析错误；
+  - **不要把 `/api/` 全量缓存**：带鉴权头的请求会拿到别人的响应；媒体端点（`/image/*`）也不进边缘缓存，
+    避免 `access_token` 查询参数成为缓存键；
+  - 静态资源（`/assets/*`、图片、字体）本来就按扩展名被 CF 默认缓存（`HIT, age=...`），无需额外规则。
+
+2. **发版流程必须 purge HTML**（否则用户最多 300s 内拿到旧壳，旧壳引用的 hashed asset 已被新镜像替换 → 白屏；因为可 purge，SPA 壳给了 300s 换取边缘命中率）：
+
+```bash
+CF_API_TOKEN=... CF_ZONE_ID=... python3 scripts/purge_cloudflare_cache.py
+# 或指定文件：scripts/purge_cloudflare_cache.py（默认清 4 个 HTML URL）
+```
+
+   凭据存 `.tmp/deploy/cf.env`（0600，`.tmp/` 已 gitignore）；脚本优先 IPv4（部分网络对
+   `api.cloudflare.com` 的 IPv6 会黑洞，std-lib 会卡到超时）。
+
+3. **验收（2026-11-26 实测）**：
+
+```bash
+curl -sI https://buct-sakura.cn/ | grep -iE 'cache-control|cf-cache-status|age'
+# 第一次 MISS；之后 cf-cache-status: HIT、age: N、cache-control: public, max-age=0, s-maxage=20, ...
+curl -sI https://buct-sakura.cn/api/v1/photos/public?limit=4 | grep -iE 'cf-cache-status|age|x-cache-status'
+# 匿名：MISS → HIT（30s）；带 Authorization 头：cf-cache-status: DYNAMIC、x-cache-status: BYPASS
+curl -sI https://buct-sakura.cn/assets/index-*.js | grep -iE 'cf-cache-status|age'
+# 静态资源：HIT（CF 默认缓存）
+```
+
+   实测（本机出口在欧洲 AMS 边缘，TTFB 绝对值偏慢，看结构变化）：HTML MISS 1.4–2.7s → HIT 冷连接 0.92–1.15s、keep-alive 复用连接 **0.25s**；
+   公开 API MISS 3.04s → HIT 1.03–1.26s；COS 图片直连 ≈0.40s；Brotli（`content-encoding: br`）与
+   HTTP/3（`alt-svc: h3`）已开启。
+
+4. **已知限制**：
+   - 30s API TTL 很短（为了新作品/策展及时出现），冷启动仍会有 MISS；SPA 壳 300s 靠发版 purge 兜底；
+   - 边缘缓存命中率取决于各地 POP 预热，单点 curl 只能看到当前边缘节点；
+   - 发布后台/前端静态资源更新时，建议同时 purge HTML；不 purge API 也最多 30s 过期；
+   - Cloudflare API Token 权限：`Zone → Cache Rules: Edit`、`Zone → Cache Purge: Purge`、`Zone Settings: Read`。
+
 ## 16. SEO 与站点元信息（2026-11-24 落地）
 
 站点公开后需要被搜索引擎与社交平台正确索引/预览：

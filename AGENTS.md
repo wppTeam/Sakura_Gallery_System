@@ -580,7 +580,18 @@ backend/.venv/bin/python scripts/shot.py <url> <out.png> --width 1440 --full --w
   响应带 `X-Cache-Status`；带 `Authorization` 一律 BYPASS。
 - 性能实测（2026-11-26，公网经 Cloudflare Tunnel）：图片请求从「API 307 往返 2–3s/张」变为
   「COS 预签名直连 ≈0.3s/张」，首页 `apiRedirectImg` 归零；列表 JSON 因签名 URL 每 24 张多约
-  17KB gzip，属可接受交换。下一步可做首页聚合接口与 Cloudflare HTML Cache Rule（需 CF token）。
+  17KB gzip，属可接受交换。
+- **边缘缓存（Cloudflare Cache Rules，2026-11-26 落地）**：zone 内两条 ruleset
+  （`http_request_cache_settings`）：
+  ① SPA 壳 300s —— `GET` 且非 `/api/`、非 `/admin` 的导航请求（发版后 purge，所以可以给长 TTL）；
+  ② 匿名公开 GET API 30s —— `/api/v1/photos/public`、`/collections`、`/creators`、`/search`、
+  `/tags/public/popular`、`/photos/{id}/similar|neighbors`，且请求**不带 `Authorization`**。
+  带鉴权头的请求不进 ②，媒体端点与接口原图仍走鉴权/307，不进边缘缓存（避免把带 token 的 URL 当缓存键）。
+  nginx 对 `/index.html` 下发 `Cache-Control: public, max-age=0, s-maxage=20, stale-while-revalidate=10`
+  （浏览器仍每次 ETag 校验；CF 的边缘 TTL 由上表规则覆盖为 300s）。**发版后必须 purge HTML 壳**（否则新旧 asset 名单错位白屏）：
+  `CF_API_TOKEN=... CF_ZONE_ID=... python3 scripts/purge_cloudflare_cache.py`；
+  凭据只存本地未跟踪文件（`.tmp/deploy/cf.env`，0600），不入库。配置步骤与验证记录见
+  `docs/DEPLOY_2C4G.md` §15.9。
 
 ## 10. AI 渠道（实测结论，不含 key）
 
